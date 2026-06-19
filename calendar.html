@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Calendar v9.7</title>
+<title>Calendar v9.8</title>
 
 <script src="supabase.js"></script>
 
@@ -23,18 +23,19 @@ padding:12px;
 
 .header{
 display:flex;
-justify-content:space-between;
+gap:10px;
+justify-content:center;
 align-items:center;
 padding:10px;
+flex-wrap:wrap;
 }
 
-button{
+select,button{
+padding:6px 10px;
+border-radius:6px;
+border:none;
 background:#1f2937;
 color:white;
-border:none;
-padding:8px 12px;
-border-radius:8px;
-cursor:pointer;
 }
 
 .grid{
@@ -49,19 +50,18 @@ background:#1f2937;
 padding:10px;
 border-radius:10px;
 min-height:60px;
+text-align:center;
 font-size:12px;
 cursor:pointer;
-text-align:center;
 }
 
-.day:hover{
-background:#374151;
+.empty{
+background:transparent;
 }
 
 .high{background:#ef4444;}
 .mid{background:#f59e0b;}
 .low{background:#22c55e;}
-.empty{background:transparent;}
 </style>
 </head>
 
@@ -75,38 +75,57 @@ background:#374151;
 <a href="shop.html">Shop</a>
 </div>
 
+<!-- 🟢 YEAR + MONTH SELECTOR -->
 <div class="header">
-<button onclick="prevMonth()">⬅</button>
-<h3 id="title">Calendar</h3>
-<button onclick="nextMonth()">➡</button>
+
+<select id="year"></select>
+
+<select id="month">
+<option value="0">Jan</option>
+<option value="1">Feb</option>
+<option value="2">Mar</option>
+<option value="3">Apr</option>
+<option value="4">May</option>
+<option value="5">Jun</option>
+<option value="6">Jul</option>
+<option value="7">Aug</option>
+<option value="8">Sep</option>
+<option value="9">Oct</option>
+<option value="10">Nov</option>
+<option value="11">Dec</option>
+</select>
+
+<button onclick="render()">🔄 Load</button>
+
 </div>
+
+<h3 style="text-align:center;" id="title"></h3>
 
 <div class="grid" id="grid"></div>
 
 <script>
 
-let current = new Date()
-
-// 🟢 获取本月第一天
-function getMonthData(date){
-
-const year = date.getFullYear()
-const month = date.getMonth()
-
-return {year, month}
+// 🟢 STATE（关键修复点）
+let state = {
+year: 2026,
+month: 6
 }
 
-// 🟢 获取天数
-function getDaysInMonth(year, month){
-return new Date(year, month+1,0).getDate()
+// 🟢 初始化年份
+const yearSelect = document.getElementById("year")
+
+for(let y=2020;y<=2035;y++){
+const opt=document.createElement("option")
+opt.value=y
+opt.innerText=y
+yearSelect.appendChild(opt)
 }
 
-// 🟢 获取第一天星期
-function getStartDay(year, month){
-return new Date(year, month,1).getDay()
-}
+yearSelect.value = state.year
 
-// 🟢 获取 Supabase 数据
+document.getElementById("month").value = state.month
+
+// 🟢 Supabase calories
 async function getCalories(date){
 
 try{
@@ -128,36 +147,39 @@ return data.reduce((s,f)=>s+f.calories,0)
 }catch(e){
 return 0
 }
+
 }
 
-// 🟢 渲染日历
+// 🟢 render calendar
 async function render(){
 
-const grid = document.getElementById("grid")
-grid.innerHTML=""
+state.year = parseInt(yearSelect.value)
+state.month = parseInt(document.getElementById("month").value)
 
-const {year, month} = getMonthData(current)
+const grid = document.getElementById("grid")
+grid.innerHTML = ""
 
 document.getElementById("title").innerText =
-year + " - " + (month+1)
+state.year + " / " + (state.month+1)
+
+// 星期起点
+const firstDay = new Date(state.year, state.month, 1).getDay()
+
+// 月天数
+const days = new Date(state.year, state.month+1, 0).getDate()
 
 // 空格
-const start = getStartDay(year,month)
-
-// 空白格
-for(let i=0;i<start;i++){
+for(let i=0;i<firstDay;i++){
 const div=document.createElement("div")
 div.className="day empty"
 grid.appendChild(div)
 }
 
-// 天数
-const days = getDaysInMonth(year,month)
-
+// 日期
 for(let d=1; d<=days; d++){
 
 const dateStr =
-`${year}-${String(month+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`
+`${state.year}-${String(state.month+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`
 
 const cal = await getCalories(dateStr)
 
@@ -168,26 +190,15 @@ if(cal>2000) div.classList.add("high")
 else if(cal>1200) div.classList.add("mid")
 else div.classList.add("low")
 
-div.innerHTML = d+"<br>"+cal
+div.innerHTML = d + "<br>" + cal
 
-div.onclick=()=>{
-location.href="day.html?date="+dateStr
+div.onclick = () => {
+location.href = "day.html?date=" + dateStr
 }
 
 grid.appendChild(div)
 }
 
-}
-
-// 🟢 切换月份
-function prevMonth(){
-current.setMonth(current.getMonth()-1)
-render()
-}
-
-function nextMonth(){
-current.setMonth(current.getMonth()+1)
-render()
 }
 
 render()
