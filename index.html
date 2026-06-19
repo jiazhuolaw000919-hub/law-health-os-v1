@@ -1,3 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Supabase Test</title>
+</head>
+<body>
+
+<h1>Supabase Connection Test</h1>
+
+<button onclick="Connection()">
+Test Supabase
+</button>
+
+<p id="result">Waiting...</p>
+
+<script>
+
+const SUPABASE_URL =
+"https://bzhdzveuldgdpslbzqqv.supabase.co"
+
+const SUPABASE_KEY =
+"YOUR_SUPABASE_KEY"
+
 async function testConnection(){
 
 document.getElementById("result").innerText =
@@ -35,3 +60,39 @@ document.getElementById("result").innerText =
 }
 
 }
+
+document.getElementById("result").innerText =
+"Testing..."
+
+try{
+
+const response =
+await fetch(
+`${SUPABASE_URL}/rest/v1/food_logs?select=*`,
+{
+headers:{
+apikey:SUPABASE_KEY,
+Authorization:"Bearer "+SUPABASE_KEY
+}
+}
+)
+
+const text = await response.text()
+
+document.getElementById("result").innerText =
+response.status + " | " + text
+
+}
+catch(error){
+
+document.getElementById("result").innerText =
+"ERROR: " + error.message
+
+}
+
+}
+
+</script>
+
+</body>
+</html>
