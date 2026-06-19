@@ -1,33 +1,7 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <title>Law Health OS v3 SAFE</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-</head>
-
-<body style="font-family:Arial; background:#0b0f19; color:white; text-align:center; padding:20px;">
-
-  <h1>🧠 Law Health OS</h1>
-
-  <h2>📊 Today Calories</h2>
-  <p id="total">0 kcal</p>
-
-  <hr>
-
-  <h2>🍽 Food Input</h2>
-
-  <input id="food" placeholder="chicken rice / milo / teh tarik"
-    style="padding:10px; width:80%;">
-
-  <br><br>
-
-  <button onclick="addFood()" style="padding:10px; width:85%;">
-    Add Food
-  </button>
-
-  <div id="log"></div>
-
 <script>
+const SUPABASE_URL = "https://bzhdzveuldgdpslbzqqv.supabase.co"
+const SUPABASE_KEY = "sb_publishable_GMM5PgeRzudbeh4aHK-1pw_lQ6TQnVe"
+
 let total = 0
 
 function estimate(food) {
@@ -37,19 +11,17 @@ function estimate(food) {
   if (food.includes("milo")) return 180
   if (food.includes("teh tarik")) return 250
   if (food.includes("waffle")) return 350
-  if (food.includes("rice")) return 500
-
   return 300
 }
 
 function ipohAdvice(food) {
-  if (food.includes("chicken")) return "Ipoh: steam chicken, less soy sauce"
-  if (food.includes("milo")) return "Ipoh: less sugar Milo kosong"
-  if (food.includes("teh tarik")) return "Ipoh: reduce condensed milk"
-  return "Ipoh: balanced diet, less oil & sugar"
+  if (food.includes("chicken")) return "Ipoh style: steam chicken, less soy sauce"
+  if (food.includes("milo")) return "Ipoh style: less sugar Milo"
+  if (food.includes("teh tarik")) return "Ipoh style: reduce condensed milk"
+  return "Ipoh style: balanced meal"
 }
 
-function addFood() {
+async function addFood() {
   try {
     const food = document.getElementById("food").value
     if (!food) return
@@ -62,15 +34,32 @@ function addFood() {
     document.getElementById("total").innerText = total + " kcal"
 
     document.getElementById("log").innerHTML +=
-      "<p>🍽 " + food + " - " + cal + " kcal<br>🍜 " + advice + "</p>"
+      `<p>🍽 ${food} - ${cal} kcal<br>🍜 ${advice}</p>`
 
     document.getElementById("food").value = ""
-  } catch (e) {
-    console.log(e)
-    alert("Error happened but app still running")
+
+    // 🔥 写入 Supabase（REST API）
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/food_logs`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "apikey": SUPABASE_KEY,
+        "Authorization": `Bearer ${SUPABASE_KEY}`,
+        "Prefer": "return=minimal"
+      },
+      body: JSON.stringify({
+        food: food,
+        calories: cal
+      })
+    })
+
+    if (!res.ok) {
+      console.log("DB error:", await res.text())
+    }
+
+  } catch (err) {
+    console.log("App error:", err)
+    alert("Error but app still running")
   }
 }
 </script>
-
-</body>
-</html>
