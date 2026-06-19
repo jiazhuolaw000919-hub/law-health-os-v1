@@ -1,14 +1,76 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Health OS TEST</title>
+  <title>Law Health OS v3 SAFE</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
 
-<body style="font-family:Arial; text-align:center; padding:40px;">
+<body style="font-family:Arial; background:#0b0f19; color:white; text-align:center; padding:20px;">
 
-  <h1>✅ Health OS Running</h1>
+  <h1>🧠 Law Health OS</h1>
 
-  <p>If you can see this, deployment is OK.</p>
+  <h2>📊 Today Calories</h2>
+  <p id="total">0 kcal</p>
+
+  <hr>
+
+  <h2>🍽 Food Input</h2>
+
+  <input id="food" placeholder="chicken rice / milo / teh tarik"
+    style="padding:10px; width:80%;">
+
+  <br><br>
+
+  <button onclick="addFood()" style="padding:10px; width:85%;">
+    Add Food
+  </button>
+
+  <div id="log"></div>
+
+<script>
+let total = 0
+
+function estimate(food) {
+  food = food.toLowerCase()
+
+  if (food.includes("chicken")) return 600
+  if (food.includes("milo")) return 180
+  if (food.includes("teh tarik")) return 250
+  if (food.includes("waffle")) return 350
+  if (food.includes("rice")) return 500
+
+  return 300
+}
+
+function ipohAdvice(food) {
+  if (food.includes("chicken")) return "Ipoh: steam chicken, less soy sauce"
+  if (food.includes("milo")) return "Ipoh: less sugar Milo kosong"
+  if (food.includes("teh tarik")) return "Ipoh: reduce condensed milk"
+  return "Ipoh: balanced diet, less oil & sugar"
+}
+
+function addFood() {
+  try {
+    const food = document.getElementById("food").value
+    if (!food) return
+
+    const cal = estimate(food)
+    const advice = ipohAdvice(food)
+
+    total += cal
+
+    document.getElementById("total").innerText = total + " kcal"
+
+    document.getElementById("log").innerHTML +=
+      "<p>🍽 " + food + " - " + cal + " kcal<br>🍜 " + advice + "</p>"
+
+    document.getElementById("food").value = ""
+  } catch (e) {
+    console.log(e)
+    alert("Error happened but app still running")
+  }
+}
+</script>
 
 </body>
 </html>
