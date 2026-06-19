@@ -1,9 +1,5 @@
 <script>
-const SUPABASE_URL = "https://bzhdzveuldgdpslbzqqv.supabase.co"
-const SUPABASE_KEY = "sb_publishable_nbFvqceSb_oZWOSEdDjjzg_IQjKfumj"
-
 let total = 0
-let logs = []
 
 function estimate(food) {
   food = food.toLowerCase()
@@ -12,63 +8,36 @@ function estimate(food) {
   if (food.includes("milo")) return 180
   if (food.includes("teh tarik")) return 250
   if (food.includes("waffle")) return 350
-  if (food.includes("rice")) return 500
-
   return 300
 }
 
 function ipohAdvice(food) {
-  food = food.toLowerCase()
-
-  if (food.includes("chicken")) {
-    return "Ipoh style: steam chicken, reduce soy sauce, less oil"
-  }
-  if (food.includes("milo")) {
-    return "Ipoh style: less sugar Milo kosong version"
-  }
-  if (food.includes("teh tarik")) {
-    return "Ipoh style: use less condensed milk"
-  }
-
-  return "Ipoh style: balance meal, reduce oil & sugar"
+  if (food.includes("chicken")) return "Ipoh: steam chicken, less soy sauce"
+  if (food.includes("milo")) return "Ipoh: less sugar Milo kosong"
+  if (food.includes("teh tarik")) return "Ipoh: reduce condensed milk"
+  return "Ipoh: balance diet, less oil & sugar"
 }
 
-async function addFood() {
-  const input = document.getElementById("food")
-  const food = input.value
-  if (!food) return
-
-  const cal = estimate(food)
-  const advice = ipohAdvice(food)
-
-  total += cal
-  logs.push({ food, cal })
-
-  // UI更新
-  document.getElementById("total").innerText = total + " kcal"
-
-  document.getElementById("log").innerHTML +=
-    "<p>🍽 " + food + " - " + cal + " kcal<br>🍜 " + advice + "</p>"
-
-  input.value = ""
-
-  // 🔵 Supabase同步（安全写法）
+function addFood() {
   try {
-    await fetch(SUPABASE_URL + "/rest/v1/food_logs", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "apikey": SUPABASE_KEY,
-        "Authorization": "Bearer " + SUPABASE_KEY,
-        "Prefer": "return=minimal"
-      },
-      body: JSON.stringify({
-        food: food,
-        calories: cal
-      })
-    })
+    const input = document.getElementById("food")
+    const food = input.value
+    if (!food) return
+
+    const cal = estimate(food)
+    const advice = ipohAdvice(food)
+
+    total += cal
+
+    document.getElementById("total").innerText = total + " kcal"
+
+    document.getElementById("log").innerHTML +=
+      "<p>🍽 " + food + " - " + cal + " kcal<br>🍜 " + advice + "</p>"
+
+    input.value = ""
   } catch (e) {
-    console.log("DB sync failed but UI still works", e)
+    console.log("error:", e)
+    alert("Something went wrong but page is still alive")
   }
 }
 </script>
