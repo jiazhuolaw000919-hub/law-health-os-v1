@@ -1,67 +1,33 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <title>Law Health OS v2</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script type="module">
+import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm"
 
-  <style>
-    body {
-      font-family: Arial;
-      background: #0b0f19;
-      color: white;
-      text-align: center;
-      padding: 20px;
-    }
+const supabaseUrl = "YOUR_SUPABASE_URL"
+const supabaseKey = "YOUR_SUPABASE_KEY"
 
-    .card {
-      background: #1c2230;
-      padding: 15px;
-      margin: 10px 0;
-      border-radius: 12px;
-    }
+const supabase = createClient(supabaseUrl, supabaseKey)
 
-    input, button {
-      padding: 10px;
-      width: 85%;
-      margin-top: 10px;
-      border-radius: 8px;
-      border: none;
-    }
+let total = 0
 
-    button {
-      background: #3b82f6;
-      color: white;
-    }
+window.addFood = async function () {
+  let food = document.getElementById("food").value
+  if (!food) return
 
-    .log {
-      text-align: left;
-      margin-top: 10px;
-    }
-  </style>
-</head>
+  let cal = estimate(food)
 
-<body>
+  // 存数据库
+  await supabase.from("food_logs").insert([
+    { food: food, calories: cal }
+  ])
 
-<h1>🧠 Law Health OS</h1>
+  total += cal
 
-<div class="card">
-  <h2>📊 Today Summary</h2>
-  <p>Calories Today: <span id="total">0</span> kcal</p>
-</div>
+  document.getElementById("total").innerText = total
 
-<div class="card">
-  <h2>🍽 Food Input</h2>
+  document.getElementById("log").innerHTML +=
+    `<p>🍽 ${food} — ${cal} kcal</p>`
 
-  <input id="food" placeholder="e.g. chicken rice, milo, teh tarik">
-
-  <button onclick="addFood()">Add Food</button>
-
-  <div id="log" class="log"></div>
-</div>
-
-<script>
-let total = localStorage.getItem("total") || 0
-document.getElementById("total").innerText = total
+  document.getElementById("food").value = ""
+}
 
 function estimate(food) {
   food = food.toLowerCase()
@@ -73,24 +39,4 @@ function estimate(food) {
 
   return 300
 }
-
-function addFood() {
-  let food = document.getElementById("food").value
-  if (!food) return
-
-  let cal = estimate(food)
-
-  total = Number(total) + cal
-  localStorage.setItem("total", total)
-
-  document.getElementById("total").innerText = total
-
-  document.getElementById("log").innerHTML +=
-    `<p>🍽 ${food} — ${cal} kcal</p>`
-
-  document.getElementById("food").value = ""
-}
 </script>
-
-</body>
-</html>
