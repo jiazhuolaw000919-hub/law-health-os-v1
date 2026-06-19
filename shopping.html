@@ -5,33 +5,36 @@
 <title>Shopping</title>
 
 <link rel="stylesheet" href="style.css">
+<script src="app.js"></script>
 </head>
 
 <body>
 
+<div class="nav">
+<a href="index.html">Home</a>
+<a href="calendar.html">Calendar</a>
+<a href="food.html">Food</a>
+<a href="workout.html">Workout</a>
+<a href="shopping.html">Shop</a>
+<a href="report.html">Report</a>
+</div>
+
 <h2 style="text-align:center">🛒 Shopping List</h2>
 
-<button onclick="location.href='index.html'"
-style="margin:10px;padding:10px;background:#111827;color:white;border-radius:10px;border:none">
-⬅ Dashboard
-</button>
+<div class="card">
+<p>🥛 Milk</p>
+<p>🍗 Chicken Breast</p>
+<p>🥚 Eggs</p>
+</div>
 
 <div class="card">
-<p>Milk</p>
-<p>Eggs</p>
-<p>Chicken Breast</p>
+<button onclick="location.href='index.html'"
+style="padding:10px 15px;background:#111827;color:white;border:none;border-radius:10px">
+⬅ Back to Dashboard
+</button>
 </div>
 
-<!-- NAV -->
-<div class="bottom-nav">
-<a href="index.html">🏠<br>Home</a>
-<a href="calendar.html">📅<br>Calendar</a>
-<a href="shopping.html" class="active">🛒<br>Shop</a>
-</div>
-
-<script>
-setActive("shop")
-</script>
+<script>setActive("shop")</script>
 
 </body>
 </html>
