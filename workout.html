@@ -1,34 +1,56 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta charset:UTF-8>
-<title>Workout v9.5</title>
+<meta charset="UTF-8">
+<title>Workout</title>
 
-<style>
-body{margin:0;font-family:Arial;background:#0b0f19;color:white;}
-.nav{display:flex;justify-content:space-around;background:#111827;padding:12px;}
-.nav a{color:white;text-decoration:none;}
-.card{background:#1f2937;margin:10px;padding:15px;border-radius:12px;}
-</style>
+<link rel="stylesheet" href="style.css">
+<script src="app.js"></script>
+<script src="ai.js"></script>
 </head>
 
 <body>
 
 <div class="nav">
-<a href="index.html">Dashboard</a>
+<a href="index.html">Home</a>
+<a href="calendar.html">Calendar</a>
 <a href="food.html">Food</a>
 <a href="workout.html">Workout</a>
-<a href="calendar.html">Calendar</a>
-<a href="shop.html">Shop</a>
+<a href="shopping.html">Shop</a>
+<a href="report.html">Report</a>
 </div>
 
+<h2 style="text-align:center">🏋️ Workout</h2>
+
 <div class="card">
-<h2>🏃 Home Workout</h2>
-<p>20 Squats</p>
-<p>10 Push-ups</p>
-<p>30s Plank</p>
-<p>10 min walk</p>
+
+<input id="workout" placeholder="e.g. running 30min" style="padding:10px;width:90%"><br><br>
+
+<button onclick="logWorkout()"
+style="padding:10px 15px;background:#111827;color:white;border:none;border-radius:10px">
+Add Workout
+</button>
+
 </div>
+
+<div class="card" id="wlog"></div>
+
+<script>
+
+setActive("workout")
+
+function logWorkout(){
+
+const w = document.getElementById("workout").value
+if(!w) return
+
+document.getElementById("wlog").innerHTML +=
+`<p>🏃 ${w} - ~200 kcal</p>`
+
+document.getElementById("workout").value = ""
+}
+
+</script>
 
 </body>
 </html>
