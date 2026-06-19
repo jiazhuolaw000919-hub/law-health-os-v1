@@ -2,26 +2,59 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Law Health OS v9</title>
-<link rel="stylesheet" href="style.css">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard v8.1</title>
+
+<style>
+body{margin:0;font-family:Arial;background:#0b0f19;color:white;}
+
+.navbar{
+  display:flex;
+  justify-content:space-around;
+  background:#111827;
+  padding:12px;
+  position:sticky;
+  top:0;
+}
+
+.navbar a{
+  color:white;
+  text-decoration:none;
+  font-size:14px;
+}
+
+.card{
+  background:#1f2937;
+  margin:10px;
+  padding:15px;
+  border-radius:12px;
+}
+</style>
 </head>
 
 <body>
 
-<h1>🧠 Law Health OS v9</h1>
-
-<div class="card">
-  <h2>📊 Dashboard</h2>
-  <p id="calories">Calories: 0</p>
-  <p>BMI: 27.8</p>
-  <a href="food.html">🍽 Food</a> |
-  <a href="exercise.html">🏃 Exercise</a> |
-  <a href="history.html">📊 History</a> |
-  <a href="shopping.html">🛒 Shopping</a>
+<div class="navbar">
+  <a href="index.html">Dashboard</a>
+  <a href="food.html">Food</a>
+  <a href="workout.html">Workout</a>
+  <a href="report.html">Report</a>
 </div>
 
-<script src="supabase.js"></script>
-<script src="app.js"></script>
+<div class="card">
+<h2>🧠 Dashboard</h2>
+<p>Age: 25</p>
+<p>Height: 167cm</p>
+<p>Weight: 82kg</p>
+<p>BMI: 29.4</p>
+<p>Target: 68kg</p>
+</div>
+
+<div class="card">
+<h3>📊 Today Summary</h3>
+<p>Calories: 0 kcal</p>
+<p>Exercise: 0 kcal</p>
+</div>
 
 </body>
 </html>
