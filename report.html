@@ -2,118 +2,47 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Calendar v9.1</title>
+<title>Report</title>
 
-<script src="supabase.js"></script>
-
-<style>
-body{margin:0;font-family:Arial;background:#0b0f19;color:white;}
-
-.navbar{
-display:flex;
-justify-content:space-around;
-background:#111827;
-padding:12px;
-position:sticky;
-top:0;
-}
-
-.calendar{
-display:grid;
-grid-template-columns:repeat(7,1fr);
-gap:6px;
-padding:10px;
-}
-
-.day{
-background:#1f2937;
-padding:10px;
-border-radius:10px;
-text-align:center;
-cursor:pointer;
-font-size:12px;
-}
-
-.high{background:#ef4444;}
-.mid{background:#f59e0b;}
-.low{background:#22c55e;}
-</style>
+<link rel="stylesheet" href="style.css">
+<script src="ai.js"></script>
+<script src="app.js"></script>
 </head>
 
 <body>
 
-<div class="navbar">
-<a href="index.html">Dashboard</a>
+<div class="nav">
+<a href="index.html">Home</a>
+<a href="calendar.html">Calendar</a>
 <a href="food.html">Food</a>
 <a href="workout.html">Workout</a>
-<a href="report.html">Calendar</a>
+<a href="shopping.html">Shop</a>
+<a href="report.html">Report</a>
 </div>
 
-<h2 style="text-align:center;">📅 Real Calendar</h2>
+<h2 style="text-align:center">📊 Weekly Report</h2>
 
-<div class="calendar" id="calendar"></div>
+<div class="card">
 
 <script>
 
-function getDates(){
+setActive("report")
 
-const arr=[]
+let cal = 2200
+let burn = 300
 
-for(let i=0;i<30;i++){
-const d=new Date()
-d.setDate(d.getDate()-i)
-arr.push(d.toISOString().split("T")[0])
-}
+let score = calcScore(cal, burn)
 
-return arr
-}
-
-async function getCalories(date){
-
-const foods = await getFoodsByDate(date)
-
-let total = 0
-
-foods.forEach(f=>{
-total += f.calories
-})
-
-return total
-}
-
-function color(cal){
-
-if(cal>2000) return "high"
-if(cal>1200) return "mid"
-return "low"
-}
-
-async function render(){
-
-const calEl = document.getElementById("calendar")
-
-for(const date of getDates()){
-
-const cal = await getCalories(date)
-
-const div=document.createElement("div")
-
-div.className="day "+color(cal)
-
-div.innerHTML = date+"<br>"+cal+" kcal"
-
-div.onclick=()=>{
-window.location.href="day.html?date="+date
-}
-
-calEl.appendChild(div)
-}
-
-}
-
-render()
+document.write(`
+<p>Calories avg: ${cal}</p>
+<p>Burn avg: ${burn}</p>
+<p>AI Score: ${Math.round(score)}</p>
+<p>Status: ${status(score)}</p>
+`)
 
 </script>
+
+</div>
 
 </body>
 </html>
