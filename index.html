@@ -1,6 +1,33 @@
-<script>
-const SUPABASE_URL = "https://bzhdzveuldgdpslbzqqv.supabase.co"
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Law Health OS SAFE MODE</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
 
+<body style="font-family:Arial; background:#0b0f19; color:white; text-align:center; padding:20px;">
+
+  <h1>🧠 Law Health OS (Safe Mode)</h1>
+
+  <h2>📊 Today Calories</h2>
+  <p id="total">0 kcal</p>
+
+  <hr>
+
+  <h2>🍽 Food Input</h2>
+
+  <input id="food" placeholder="chicken rice / milo / teh tarik"
+    style="padding:10px; width:80%;">
+
+  <br><br>
+
+  <button onclick="addFood()" style="padding:10px; width:85%;">
+    Add Food
+  </button>
+
+  <div id="log"></div>
+
+<script>
 let total = 0
 
 function estimate(food) {
@@ -14,19 +41,24 @@ function estimate(food) {
   return 300
 }
 
-async function addFood() {
-  let food = document.getElementById("food").value
+function addFood() {
+  const input = document.getElementById("food")
+  const food = input.value
+
   if (!food) return
 
-  let cal = estimate(food)
+  const cal = estimate(food)
 
-  total += cal
+  total = total + cal
 
-  document.getElementById("total").innerText = total
+  document.getElementById("total").innerText = total + " kcal"
 
   document.getElementById("log").innerHTML +=
-    `<p>🍽 ${food} — ${cal} kcal</p>`
+    "<p>🍽 " + food + " - " + cal + " kcal</p>"
 
-  document.getElementById("food").value = ""
+  input.value = ""
 }
 </script>
+
+</body>
+</html>
