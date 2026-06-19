@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Calendar v9.5</title>
+
+<script src="supabase.js"></script>
+
+<style>
+body{margin:0;font-family:Arial;background:#0b0f19;color:white;}
+.nav{display:flex;justify-content:space-around;background:#111827;padding:12px;}
+
+.grid{
+display:grid;
+grid-template-columns:repeat(7,1fr);
+gap:6px;
+padding:10px;
+}
+
+.day{
+background:#1f2937;
+padding:10px;
+border-radius:8px;
+text-align:center;
+cursor:pointer;
+}
+</style>
+</head>
+
+<body>
+
+<div class="nav">
+<a href="index.html">Dashboard</a>
+<a href="food.html">Food</a>
+<a href="workout.html">Workout</a>
+<a href="calendar.html">Calendar</a>
+<a href="shop.html">Shop</a>
+</div>
+
+<h3 style="text-align:center;">📅 Calendar</h3>
+
+<div class="grid" id="cal"></div>
+
+<script>
+
+function dates(){
+let arr=[]
+for(let i=0;i<30;i++){
+let d=new Date()
+d.setDate(d.getDate()-i)
+arr.push(d.toISOString().split("T")[0])
+}
+return arr
+}
+
+async function getCal(date){
+const foods=await getFoodByDate(date)
+return foods.reduce((s,f)=>s+f.calories,0)
+}
+
+async function render(){
+
+const cal=document.getElementById("cal")
+
+for(const d of dates()){
+
+const c=await getCal(d)
+
+const div=document.createElement("div")
+div.className="day"
+div.innerHTML=d+"<br>"+c+" kcal"
+
+div.onclick=()=>location.href="day.html?date="+d
+
+cal.appendChild(div)
+}
+
+}
+
+render()
+
+</script>
+
+</body>
+</html>
