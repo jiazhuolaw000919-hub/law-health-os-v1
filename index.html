@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>Law Health OS v8.1</title>
+<title>Law Health OS v8.2</title>
 
 <style>
 body{
@@ -50,49 +50,74 @@ button{
   font-size:13px;
   opacity:0.8;
 }
+
+.row{
+  display:flex;
+  justify-content:space-between;
+}
 </style>
 </head>
 
 <body>
 
-<h1>🧠 Law Health OS v8.1</h1>
+<h1>🧠 Law Health OS v8.2</h1>
 
+<!-- DASHBOARD -->
 <div class="card">
 
 <h2>📊 Dashboard</h2>
 
-<p>Height: 167 cm</p>
-<p>Weight: 82 kg → 68 kg</p>
+<div class="row">
+<span>Height</span>
+<span>167 cm</span>
+</div>
 
-<p id="calories">Today's Calories: 0 kcal</p>
+<div class="row">
+<span>Weight</span>
+<span>82 kg</span>
+</div>
+
+<div class="row">
+<span>Target</span>
+<span>68 kg</span>
+</div>
+
+<p id="bmi">BMI: -</p>
+
+<p id="calories">Today Calories: 0 kcal</p>
 
 </div>
 
+<!-- INPUT -->
 <div class="card">
 
-<h2>🍽 Food Input</h2>
+<h2>🍽 Food Logger</h2>
 
-<input id="food" placeholder="e.g. chicken rice / milo / teh tarik">
+<input id="food" placeholder="chicken rice / milo / teh tarik">
 
 <button onclick="addFood()">
 Add Food
 </button>
 
-<p class="small">AI will estimate calories + save to Supabase</p>
+<p class="small">
+AI will estimate calories + sync Supabase
+</p>
 
 </div>
 
+<!-- ADVICE -->
 <div class="card">
 
-<h2>🍜 Ipoh AI Advice</h2>
+<h2>🍜 Ipoh AI Nutrition</h2>
 
-<p id="advice">Waiting for input...</p>
+<p id="advice">Waiting...</p>
 
 </div>
 
+<!-- LOG -->
 <div class="card">
 
-<h2>📝 Food Log</h2>
+<h2>📝 Food History</h2>
 
 <div id="log"></div>
 
@@ -105,9 +130,19 @@ let totalCalories = 0
 const SUPABASE_URL =
 "https://jwcgamxkwzrjnepxrvzr.supabase.co"
 
-// ⚠️ REPLACE THIS
+// 
 const SUPABASE_KEY =
 "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpxZXZjZnlobmx0dHpkaXlsZnJoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE4MjgzNTIsImV4cCI6MjA5NzQwNDM1Mn0.RNWddp1TuYwVAHZlWfdq4iGdgiqNU9DKgAi8pnC6ULs"
+
+const weight = 82
+const height = 1.67
+
+function calculateBMI(){
+  const bmi = (weight/(height*height)).toFixed(1)
+  document.getElementById("bmi").innerText = "BMI: " + bmi
+}
+
+calculateBMI()
 
 function estimateCalories(food){
 
@@ -123,23 +158,23 @@ if(food.includes("bread")) return 150
 return 300
 }
 
-function ipohAdvice(food){
+function ipohAI(food){
 
 food = food.toLowerCase()
 
 if(food.includes("milo"))
-return "Ipoh style: reduce sugar, use Milo kosong"
+return "Ipoh: reduce sugar, use Milo kosong"
 
 if(food.includes("teh tarik"))
-return "Ipoh style: less condensed milk"
+return "Ipoh: less condensed milk"
 
 if(food.includes("chicken"))
-return "Ipoh style: steam or roast, avoid fried"
+return "Ipoh: steam or roast instead of fried"
 
 if(food.includes("rice"))
-return "Ipoh style: reduce rice portion, add vegetables"
+return "Ipoh: reduce rice, increase vegetables"
 
-return "Ipoh style: balanced meal"
+return "Ipoh: balanced diet recommended"
 
 }
 
@@ -149,25 +184,27 @@ const foodInput = document.getElementById("food")
 const food = foodInput.value.trim()
 
 if(food === ""){
-alert("Please enter food")
+alert("Enter food")
 return
 }
 
 const calories = estimateCalories(food)
-const advice = ipohAdvice(food)
+const advice = ipohAI(food)
 
 totalCalories += calories
 
 document.getElementById("calories").innerText =
-"Today's Calories: " + totalCalories + " kcal"
+"Today Calories: " + totalCalories + " kcal"
 
 document.getElementById("advice").innerText = advice
 
 document.getElementById("log").innerHTML +=
-`<div class="food-item">
+`
+<div class="food-item">
 🍽 ${food}<br>
 🔥 ${calories} kcal
-</div>`
+</div>
+`
 
 foodInput.value = ""
 
@@ -191,14 +228,13 @@ calories:calories
 )
 
 if(!res.ok){
-const err = await res.text()
-console.log("Supabase error:", err)
+console.log("Supabase error")
 }else{
-console.log("Saved to Supabase ✔")
+console.log("Saved ✔")
 }
 
 }catch(e){
-console.log("Network error:", e)
+console.log(e)
 }
 
 }
