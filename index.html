@@ -1,65 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>DEBUG MODE</title>
+</head>
+
+<body style="font-family:Arial; text-align:center; padding:30px;">
+
+  <h1>🟢 APP LOADED</h1>
+
+  <p id="status">JS is running...</p>
+
+  <input id="food" placeholder="test food">
+  <button onclick="test()">TEST</button>
+
+  <div id="log"></div>
+
 <script>
-const SUPABASE_URL = "https://bzhdzveuldgdpslbzqqv.supabase.co"
-const SUPABASE_KEY = "sb_publishable_GMM5PgeRzudbeh4aHK-1pw_lQ6TQnVe"
+let step = 0
 
-let total = 0
+function test() {
+  step++
 
-function estimate(food) {
-  food = food.toLowerCase()
+  document.getElementById("status").innerText =
+    "Button works: " + step
 
-  if (food.includes("chicken")) return 600
-  if (food.includes("milo")) return 180
-  if (food.includes("teh tarik")) return 250
-  if (food.includes("waffle")) return 350
-  return 300
+  document.getElementById("log").innerHTML +=
+    "<p>click OK</p>"
 }
 
-function ipohAdvice(food) {
-  if (food.includes("chicken")) return "Ipoh style: steam chicken, less soy sauce"
-  if (food.includes("milo")) return "Ipoh style: less sugar Milo"
-  if (food.includes("teh tarik")) return "Ipoh style: reduce condensed milk"
-  return "Ipoh style: balanced meal"
-}
-
-async function addFood() {
-  try {
-    const food = document.getElementById("food").value
-    if (!food) return
-
-    const cal = estimate(food)
-    const advice = ipohAdvice(food)
-
-    total += cal
-
-    document.getElementById("total").innerText = total + " kcal"
-
-    document.getElementById("log").innerHTML +=
-      `<p>🍽 ${food} - ${cal} kcal<br>🍜 ${advice}</p>`
-
-    document.getElementById("food").value = ""
-
-    // 🔥 写入 Supabase（REST API）
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/food_logs`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "apikey": SUPABASE_KEY,
-        "Authorization": `Bearer ${SUPABASE_KEY}`,
-        "Prefer": "return=minimal"
-      },
-      body: JSON.stringify({
-        food: food,
-        calories: cal
-      })
-    })
-
-    if (!res.ok) {
-      console.log("DB error:", await res.text())
-    }
-
-  } catch (err) {
-    console.log("App error:", err)
-    alert("Error but app still running")
-  }
-}
+console.log("JS loaded successfully")
 </script>
+
+</body>
+</html>
