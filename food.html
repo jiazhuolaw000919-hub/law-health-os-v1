@@ -2,46 +2,69 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Food</title>
-<link rel="stylesheet" href="style.css">
+<title>Food v8.1</title>
+
+<style>
+body{margin:0;font-family:Arial;background:#0b0f19;color:white;}
+
+.navbar{
+  display:flex;
+  justify-content:space-around;
+  background:#111827;
+  padding:12px;
+  position:sticky;
+  top:0;
+}
+
+.navbar a{
+  color:white;
+  text-decoration:none;
+}
+
+.card{
+  background:#1f2937;
+  margin:10px;
+  padding:15px;
+  border-radius:12px;
+}
+
+input,button{
+  width:100%;
+  padding:10px;
+  margin-top:10px;
+}
+</style>
 </head>
 
 <body>
 
-<h1>🍽 AI Food Analyzer</h1>
+<div class="navbar">
+  <a href="index.html">Dashboard</a>
+  <a href="food.html">Food</a>
+  <a href="workout.html">Workout</a>
+  <a href="report.html">Report</a>
+</div>
 
-<input id="foodInput" placeholder="chicken rice / milo">
+<div class="card">
+<h2>🍽 Food Logger</h2>
 
-<button onclick="addFood()">Analyze</button>
+<input id="food" placeholder="e.g. chicken rice, milo, teh tarik">
 
-<p id="result"></p>
+<button onclick="addFood()">Add Food</button>
 
-<script src="supabase.js"></script>
-<script src="app.js"></script>
+<p id="log"></p>
+</div>
 
 <script>
+function addFood(){
+const food = document.getElementById("food").value
+if(!food) return
 
-async function addFood(){
+document.getElementById("log").innerHTML +=
+"<p>🍽 " + food + "</p>"
 
-const food = document.getElementById("foodInput").value
-
-const cal = estimate(food)
-const advice = ipohAI(food)
-
-document.getElementById("result").innerHTML =
-`🔥 Calories: ${cal}<br>🍜 ${advice}`
-
-// SAVE TO SUPABASE
-await sbFetch("/rest/v1/food_logs", {
-method:"POST",
-body: JSON.stringify({
-food,
-calories: cal
-})
-})
-
+document.getElementById("food").value=""
 }
-
 </script>
 
 </body>
