@@ -2,30 +2,31 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Calendar v11.3</title>
+<title>Calendar v11.5</title>
 
 <link rel="stylesheet" href="style.css">
-
-<script src="app.js"></script>
-<script src="supabase.js"></script>
 <script src="ai.js"></script>
+<script src="supabase.js"></script>
 </head>
 
 <body>
 
-<div class="nav">
-<a href="index.html">Dashboard</a>
-<a href="calendar.html">Calendar</a>
+<h2 style="text-align:center">📅 Calendar</h2>
+
+<div class="grid" id="grid"></div>
+
+<!-- NAV -->
+<div class="bottom-nav">
+<a href="index.html">🏠<br>Home</a>
+<a href="calendar.html" class="active">📅<br>Calendar</a>
+<a href="shopping.html">🛒<br>Shop</a>
 </div>
 
-<h2 style="text-align:center">📅 AI Calendar v11.3</h2>
-
-<div id="grid" class="grid"></div>
-
 <script>
+setActive("cal")
 
-let year = new Date().getFullYear()
-let month = new Date().getMonth()
+let year=new Date().getFullYear()
+let month=new Date().getMonth()
 
 function dateStr(d){
 return `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`
@@ -33,41 +34,35 @@ return `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`
 
 async function render(){
 
-showLoading("grid")
+const grid=document.getElementById("grid")
+grid.innerHTML=""
 
-const grid = document.getElementById("grid")
-grid.innerHTML = ""
-
-const first = new Date(year,month,1).getDay()
-const days = new Date(year,month+1,0).getDate()
+const first=new Date(year,month,1).getDay()
+const days=new Date(year,month+1,0).getDate()
 
 for(let i=0;i<first;i++){
-grid.innerHTML += `<div></div>`
+grid.innerHTML+="<div></div>"
 }
 
-for(let d=1; d<=days; d++){
+for(let d=1;d<=days;d++){
 
-const date = dateStr(d)
+const date=dateStr(d)
+const foods=await getFood(date)
 
-const foods = await safeFetch(()=>getFood(date)) || []
+let cal=0
+foods.forEach(f=>cal+=f.calories||0)
 
-let cal = 0
-foods.forEach(f=> cal += f.calories || 0)
+let score=calcScore(cal,0)
 
-let score = calcScore(cal,0)
+let color=score>=80?"green":score>=50?"yellow":"red"
 
-let color =
-score>=80?"green":
-score>=50?"yellow":"red"
-
-const div = document.createElement("div")
+const div=document.createElement("div")
 div.className="day "+color
 
 div.innerHTML=`
-<b>${d}</b><br>
+${d}<br>
 ${Math.round(score)}<br>
-${cal} kcal<br>
-${workoutAdvice(cal)}
+${cal} kcal
 `
 
 div.onclick=()=>{
@@ -80,7 +75,6 @@ grid.appendChild(div)
 }
 
 render()
-
 </script>
 
 </body>
