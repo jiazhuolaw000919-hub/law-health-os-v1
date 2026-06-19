@@ -1,25 +1,62 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>JS TEST</title>
+<meta charset="UTF-8">
+<title>Supabase Minimal Test</title>
 </head>
 
-<body style="text-align:center; padding:30px;">
+<body style="font-family:Arial; text-align:center; padding:30px;">
 
-<h1>JS Test</h1>
+<h1>Supabase Test</h1>
 
-<button onclick="testConnection()">
-Click Me
+<button onclick="test()">
+Test Supabase
 </button>
 
 <p id="result">Waiting...</p>
 
 <script>
 
-function testConnection(){
-  console.log("BUTTON CLICKED")
-  document.getElementById("result").innerText =
-    "Button Works ✔"
+const SUPABASE_URL = "https://bzhdzveuldgdpslbzqqv.supabase.co"
+
+const SUPABASE_KEY = "sb_publishable_GMM5PgeRzudbeh4aHK-1pw_lQ6TQnVe"
+
+async function test(){
+
+document.getElementById("result").innerText =
+"Running..."
+
+try{
+
+const res = await fetch(
+SUPABASE_URL + "/rest/v1/food_logs?select=*",
+{
+method: "GET",
+headers:{
+apikey: SUPABASE_KEY,
+Authorization: "Bearer " + SUPABASE_KEY
+}
+}
+)
+
+const text = await res.text()
+
+console.log("STATUS:", res.status)
+console.log("BODY:", text)
+
+document.getElementById("result").innerText =
+"STATUS: " + res.status + "\n" + text
+
+}
+catch(err){
+
+console.log(err)
+
+document.getElementById("result").innerText =
+"ERROR: " + err.message
+
+}
+
 }
 
 </script>
