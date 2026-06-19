@@ -1,228 +1,58 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-<title>Law Health OS v8</title>
-
-<style>
-body{
-  font-family:Arial,sans-serif;
-  background:#0b0f19;
-  color:white;
-  margin:0;
-  padding:20px;
-}
-
-.card{
-  background:#1c2230;
-  padding:15px;
-  margin-bottom:15px;
-  border-radius:12px;
-}
-
-input{
-  width:100%;
-  padding:10px;
-  border-radius:8px;
-  border:none;
-  margin-top:10px;
-  box-sizing:border-box;
-}
-
-button{
-  width:100%;
-  padding:12px;
-  margin-top:10px;
-  border:none;
-  border-radius:8px;
-  background:#2563eb;
-  color:white;
-  font-size:16px;
-}
-
-h1,h2{
-  margin-top:0;
-}
-
-.food-item{
-  border-bottom:1px solid #333;
-  padding:8px 0;
-}
-
-.advice{
-  color:#22c55e;
-  font-size:14px;
-}
-</style>
+<title>Supabase Test</title>
 </head>
-
 <body>
 
-<h1>🧠 Law Health OS v8</h1>
+<h1>Supabase Connection Test</h1>
 
-<div class="card">
-<h2>📊 Dashboard</h2>
-
-<p>Height: 167 cm</p>
-<p>Current Weight: 82 kg</p>
-<p>Target Weight: 68 kg</p>
-
-<p id="bmi"></p>
-
-<p id="remaining"></p>
-
-<p id="todayCalories">Today's Calories: 0 kcal</p>
-
-</div>
-
-<div class="card">
-
-<h2>🍽 Food Logger</h2>
-
-<input
-id="food"
-placeholder="Example: Chicken Rice / Milo / Teh Tarik">
-
-<button onclick="addFood()">
-Add Food
+<button onclick="testConnection()">
+Test Supabase
 </button>
 
-</div>
-
-<div class="card">
-
-<h2>🍜 Ipoh AI Nutrition Advice</h2>
-
-<p id="advice">
-Add food to receive advice
-</p>
-
-</div>
-
-<div class="card">
-
-<h2>📝 Food History</h2>
-
-<div id="foodLog"></div>
-
-</div>
+<p id="result">Waiting...</p>
 
 <script>
 
-const currentWeight = 82
-const targetWeight = 68
+const SUPABASE_URL =
+"https://bzhdzveuldgdpslbzqqv.supabase.co"
 
-let totalCalories = 0
+const SUPABASE_KEY =
+"sb_publishable_GMM5PgeRzudbeh4aHK-1pw_lQ6TQnVe"
 
-calculateDashboard()
+async function testConnection(){
 
-function calculateDashboard(){
+document.getElementById("result").innerText =
+"Testing..."
 
-const bmi =
-(currentWeight /
-((1.67)*(1.67))).toFixed(1)
+try{
 
-document.getElementById("bmi").innerText =
-"BMI: " + bmi
+const response =
+await fetch(
+`${SUPABASE_URL}/rest/v1/food_logs?select=*`,
+{
+headers:{
+apikey:SUPABASE_KEY,
+Authorization:"Bearer "+SUPABASE_KEY
+}
+}
+)
 
-document.getElementById("remaining").innerText =
-"Remaining To Goal: " +
-(currentWeight-targetWeight) +
-" kg"
+const text = await response.text()
+
+document.getElementById("result").innerText =
+response.status + " | " + text
 
 }
+catch(error){
 
-function estimateCalories(food){
-
-food = food.toLowerCase()
-
-const db = {
-
-"milo":180,
-"teh tarik":250,
-"chicken rice":600,
-"subway":450,
-"roti tissue":500,
-"waffle":350,
-"oreo":250,
-"bread":150,
-"tuna":120,
-"peanut butter":180
+document.getElementById("result").innerText =
+"ERROR: " + error.message
 
 }
-
-return db[food] || 300
-
-}
-
-function getIpohAdvice(food){
-
-food = food.toLowerCase()
-
-if(food.includes("milo"))
-return "Reduce sugar. Consider Milo kosong."
-
-if(food.includes("teh tarik"))
-return "Use less condensed milk."
-
-if(food.includes("chicken"))
-return "Steam or roast instead of fried."
-
-if(food.includes("rice"))
-return "Reduce rice portion and increase vegetables."
-
-return "Balanced meal. Prioritize protein and vegetables."
-
-}
-
-function addFood(){
-
-const foodInput =
-document.getElementById("food")
-
-const food =
-foodInput.value.trim()
-
-if(food===""){
-alert("Please enter a food")
-return
-}
-
-const calories =
-estimateCalories(food)
-
-totalCalories += calories
-
-document.getElementById(
-"todayCalories"
-).innerText =
-"Today's Calories: " +
-totalCalories +
-" kcal"
-
-const advice =
-getIpohAdvice(food)
-
-document.getElementById(
-"advice"
-).innerText =
-advice
-
-document.getElementById(
-"foodLog"
-).innerHTML +=
-
-`
-<div class="food-item">
-🍽 ${food}
-<br>
-🔥 ${calories} kcal
-</div>
-`
-
-foodInput.value=""
 
 }
 
