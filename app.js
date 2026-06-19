@@ -1,24 +1,19 @@
-let totalCalories = 0
-
-function estimate(food){
-  food = food.toLowerCase()
-
-  if(food.includes("chicken")) return 600
-  if(food.includes("milo")) return 180
-  if(food.includes("teh tarik")) return 250
-  if(food.includes("rice")) return 500
-  if(food.includes("bread")) return 150
-
-  return 300
+function showLoading(id){
+document.getElementById(id).innerHTML =
+"<div class='loading'>Loading...</div>"
 }
 
-function ipohAI(food){
-  food = food.toLowerCase()
+function showError(id,msg){
+document.getElementById(id).innerHTML =
+"<div class='loading'>⚠️ " + msg + "</div>"
+}
 
-  if(food.includes("milo")) return "Reduce sugar (Ipoh style)"
-  if(food.includes("teh tarik")) return "Less condensed milk"
-  if(food.includes("chicken")) return "Steam instead of fried"
-  if(food.includes("rice")) return "Reduce rice portion"
+async function safeFetch(fn){
 
-  return "Balanced Ipoh diet"
+try{
+return await fn()
+}catch(e){
+console.error("API Error:",e)
+return null
+}
 }
