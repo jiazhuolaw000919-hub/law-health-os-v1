@@ -2,16 +2,15 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Health OS v8.2</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Health OS v9.5</title>
 
 <script src="supabase.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
 body{margin:0;font-family:Arial;background:#0b0f19;color:white;}
 
-.navbar{
+.nav{
 display:flex;
 justify-content:space-around;
 background:#111827;
@@ -20,7 +19,7 @@ position:sticky;
 top:0;
 }
 
-.navbar a{color:white;text-decoration:none;}
+.nav a{color:white;text-decoration:none;}
 
 .card{
 background:#1f2937;
@@ -33,57 +32,34 @@ border-radius:12px;
 
 <body>
 
-<div class="navbar">
+<div class="nav">
 <a href="index.html">Dashboard</a>
 <a href="food.html">Food</a>
 <a href="workout.html">Workout</a>
-<a href="report.html">Report</a>
+<a href="calendar.html">Calendar</a>
+<a href="shop.html">Shop</a>
 </div>
 
 <div class="card">
 <h2>🧠 Dashboard</h2>
-<p>Age: 25</p>
+<p>Age: 25y 120d</p>
 <p>Height: 167cm</p>
 <p>Weight: 82kg</p>
 <p>BMI: 29.4</p>
+<p>Goal: 68kg</p>
 </div>
 
 <div class="card">
-<h3>📊 Calories Chart</h3>
-<canvas id="chart"></canvas>
+<h3>🔥 Today Net Calories</h3>
+<p>Intake: 1800 kcal</p>
+<p>Burn: 400 kcal</p>
+<p>Net: 1400 kcal</p>
 </div>
 
-<script>
-
-async function loadChart(){
-
-const data = await fetchFoods()
-
-let labels = []
-let calories = []
-
-data.forEach(item=>{
-labels.push(item.food)
-calories.push(item.calories)
-})
-
-new Chart(document.getElementById("chart"),{
-type:"line",
-data:{
-labels:labels,
-datasets:[{
-label:"Calories",
-data:calories,
-borderColor:"blue"
-}]
-}
-})
-
-}
-
-loadChart()
-
-</script>
+<div class="card">
+<h3>🤖 AI Advice</h3>
+<p>Ipoh style: reduce fried food, choose steam chicken</p>
+</div>
 
 </body>
 </html>
