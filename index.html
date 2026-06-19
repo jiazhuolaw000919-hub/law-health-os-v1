@@ -1,59 +1,64 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta charset="UTF-8">
-<title>Supabase Minimal Test</title>
+<title>Supabase Network Debug</title>
 </head>
 
-<body style="font-family:Arial; text-align:center; padding:30px;">
+<body style="text-align:center; padding:30px;">
 
-<h1>Supabase Test</h1>
+<h1>Network Debug</h1>
 
 <button onclick="test()">
-Test Supabase
+Test Connection
 </button>
 
 <p id="result">Waiting...</p>
 
 <script>
 
-const SUPABASE_URL = "https://bzhdzveuldgdpslbzqqv.supabase.co"
+const SUPABASE_URL =
+"https://bzhdzveuldgdpslbzqqv.supabase.co"
 
-const SUPABASE_KEY = "sb_publishable_GMM5PgeRzudbeh4aHK-1pw_lQ6TQnVe"
+// ⚠️ 一定要换成真实 key
+const SUPABASE_KEY =
+"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpxZXZjZnlobmx0dHpkaXlsZnJoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE4MjgzNTIsImV4cCI6MjA5NzQwNDM1Mn0.RNWddp1TuYwVAHZlWfdq4iGdgiqNU9DKgAi8pnC6ULsE"
 
 async function test(){
 
 document.getElementById("result").innerText =
-"Running..."
+"Requesting..."
+
+const url =
+SUPABASE_URL + "/rest/v1/food_logs?select=*"
+
+console.log("Request URL:", url)
 
 try{
 
-const res = await fetch(
-SUPABASE_URL + "/rest/v1/food_logs?select=*",
-{
+const res = await fetch(url, {
 method: "GET",
 headers:{
 apikey: SUPABASE_KEY,
 Authorization: "Bearer " + SUPABASE_KEY
 }
-}
-)
+})
+
+console.log("STATUS:", res.status)
 
 const text = await res.text()
 
-console.log("STATUS:", res.status)
 console.log("BODY:", text)
 
 document.getElementById("result").innerText =
-"STATUS: " + res.status + "\n" + text
+"STATUS: " + res.status + "\n\n" + text
 
 }
 catch(err){
 
-console.log(err)
+console.log("FETCH ERROR:", err)
 
 document.getElementById("result").innerText =
-"ERROR: " + err.message
+"FETCH ERROR:\n" + err.message
 
 }
 
