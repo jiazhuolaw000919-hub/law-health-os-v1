@@ -7,8 +7,8 @@
 <script src="supabase.js"></script>
 
 <style>
-body{font-family:Arial;background:#0b0f19;color:white}
-.card{background:#1f2937;margin:10px;padding:15px;border-radius:10px}
+body{background:#f6f7fb;font-family:Arial;margin:0}
+.card{background:white;margin:10px;padding:15px;border-radius:12px}
 </style>
 </head>
 
@@ -26,8 +26,8 @@ async function load(){
 
 const foods = await getFood(date)
 
-let total = 0
 let html = ""
+let total = 0
 
 foods.forEach(f=>{
 html += `<p>${f.meal_type}: ${f.food} - ${f.calories}</p>`
@@ -35,7 +35,7 @@ total += f.calories
 })
 
 document.getElementById("content").innerHTML =
-html + "<hr>Total: " + total + " kcal"
+html + "<hr><b>Total: " + total + " kcal</b>"
 }
 
 load()
