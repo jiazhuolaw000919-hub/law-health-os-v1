@@ -4,17 +4,16 @@
 <meta charset="UTF-8">
 <title>Day Detail</title>
 
+<link rel="stylesheet" href="style.css">
 <script src="supabase.js"></script>
-
-<style>
-body{background:#f6f7fb;font-family:Arial;margin:0}
-.card{background:white;margin:10px;padding:15px;border-radius:12px}
-</style>
 </head>
 
 <body>
 
-<h2 style="text-align:center">📅 Day Detail</h2>
+<div class="nav">
+<a href="index.html">Dashboard</a>
+<a href="calendar.html">Calendar</a>
+</div>
 
 <div class="card" id="content"></div>
 
@@ -26,12 +25,18 @@ async function load(){
 
 const foods = await getFood(date)
 
+if(!foods){
+document.getElementById("content").innerHTML =
+"⚠️ No data"
+return
+}
+
 let html = ""
 let total = 0
 
 foods.forEach(f=>{
 html += `<p>${f.meal_type}: ${f.food} - ${f.calories}</p>`
-total += f.calories
+total += f.calories || 0
 })
 
 document.getElementById("content").innerHTML =
