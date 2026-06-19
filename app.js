@@ -1,19 +1,26 @@
-function showLoading(id){
-document.getElementById(id).innerHTML =
-"<div class='loading'>Loading...</div>"
+function setActive(page){
+
+const map={
+home:"nav-home",
+cal:"nav-cal",
+food:"nav-food",
+workout:"nav-workout",
+shop:"nav-shop",
+report:"nav-report"
 }
 
-function showError(id,msg){
-document.getElementById(id).innerHTML =
-"<div class='loading'>⚠️ " + msg + "</div>"
+Object.values(map).forEach(id=>{
+document.getElementById(id)?.classList.remove("active")
+})
+
+document.getElementById(map[page])?.classList.add("active")
 }
 
-async function safeFetch(fn){
-
+function safe(fn){
 try{
-return await fn()
+return fn()
 }catch(e){
-console.error("API Error:",e)
+console.log("safe error",e)
 return null
 }
 }
