@@ -1,43 +1,14 @@
-<script>
-let total = 0
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Health OS TEST</title>
+</head>
 
-function estimate(food) {
-  food = food.toLowerCase()
+<body style="font-family:Arial; text-align:center; padding:40px;">
 
-  if (food.includes("chicken")) return 600
-  if (food.includes("milo")) return 180
-  if (food.includes("teh tarik")) return 250
-  if (food.includes("waffle")) return 350
-  return 300
-}
+  <h1>✅ Health OS Running</h1>
 
-function ipohAdvice(food) {
-  if (food.includes("chicken")) return "Ipoh: steam chicken, less soy sauce"
-  if (food.includes("milo")) return "Ipoh: less sugar Milo kosong"
-  if (food.includes("teh tarik")) return "Ipoh: reduce condensed milk"
-  return "Ipoh: balance diet, less oil & sugar"
-}
+  <p>If you can see this, deployment is OK.</p>
 
-function addFood() {
-  try {
-    const input = document.getElementById("food")
-    const food = input.value
-    if (!food) return
-
-    const cal = estimate(food)
-    const advice = ipohAdvice(food)
-
-    total += cal
-
-    document.getElementById("total").innerText = total + " kcal"
-
-    document.getElementById("log").innerHTML +=
-      "<p>🍽 " + food + " - " + cal + " kcal<br>🍜 " + advice + "</p>"
-
-    input.value = ""
-  } catch (e) {
-    console.log("error:", e)
-    alert("Something went wrong but page is still alive")
-  }
-}
-</script>
+</body>
+</html>
