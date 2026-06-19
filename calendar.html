@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Calendar v9.8</title>
+<title>Calendar v9.9</title>
 
 <script src="supabase.js"></script>
 
@@ -23,19 +23,20 @@ padding:12px;
 
 .header{
 display:flex;
-gap:10px;
 justify-content:center;
-align-items:center;
+gap:10px;
 padding:10px;
 flex-wrap:wrap;
 }
 
-select,button{
-padding:6px 10px;
-border-radius:6px;
+select{
+padding:8px 12px;
+border-radius:8px;
 border:none;
 background:#1f2937;
 color:white;
+font-size:14px;
+cursor:pointer;
 }
 
 .grid{
@@ -75,27 +76,25 @@ background:transparent;
 <a href="shop.html">Shop</a>
 </div>
 
-<!-- 🟢 YEAR + MONTH SELECTOR -->
+<!-- 🟢 YEAR + MONTH DROPDOWN -->
 <div class="header">
 
 <select id="year"></select>
 
 <select id="month">
-<option value="0">Jan</option>
-<option value="1">Feb</option>
-<option value="2">Mar</option>
-<option value="3">Apr</option>
+<option value="0">January</option>
+<option value="1">February</option>
+<option value="2">March</option>
+<option value="3">April</option>
 <option value="4">May</option>
-<option value="5">Jun</option>
-<option value="6">Jul</option>
-<option value="7">Aug</option>
-<option value="8">Sep</option>
-<option value="9">Oct</option>
-<option value="10">Nov</option>
-<option value="11">Dec</option>
+<option value="5">June</option>
+<option value="6">July</option>
+<option value="7">August</option>
+<option value="8">September</option>
+<option value="9">October</option>
+<option value="10">November</option>
+<option value="11">December</option>
 </select>
-
-<button onclick="render()">🔄 Load</button>
 
 </div>
 
@@ -105,13 +104,13 @@ background:transparent;
 
 <script>
 
-// 🟢 STATE（关键修复点）
+// 🟢 STATE
 let state = {
-year: 2026,
-month: 6
+year: new Date().getFullYear(),
+month: new Date().getMonth()
 }
 
-// 🟢 初始化年份
+// 🟢 INIT YEAR DROPDOWN
 const yearSelect = document.getElementById("year")
 
 for(let y=2020;y<=2035;y++){
@@ -122,8 +121,11 @@ yearSelect.appendChild(opt)
 }
 
 yearSelect.value = state.year
-
 document.getElementById("month").value = state.month
+
+// 🟢 EVENT：自动刷新（重点）
+yearSelect.onchange = render
+document.getElementById("month").onchange = render
 
 // 🟢 Supabase calories
 async function getCalories(date){
@@ -150,7 +152,7 @@ return 0
 
 }
 
-// 🟢 render calendar
+// 🟢 RENDER CALENDAR
 async function render(){
 
 state.year = parseInt(yearSelect.value)
@@ -163,13 +165,13 @@ document.getElementById("title").innerText =
 state.year + " / " + (state.month+1)
 
 // 星期起点
-const firstDay = new Date(state.year, state.month, 1).getDay()
+const start = new Date(state.year, state.month, 1).getDay()
 
 // 月天数
 const days = new Date(state.year, state.month+1, 0).getDate()
 
 // 空格
-for(let i=0;i<firstDay;i++){
+for(let i=0;i<start;i++){
 const div=document.createElement("div")
 div.className="day empty"
 grid.appendChild(div)
