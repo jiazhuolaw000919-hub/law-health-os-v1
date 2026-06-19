@@ -2,36 +2,32 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Dashboard v11.3</title>
+<title>Dashboard v11.5</title>
 
 <link rel="stylesheet" href="style.css">
-<script src="app.js"></script>
 <script src="ai.js"></script>
+<script src="supabase.js"></script>
 </head>
 
 <body>
 
-<div class="nav">
-<a href="index.html">Dashboard</a>
-<a href="calendar.html">Calendar</a>
-</div>
+<h2 style="text-align:center">🧠 Dashboard</h2>
 
 <div class="card">
-<h2>🧠 Health Dashboard</h2>
 <p>Weight: 82kg</p>
 <p>BMI: 29.4</p>
 </div>
 
-<div class="card">
-<h3>📊 AI Prediction</h3>
-<p>30-day: 80.4kg</p>
-<p>Status: Improving 📉</p>
+<!-- NAV -->
+<div class="bottom-nav">
+<a href="index.html" class="active">🏠<br>Home</a>
+<a href="calendar.html">📅<br>Calendar</a>
+<a href="shopping.html">🛒<br>Shop</a>
 </div>
 
-<div class="card">
-<h3>🔥 Insight</h3>
-<p>Reduce fried food intake</p>
-</div>
+<script>
+setActive("home")
+</script>
 
 </body>
 </html>
