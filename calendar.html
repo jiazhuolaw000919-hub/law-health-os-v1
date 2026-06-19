@@ -2,18 +2,39 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Calendar v9.6</title>
+<title>Calendar v9.7</title>
 
 <script src="supabase.js"></script>
 
 <style>
-body{margin:0;font-family:Arial;background:#0b0f19;color:white;}
+body{
+margin:0;
+font-family:Arial;
+background:#0b0f19;
+color:white;
+}
 
 .nav{
 display:flex;
 justify-content:space-around;
 background:#111827;
 padding:12px;
+}
+
+.header{
+display:flex;
+justify-content:space-between;
+align-items:center;
+padding:10px;
+}
+
+button{
+background:#1f2937;
+color:white;
+border:none;
+padding:8px 12px;
+border-radius:8px;
+cursor:pointer;
 }
 
 .grid{
@@ -25,12 +46,22 @@ padding:10px;
 
 .day{
 background:#1f2937;
-padding:12px;
+padding:10px;
 border-radius:10px;
-text-align:center;
-cursor:pointer;
 min-height:60px;
+font-size:12px;
+cursor:pointer;
+text-align:center;
 }
+
+.day:hover{
+background:#374151;
+}
+
+.high{background:#ef4444;}
+.mid{background:#f59e0b;}
+.low{background:#22c55e;}
+.empty{background:transparent;}
 </style>
 </head>
 
@@ -44,42 +75,39 @@ min-height:60px;
 <a href="shop.html">Shop</a>
 </div>
 
-<h3 style="text-align:center;">📅 Calendar</h3>
+<div class="header">
+<button onclick="prevMonth()">⬅</button>
+<h3 id="title">Calendar</h3>
+<button onclick="nextMonth()">➡</button>
+</div>
 
 <div class="grid" id="grid"></div>
 
 <script>
 
-// 🟢 STEP 1：先画UI（不会空白）
-const grid = document.getElementById("grid")
+let current = new Date()
 
-const dates = []
-for(let i=0;i<30;i++){
-const d = new Date()
-d.setDate(d.getDate()-i)
-dates.push(d.toISOString().split("T")[0])
+// 🟢 获取本月第一天
+function getMonthData(date){
+
+const year = date.getFullYear()
+const month = date.getMonth()
+
+return {year, month}
 }
 
-// 先渲染格子（保证一定显示）
-dates.forEach(date=>{
-
-const div = document.createElement("div")
-div.className="day"
-div.innerHTML = date + "<br>loading..."
-
-div.onclick = ()=> {
-window.location.href="day.html?date="+date
+// 🟢 获取天数
+function getDaysInMonth(year, month){
+return new Date(year, month+1,0).getDate()
 }
 
-grid.appendChild(div)
-})
+// 🟢 获取第一天星期
+function getStartDay(year, month){
+return new Date(year, month,1).getDay()
+}
 
-// 🟡 STEP 2：再慢慢加载数据
-async function load(){
-
-for(let i=0;i<grid.children.length;i++){
-
-const date = dates[i]
+// 🟢 获取 Supabase 数据
+async function getCalories(date){
 
 try{
 
@@ -95,22 +123,74 @@ Authorization:"Bearer "+SUPABASE_KEY
 
 const data = await res.json()
 
-let total = 0
-data.forEach(d=> total += d.calories)
-
-grid.children[i].innerHTML =
-date+"<br>"+total+" kcal"
+return data.reduce((s,f)=>s+f.calories,0)
 
 }catch(e){
-grid.children[i].innerHTML =
-date+"<br>0 kcal"
+return 0
+}
+}
+
+// 🟢 渲染日历
+async function render(){
+
+const grid = document.getElementById("grid")
+grid.innerHTML=""
+
+const {year, month} = getMonthData(current)
+
+document.getElementById("title").innerText =
+year + " - " + (month+1)
+
+// 空格
+const start = getStartDay(year,month)
+
+// 空白格
+for(let i=0;i<start;i++){
+const div=document.createElement("div")
+div.className="day empty"
+grid.appendChild(div)
+}
+
+// 天数
+const days = getDaysInMonth(year,month)
+
+for(let d=1; d<=days; d++){
+
+const dateStr =
+`${year}-${String(month+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`
+
+const cal = await getCalories(dateStr)
+
+const div=document.createElement("div")
+div.className="day"
+
+if(cal>2000) div.classList.add("high")
+else if(cal>1200) div.classList.add("mid")
+else div.classList.add("low")
+
+div.innerHTML = d+"<br>"+cal
+
+div.onclick=()=>{
+location.href="day.html?date="+dateStr
+}
+
+grid.appendChild(div)
 }
 
 }
 
+// 🟢 切换月份
+function prevMonth(){
+current.setMonth(current.getMonth()-1)
+render()
 }
 
-load()
+function nextMonth(){
+current.setMonth(current.getMonth()+1)
+render()
+}
+
+render()
 
 </script>
 
