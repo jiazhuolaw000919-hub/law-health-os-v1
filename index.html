@@ -2,33 +2,11 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Dashboard v11.2</title>
+<title>Dashboard v11.3</title>
 
-<style>
-body{margin:0;background:#f6f7fb;font-family:Arial;color:#111827}
-
-.nav{
-display:flex;
-justify-content:space-around;
-background:white;
-padding:12px;
-border-bottom:1px solid #e5e7eb;
-}
-
-.card{
-background:white;
-margin:10px;
-padding:15px;
-border-radius:14px;
-box-shadow:0 4px 10px rgba(0,0,0,0.06);
-}
-
-.kpi{
-display:grid;
-grid-template-columns:1fr 1fr;
-gap:10px;
-}
-</style>
+<link rel="stylesheet" href="style.css">
+<script src="app.js"></script>
+<script src="ai.js"></script>
 </head>
 
 <body>
@@ -38,34 +16,21 @@ gap:10px;
 <a href="calendar.html">Calendar</a>
 </div>
 
-<h2 style="text-align:center">🧠 Health Dashboard v11.2</h2>
-
-<div class="card kpi">
-<div>
-<h3>Weight</h3>
-<p>82 kg</p>
-</div>
-
-<div>
-<h3>BMI</h3>
-<p>29.4</p>
-</div>
-
-<div>
-<h3>Goal</h3>
-<p>68 kg</p>
-</div>
-
-<div>
-<h3>Status</h3>
-<p>Improving 📉</p>
-</div>
+<div class="card">
+<h2>🧠 Health Dashboard</h2>
+<p>Weight: 82kg</p>
+<p>BMI: 29.4</p>
 </div>
 
 <div class="card">
-<h3>📊 AI Insight</h3>
-<p>Estimated 30-day weight: 80.5kg</p>
-<p>Recommendation: reduce fried food 2–3x/week</p>
+<h3>📊 AI Prediction</h3>
+<p>30-day: 80.4kg</p>
+<p>Status: Improving 📉</p>
+</div>
+
+<div class="card">
+<h3>🔥 Insight</h3>
+<p>Reduce fried food intake</p>
 </div>
 
 </body>
