@@ -7,38 +7,35 @@
 <script src="supabase.js"></script>
 
 <style>
-body{margin:0;font-family:Arial;background:#0b0f19;color:white;}
-.card{background:#1f2937;margin:10px;padding:15px;border-radius:12px;}
+body{font-family:Arial;background:#0b0f19;color:white}
+.card{background:#1f2937;margin:10px;padding:15px;border-radius:10px}
 </style>
 </head>
 
 <body>
 
-<h2 style="text-align:center;">📅 Day Detail</h2>
+<h2 style="text-align:center">📅 Day Detail</h2>
 
-<div class="card" id="food"></div>
-<div class="card" id="exercise"></div>
+<div class="card" id="content"></div>
 
 <script>
 
-const date=new URLSearchParams(location.search).get("date")
+const date = new URLSearchParams(location.search).get("date")
 
 async function load(){
 
-const foods=await getFoodByDate(date)
+const foods = await getFood(date)
 
-let fhtml=""
-let total=0
+let total = 0
+let html = ""
 
 foods.forEach(f=>{
-fhtml+=`<p>${f.meal_type}: ${f.food} - ${f.calories}</p>`
-total+=f.calories
+html += `<p>${f.meal_type}: ${f.food} - ${f.calories}</p>`
+total += f.calories
 })
 
-document.getElementById("food").innerHTML=
-"<h3>🍽 Food</h3>"+fhtml+
-"<p>Total: "+total+" kcal</p>"
-
+document.getElementById("content").innerHTML =
+html + "<hr>Total: " + total + " kcal"
 }
 
 load()
