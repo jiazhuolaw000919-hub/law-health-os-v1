@@ -2,36 +2,35 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Food v8.1</title>
+<title>Food v8.2</title>
+
+<script src="supabase.js"></script>
 
 <style>
 body{margin:0;font-family:Arial;background:#0b0f19;color:white;}
 
 .navbar{
-  display:flex;
-  justify-content:space-around;
-  background:#111827;
-  padding:12px;
-  position:sticky;
-  top:0;
+display:flex;
+justify-content:space-around;
+background:#111827;
+padding:12px;
+position:sticky;
+top:0;
 }
 
-.navbar a{
-  color:white;
-  text-decoration:none;
-}
+.navbar a{color:white;text-decoration:none;}
 
 .card{
-  background:#1f2937;
-  margin:10px;
-  padding:15px;
-  border-radius:12px;
+background:#1f2937;
+margin:10px;
+padding:15px;
+border-radius:12px;
 }
 
 input,button{
-  width:100%;
-  padding:10px;
-  margin-top:10px;
+width:100%;
+padding:10px;
+margin-top:10px;
 }
 </style>
 </head>
@@ -39,32 +38,62 @@ input,button{
 <body>
 
 <div class="navbar">
-  <a href="index.html">Dashboard</a>
-  <a href="food.html">Food</a>
-  <a href="workout.html">Workout</a>
-  <a href="report.html">Report</a>
+<a href="index.html">Dashboard</a>
+<a href="food.html">Food</a>
+<a href="workout.html">Workout</a>
+<a href="report.html">Report</a>
 </div>
 
 <div class="card">
-<h2>🍽 Food Logger</h2>
+<h2>🍽 Food AI Logger</h2>
 
 <input id="food" placeholder="e.g. chicken rice, milo, teh tarik">
 
-<button onclick="addFood()">Add Food</button>
+<button onclick="addFood()">Add</button>
 
-<p id="log"></p>
+<p id="result"></p>
 </div>
 
 <script>
-function addFood(){
+
+function estimate(food){
+
+food = food.toLowerCase()
+
+if(food.includes("chicken")) return 600
+if(food.includes("milo")) return 180
+if(food.includes("teh tarik")) return 250
+if(food.includes("rice")) return 400
+
+return 300
+}
+
+function ipohAI(food){
+
+if(food.includes("chicken")) return "Ipoh style: less soy sauce, steam chicken better"
+if(food.includes("milo")) return "Reduce sugar, use less condensed milk"
+if(food.includes("teh tarik")) return "Less sweet, more tea taste"
+
+return "Balanced Ipoh diet recommended"
+}
+
+async function addFood(){
+
 const food = document.getElementById("food").value
 if(!food) return
 
-document.getElementById("log").innerHTML +=
-"<p>🍽 " + food + "</p>"
+const cal = estimate(food)
+const advice = ipohAI(food)
 
-document.getElementById("food").value=""
+document.getElementById("result").innerHTML =
+"🍽 " + food + "<br>" +
+"🔥 " + cal + " kcal<br>" +
+"🧠 " + advice
+
+await insertFood(food, cal)
+
 }
+
 </script>
 
 </body>
