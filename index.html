@@ -1,95 +1,25 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Supabase Test</title>
+<title>JS TEST</title>
 </head>
-<body>
 
-<h1>Supabase Connection Test</h1>
+<body style="text-align:center; padding:30px;">
 
-<button onclick="Connection()">
-Test Supabase
+<h1>JS Test</h1>
+
+<button onclick="testConnection()">
+Click Me
 </button>
 
 <p id="result">Waiting...</p>
 
 <script>
 
-const SUPABASE_URL =
-"https://bzhdzveuldgdpslbzqqv.supabase.co"
-
-const SUPABASE_KEY =
-"YOUR_SUPABASE_KEY"
-
-async function testConnection(){
-
-document.getElementById("result").innerText =
-"Testing..."
-
-try{
-
-const response =
-await fetch(
-`${SUPABASE_URL}/rest/v1/food_logs?select=*`,
-{
-headers:{
-apikey:SUPABASE_KEY,
-Authorization:"Bearer "+SUPABASE_KEY
-}
-}
-)
-
-const text = await response.text()
-
-console.log("STATUS:", response.status)
-console.log("BODY:", text)
-
-document.getElementById("result").innerText =
-"STATUS: " + response.status + " | " + text
-
-}
-catch(error){
-
-console.log("ERROR:", error)
-
-document.getElementById("result").innerText =
-"ERROR: " + error.message
-
-}
-
-}
-
-document.getElementById("result").innerText =
-"Testing..."
-
-try{
-
-const response =
-await fetch(
-`${SUPABASE_URL}/rest/v1/food_logs?select=*`,
-{
-headers:{
-apikey:SUPABASE_KEY,
-Authorization:"Bearer "+SUPABASE_KEY
-}
-}
-)
-
-const text = await response.text()
-
-document.getElementById("result").innerText =
-response.status + " | " + text
-
-}
-catch(error){
-
-document.getElementById("result").innerText =
-"ERROR: " + error.message
-
-}
-
+function testConnection(){
+  console.log("BUTTON CLICKED")
+  document.getElementById("result").innerText =
+    "Button Works ✔"
 }
 
 </script>
