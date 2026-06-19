@@ -2,24 +2,36 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Calendar v11.5</title>
+<title>Calendar</title>
 
 <link rel="stylesheet" href="style.css">
-<script src="ai.js"></script>
 <script src="supabase.js"></script>
+<script src="ai.js"></script>
+<script src="app.js"></script>
 </head>
 
 <body>
 
-<h2 style="text-align:center">📅 Calendar</h2>
+<div class="nav">
+<a href="index.html" id="nav-home">Home</a>
+<a href="calendar.html" id="nav-cal">Calendar</a>
+<a href="food.html" id="nav-food">Food</a>
+<a href="workout.html" id="nav-workout">Workout</a>
+<a href="shopping.html" id="nav-shop">Shop</a>
+<a href="report.html" id="nav-report">Report</a>
+</div>
+
+<h2 style="text-align:center">Calendar</h2>
 
 <div class="grid" id="grid"></div>
 
-<!-- NAV -->
 <div class="bottom-nav">
-<a href="index.html">🏠<br>Home</a>
-<a href="calendar.html" class="active">📅<br>Calendar</a>
-<a href="shopping.html">🛒<br>Shop</a>
+<a href="index.html">🏠</a>
+<a href="calendar.html">📅</a>
+<a href="food.html">🍽</a>
+<a href="workout.html">🏋️</a>
+<a href="shopping.html">🛒</a>
+<a href="report.html">📄</a>
 </div>
 
 <script>
@@ -40,9 +52,7 @@ grid.innerHTML=""
 const first=new Date(year,month,1).getDay()
 const days=new Date(year,month+1,0).getDate()
 
-for(let i=0;i<first;i++){
-grid.innerHTML+="<div></div>"
-}
+for(let i=0;i<first;i++) grid.innerHTML+="<div></div>"
 
 for(let d=1;d<=days;d++){
 
@@ -54,20 +64,14 @@ foods.forEach(f=>cal+=f.calories||0)
 
 let score=calcScore(cal,0)
 
-let color=score>=80?"green":score>=50?"yellow":"red"
+let color=score>80?"green":score>50?"yellow":"red"
 
 const div=document.createElement("div")
 div.className="day "+color
 
-div.innerHTML=`
-${d}<br>
-${Math.round(score)}<br>
-${cal} kcal
-`
+div.innerHTML=`${d}<br>${Math.round(score)}<br>${cal}`
 
-div.onclick=()=>{
-location.href="day.html?date="+date
-}
+div.onclick=()=>location.href="day.html?date="+date
 
 grid.appendChild(div)
 }
