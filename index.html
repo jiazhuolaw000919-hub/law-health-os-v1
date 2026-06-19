@@ -1,33 +1,7 @@
-<script type="module">
-import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm"
-
-const supabaseUrl = "https://bzhdzveuldgdpslbzqqv.supabase.co"
-const supabaseKey = "sb_publishable_nbFvqceSb_oZWOSEdDjjzg_IQjKfumj"
-
-const supabase = createClient(supabaseUrl, supabaseKey)
+<script>
+const SUPABASE_URL = "https://bzhdzveuldgdpslbzqqv.supabase.co"
 
 let total = 0
-
-window.addFood = async function () {
-  let food = document.getElementById("food").value
-  if (!food) return
-
-  let cal = estimate(food)
-
-  // 存数据库
-  await supabase.from("food_logs").insert([
-    { food: food, calories: cal }
-  ])
-
-  total += cal
-
-  document.getElementById("total").innerText = total
-
-  document.getElementById("log").innerHTML +=
-    `<p>🍽 ${food} — ${cal} kcal</p>`
-
-  document.getElementById("food").value = ""
-}
 
 function estimate(food) {
   food = food.toLowerCase()
@@ -38,5 +12,21 @@ function estimate(food) {
   if (food.includes("waffle")) return 350
 
   return 300
+}
+
+async function addFood() {
+  let food = document.getElementById("food").value
+  if (!food) return
+
+  let cal = estimate(food)
+
+  total += cal
+
+  document.getElementById("total").innerText = total
+
+  document.getElementById("log").innerHTML +=
+    `<p>🍽 ${food} — ${cal} kcal</p>`
+
+  document.getElementById("food").value = ""
 }
 </script>
