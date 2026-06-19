@@ -1,35 +1,60 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <title>DEBUG MODE</title>
-</head>
+<script type="module">
+import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm"
 
-<body style="font-family:Arial; text-align:center; padding:30px;">
+const supabaseUrl = "https://bzhdzveuldgdpslbzqqv.supabase.co"
+const supabaseKey = "sb_publishable_GMM5PgeRzudbeh4aHK-1pw_lQ6TQnVe"
 
-  <h1>🟢 APP LOADED</h1>
+const supabase = createClient(supabaseUrl, supabaseKey)
 
-  <p id="status">JS is running...</p>
+let total = 0
 
-  <input id="food" placeholder="test food">
-  <button onclick="test()">TEST</button>
+function estimate(food) {
+  food = food.toLowerCase()
 
-  <div id="log"></div>
-
-<script>
-let step = 0
-
-function test() {
-  step++
-
-  document.getElementById("status").innerText =
-    "Button works: " + step
-
-  document.getElementById("log").innerHTML +=
-    "<p>click OK</p>"
+  if (food.includes("chicken")) return 600
+  if (food.includes("milo")) return 180
+  if (food.includes("teh tarik")) return 250
+  if (food.includes("waffle")) return 350
+  return 300
 }
 
-console.log("JS loaded successfully")
-</script>
+function ipohAdvice(food) {
+  if (food.includes("chicken")) return "Ipoh: steam chicken, less soy"
+  if (food.includes("milo")) return "Ipoh: less sugar Milo"
+  if (food.includes("teh tarik")) return "Ipoh: reduce condensed milk"
+  return "Ipoh: balanced diet"
+}
 
-</body>
-</html>
+window.addFood = async function () {
+  try {
+    const food = document.getElementById("food").value
+    if (!food) return
+
+    const cal = estimate(food)
+    const advice = ipohAdvice(food)
+
+    total += cal
+
+    document.getElementById("total").innerText = total + " kcal"
+
+    document.getElementById("log").innerHTML +=
+      `<p>🍽 ${food} - ${cal} kcal<br>🍜 ${advice}</p>`
+
+    document.getElementById("food").value = ""
+
+    // 🟢 Supabase insert（安全方式）
+    const { error } = await supabase
+      .from("food_logs")
+      .insert([
+        { food: food, calories: cal }
+      ])
+
+    if (error) {
+      console.log("Supabase error:", error)
+    }
+
+  } catch (e) {
+    console.log("App error:", e)
+  }
+}
+</script>
