@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Law Health OS v2</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <style>
+    body {
+      font-family: Arial;
+      background: #0b0f19;
+      color: white;
+      text-align: center;
+      padding: 20px;
+    }
+
+    .card {
+      background: #1c2230;
+      padding: 15px;
+      margin: 10px 0;
+      border-radius: 12px;
+    }
+
+    input, button {
+      padding: 10px;
+      width: 85%;
+      margin-top: 10px;
+      border-radius: 8px;
+      border: none;
+    }
+
+    button {
+      background: #3b82f6;
+      color: white;
+    }
+
+    .log {
+      text-align: left;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+
+<body>
+
+<h1>🧠 Law Health OS</h1>
+
+<div class="card">
+  <h2>📊 Today Summary</h2>
+  <p>Calories Today: <span id="total">0</span> kcal</p>
+</div>
+
+<div class="card">
+  <h2>🍽 Food Input</h2>
+
+  <input id="food" placeholder="e.g. chicken rice, milo, teh tarik">
+
+  <button onclick="addFood()">Add Food</button>
+
+  <div id="log" class="log"></div>
+</div>
+
+<script>
+let total = localStorage.getItem("total") || 0
+document.getElementById("total").innerText = total
+
+function estimate(food) {
+  food = food.toLowerCase()
+
+  if (food.includes("chicken")) return 600
+  if (food.includes("milo")) return 180
+  if (food.includes("teh tarik")) return 250
+  if (food.includes("waffle")) return 350
+
+  return 300
+}
+
+function addFood() {
+  let food = document.getElementById("food").value
+  if (!food) return
+
+  let cal = estimate(food)
+
+  total = Number(total) + cal
+  localStorage.setItem("total", total)
+
+  document.getElementById("total").innerText = total
+
+  document.getElementById("log").innerHTML +=
+    `<p>🍽 ${food} — ${cal} kcal</p>`
+
+  document.getElementById("food").value = ""
+}
+</script>
+
+</body>
+</html>
