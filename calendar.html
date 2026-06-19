@@ -2,30 +2,47 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>AI Calendar v11</title>
+<title>AI Calendar v11.2</title>
 
 <script src="supabase.js"></script>
 <script src="ai.js"></script>
 
 <style>
-body{margin:0;font-family:Arial;background:#0b0f19;color:white}
-
-.nav{display:flex;justify-content:space-around;background:#111827;padding:10px}
-
-.grid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;padding:10px}
-
-.day{
-background:#1f2937;
-padding:10px;
-border-radius:8px;
-text-align:center;
-cursor:pointer;
-font-size:12px;
+body{
+margin:0;
+font-family:Arial;
+background:#f6f7fb;
+color:#111827;
 }
 
-.green{background:#22c55e}
-.yellow{background:#f59e0b}
-.red{background:#ef4444}
+.nav{
+display:flex;
+justify-content:space-around;
+background:white;
+padding:12px;
+border-bottom:1px solid #e5e7eb;
+}
+
+.grid{
+display:grid;
+grid-template-columns:repeat(7,1fr);
+gap:6px;
+padding:10px;
+}
+
+.day{
+background:white;
+padding:10px;
+border-radius:10px;
+text-align:center;
+font-size:12px;
+cursor:pointer;
+box-shadow:0 2px 6px rgba(0,0,0,0.05);
+}
+
+.green{background:#dcfce7}
+.yellow{background:#fef9c3}
+.red{background:#fee2e2}
 </style>
 </head>
 
@@ -36,7 +53,7 @@ font-size:12px;
 <a href="calendar.html">Calendar</a>
 </div>
 
-<h3 style="text-align:center">📅 AI Calendar v11</h3>
+<h2 style="text-align:center">📅 AI Calendar v11.2</h2>
 
 <div class="grid" id="grid"></div>
 
@@ -78,16 +95,16 @@ score>=80?"green":
 score>=50?"yellow":"red"
 
 const div = document.createElement("div")
-div.className = "day "+color
+div.className="day "+color
 
-div.innerHTML = `
-${d}<br>
-${Math.round(score)}<br>
+div.innerHTML=`
+<b>${d}</b><br>
+${Math.round(score)} pts<br>
 ${cal} kcal<br>
 ${workoutAdvice(cal)}
 `
 
-div.onclick = ()=>{
+div.onclick=()=>{
 location.href="day.html?date="+date
 }
 
