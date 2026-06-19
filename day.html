@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Day Detail</title>
+
+<style>
+body{
+margin:0;
+font-family:Arial;
+background:#0b0f19;
+color:white;
+}
+
+.card{
+background:#1f2937;
+margin:10px;
+padding:15px;
+border-radius:12px;
+}
+</style>
+</head>
+
+<body>
+
+<h2 style="text-align:center;">📅 Day Detail</h2>
+
+<div class="card" id="info"></div>
+
+<div class="card">
+<h3>🍽 Meals</h3>
+<p>Breakfast: 400 kcal</p>
+<p>Lunch: 650 kcal</p>
+<p>Dinner: 700 kcal</p>
+<p>Snack: 200 kcal</p>
+</div>
+
+<div class="card">
+<h3>🏃 Exercise</h3>
+<p>Home workout</p>
+<p>Calories burned: 300 kcal</p>
+</div>
+
+<script>
+
+const url = new URLSearchParams(window.location.search)
+const date = url.get("date")
+
+document.getElementById("info").innerHTML =
+"<h3>" + date + "</h3>"
+
+</script>
+
+</body>
+</html>
