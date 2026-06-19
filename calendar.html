@@ -2,13 +2,19 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Calendar v9.5</title>
+<title>Calendar v9.6</title>
 
 <script src="supabase.js"></script>
 
 <style>
 body{margin:0;font-family:Arial;background:#0b0f19;color:white;}
-.nav{display:flex;justify-content:space-around;background:#111827;padding:12px;}
+
+.nav{
+display:flex;
+justify-content:space-around;
+background:#111827;
+padding:12px;
+}
 
 .grid{
 display:grid;
@@ -19,10 +25,11 @@ padding:10px;
 
 .day{
 background:#1f2937;
-padding:10px;
-border-radius:8px;
+padding:12px;
+border-radius:10px;
 text-align:center;
 cursor:pointer;
+min-height:60px;
 }
 </style>
 </head>
@@ -39,45 +46,71 @@ cursor:pointer;
 
 <h3 style="text-align:center;">📅 Calendar</h3>
 
-<div class="grid" id="cal"></div>
+<div class="grid" id="grid"></div>
 
 <script>
 
-function dates(){
-let arr=[]
+// 🟢 STEP 1：先画UI（不会空白）
+const grid = document.getElementById("grid")
+
+const dates = []
 for(let i=0;i<30;i++){
-let d=new Date()
+const d = new Date()
 d.setDate(d.getDate()-i)
-arr.push(d.toISOString().split("T")[0])
-}
-return arr
+dates.push(d.toISOString().split("T")[0])
 }
 
-async function getCal(date){
-const foods=await getFoodByDate(date)
-return foods.reduce((s,f)=>s+f.calories,0)
-}
+// 先渲染格子（保证一定显示）
+dates.forEach(date=>{
 
-async function render(){
-
-const cal=document.getElementById("cal")
-
-for(const d of dates()){
-
-const c=await getCal(d)
-
-const div=document.createElement("div")
+const div = document.createElement("div")
 div.className="day"
-div.innerHTML=d+"<br>"+c+" kcal"
+div.innerHTML = date + "<br>loading..."
 
-div.onclick=()=>location.href="day.html?date="+d
+div.onclick = ()=> {
+window.location.href="day.html?date="+date
+}
 
-cal.appendChild(div)
+grid.appendChild(div)
+})
+
+// 🟡 STEP 2：再慢慢加载数据
+async function load(){
+
+for(let i=0;i<grid.children.length;i++){
+
+const date = dates[i]
+
+try{
+
+const res = await fetch(
+SUPABASE_URL+"/rest/v1/food_logs?date=eq."+date,
+{
+headers:{
+apikey:SUPABASE_KEY,
+Authorization:"Bearer "+SUPABASE_KEY
+}
+}
+)
+
+const data = await res.json()
+
+let total = 0
+data.forEach(d=> total += d.calories)
+
+grid.children[i].innerHTML =
+date+"<br>"+total+" kcal"
+
+}catch(e){
+grid.children[i].innerHTML =
+date+"<br>0 kcal"
 }
 
 }
 
-render()
+}
+
+load()
 
 </script>
 
