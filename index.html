@@ -2,244 +2,26 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-<title>Law Health OS v8.2</title>
-
-<style>
-body{
-  font-family:Arial;
-  background:#0b0f19;
-  color:white;
-  padding:20px;
-}
-
-.card{
-  background:#1c2230;
-  padding:15px;
-  margin-bottom:15px;
-  border-radius:12px;
-}
-
-input{
-  width:100%;
-  padding:10px;
-  border-radius:8px;
-  border:none;
-  margin-top:10px;
-  box-sizing:border-box;
-}
-
-button{
-  width:100%;
-  padding:12px;
-  margin-top:10px;
-  border:none;
-  border-radius:8px;
-  background:#2563eb;
-  color:white;
-  font-size:16px;
-}
-
-.food-item{
-  border-bottom:1px solid #333;
-  padding:8px 0;
-}
-
-.small{
-  font-size:13px;
-  opacity:0.8;
-}
-
-.row{
-  display:flex;
-  justify-content:space-between;
-}
-</style>
+<title>Law Health OS v9</title>
+<link rel="stylesheet" href="style.css">
 </head>
 
 <body>
 
-<h1>🧠 Law Health OS v8.2</h1>
+<h1>🧠 Law Health OS v9</h1>
 
-<!-- DASHBOARD -->
 <div class="card">
-
-<h2>📊 Dashboard</h2>
-
-<div class="row">
-<span>Height</span>
-<span>167 cm</span>
+  <h2>📊 Dashboard</h2>
+  <p id="calories">Calories: 0</p>
+  <p>BMI: 27.8</p>
+  <a href="food.html">🍽 Food</a> |
+  <a href="exercise.html">🏃 Exercise</a> |
+  <a href="history.html">📊 History</a> |
+  <a href="shopping.html">🛒 Shopping</a>
 </div>
 
-<div class="row">
-<span>Weight</span>
-<span>82 kg</span>
-</div>
-
-<div class="row">
-<span>Target</span>
-<span>68 kg</span>
-</div>
-
-<p id="bmi">BMI: -</p>
-
-<p id="calories">Today Calories: 0 kcal</p>
-
-</div>
-
-<!-- INPUT -->
-<div class="card">
-
-<h2>🍽 Food Logger</h2>
-
-<input id="food" placeholder="chicken rice / milo / teh tarik">
-
-<button onclick="addFood()">
-Add Food
-</button>
-
-<p class="small">
-AI will estimate calories + sync Supabase
-</p>
-
-</div>
-
-<!-- ADVICE -->
-<div class="card">
-
-<h2>🍜 Ipoh AI Nutrition</h2>
-
-<p id="advice">Waiting...</p>
-
-</div>
-
-<!-- LOG -->
-<div class="card">
-
-<h2>📝 Food History</h2>
-
-<div id="log"></div>
-
-</div>
-
-<script>
-
-let totalCalories = 0
-
-const SUPABASE_URL =
-"https://jwcgamxkwzrjnepxrvzr.supabase.co"
-
-// 
-const SUPABASE_KEY =
-"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpxZXZjZnlobmx0dHpkaXlsZnJoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE4MjgzNTIsImV4cCI6MjA5NzQwNDM1Mn0.RNWddp1TuYwVAHZlWfdq4iGdgiqNU9DKgAi8pnC6ULs"
-
-const weight = 82
-const height = 1.67
-
-function calculateBMI(){
-  const bmi = (weight/(height*height)).toFixed(1)
-  document.getElementById("bmi").innerText = "BMI: " + bmi
-}
-
-calculateBMI()
-
-function estimateCalories(food){
-
-food = food.toLowerCase()
-
-if(food.includes("chicken")) return 600
-if(food.includes("milo")) return 180
-if(food.includes("teh tarik")) return 250
-if(food.includes("waffle")) return 350
-if(food.includes("rice")) return 500
-if(food.includes("bread")) return 150
-
-return 300
-}
-
-function ipohAI(food){
-
-food = food.toLowerCase()
-
-if(food.includes("milo"))
-return "Ipoh: reduce sugar, use Milo kosong"
-
-if(food.includes("teh tarik"))
-return "Ipoh: less condensed milk"
-
-if(food.includes("chicken"))
-return "Ipoh: steam or roast instead of fried"
-
-if(food.includes("rice"))
-return "Ipoh: reduce rice, increase vegetables"
-
-return "Ipoh: balanced diet recommended"
-
-}
-
-async function addFood(){
-
-const foodInput = document.getElementById("food")
-const food = foodInput.value.trim()
-
-if(food === ""){
-alert("Enter food")
-return
-}
-
-const calories = estimateCalories(food)
-const advice = ipohAI(food)
-
-totalCalories += calories
-
-document.getElementById("calories").innerText =
-"Today Calories: " + totalCalories + " kcal"
-
-document.getElementById("advice").innerText = advice
-
-document.getElementById("log").innerHTML +=
-`
-<div class="food-item">
-🍽 ${food}<br>
-🔥 ${calories} kcal
-</div>
-`
-
-foodInput.value = ""
-
-try{
-
-const res = await fetch(
-SUPABASE_URL + "/rest/v1/food_logs",
-{
-method:"POST",
-headers:{
-"Content-Type":"application/json",
-"apikey":SUPABASE_KEY,
-"Authorization":"Bearer " + SUPABASE_KEY,
-"Prefer":"return=minimal"
-},
-body:JSON.stringify({
-food:food,
-calories:calories
-})
-}
-)
-
-if(!res.ok){
-console.log("Supabase error")
-}else{
-console.log("Saved ✔")
-}
-
-}catch(e){
-console.log(e)
-}
-
-}
-
-</script>
+<script src="supabase.js"></script>
+<script src="app.js"></script>
 
 </body>
 </html>
