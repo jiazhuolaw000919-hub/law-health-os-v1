@@ -2,15 +2,12 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Day Detail</title>
+<title>Day Detail v9.1</title>
+
+<script src="supabase.js"></script>
 
 <style>
-body{
-margin:0;
-font-family:Arial;
-background:#0b0f19;
-color:white;
-}
+body{margin:0;font-family:Arial;background:#0b0f19;color:white;}
 
 .card{
 background:#1f2937;
@@ -25,29 +22,53 @@ border-radius:12px;
 
 <h2 style="text-align:center;">📅 Day Detail</h2>
 
-<div class="card" id="info"></div>
+<div class="card" id="summary"></div>
 
 <div class="card">
-<h3>🍽 Meals</h3>
-<p>Breakfast: 400 kcal</p>
-<p>Lunch: 650 kcal</p>
-<p>Dinner: 700 kcal</p>
-<p>Snack: 200 kcal</p>
+<h3>🍽 Food</h3>
+<div id="food"></div>
 </div>
 
 <div class="card">
 <h3>🏃 Exercise</h3>
-<p>Home workout</p>
-<p>Calories burned: 300 kcal</p>
+<div id="exercise"></div>
 </div>
 
 <script>
 
-const url = new URLSearchParams(window.location.search)
-const date = url.get("date")
+const date = new URLSearchParams(location.search).get("date")
 
-document.getElementById("info").innerHTML =
-"<h3>" + date + "</h3>"
+async function load(){
+
+const foods = await getFoodsByDate(date)
+const ex = await getExerciseByDate(date)
+
+let foodHTML=""
+let foodTotal=0
+
+foods.forEach(f=>{
+foodHTML += `<p>${f.meal_type||"meal"}: ${f.food} - ${f.calories} kcal</p>`
+foodTotal += f.calories
+})
+
+let exHTML=""
+let exTotal=0
+
+ex.forEach(e=>{
+exHTML += `<p>${e.type} - ${e.calories_burned} kcal</p>`
+exTotal += e.calories_burned
+})
+
+document.getElementById("summary").innerHTML=
+`<h3>${date}</h3>
+<p>Total intake: ${foodTotal} kcal</p>
+<p>Total burn: ${exTotal} kcal</p>`
+
+document.getElementById("food").innerHTML=foodHTML
+document.getElementById("exercise").innerHTML=exHTML
+}
+
+load()
 
 </script>
 
