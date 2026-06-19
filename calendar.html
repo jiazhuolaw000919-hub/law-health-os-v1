@@ -2,67 +2,30 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Calendar v9.9</title>
+<title>AI Calendar v11</title>
 
 <script src="supabase.js"></script>
+<script src="ai.js"></script>
 
 <style>
-body{
-margin:0;
-font-family:Arial;
-background:#0b0f19;
-color:white;
-}
+body{margin:0;font-family:Arial;background:#0b0f19;color:white}
 
-.nav{
-display:flex;
-justify-content:space-around;
-background:#111827;
-padding:12px;
-}
+.nav{display:flex;justify-content:space-around;background:#111827;padding:10px}
 
-.header{
-display:flex;
-justify-content:center;
-gap:10px;
-padding:10px;
-flex-wrap:wrap;
-}
-
-select{
-padding:8px 12px;
-border-radius:8px;
-border:none;
-background:#1f2937;
-color:white;
-font-size:14px;
-cursor:pointer;
-}
-
-.grid{
-display:grid;
-grid-template-columns:repeat(7,1fr);
-gap:6px;
-padding:10px;
-}
+.grid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;padding:10px}
 
 .day{
 background:#1f2937;
 padding:10px;
-border-radius:10px;
-min-height:60px;
+border-radius:8px;
 text-align:center;
-font-size:12px;
 cursor:pointer;
+font-size:12px;
 }
 
-.empty{
-background:transparent;
-}
-
-.high{background:#ef4444;}
-.mid{background:#f59e0b;}
-.low{background:#22c55e;}
+.green{background:#22c55e}
+.yellow{background:#f59e0b}
+.red{background:#ef4444}
 </style>
 </head>
 
@@ -70,132 +33,62 @@ background:transparent;
 
 <div class="nav">
 <a href="index.html">Dashboard</a>
-<a href="food.html">Food</a>
-<a href="workout.html">Workout</a>
 <a href="calendar.html">Calendar</a>
-<a href="shop.html">Shop</a>
 </div>
 
-<!-- 🟢 YEAR + MONTH DROPDOWN -->
-<div class="header">
-
-<select id="year"></select>
-
-<select id="month">
-<option value="0">January</option>
-<option value="1">February</option>
-<option value="2">March</option>
-<option value="3">April</option>
-<option value="4">May</option>
-<option value="5">June</option>
-<option value="6">July</option>
-<option value="7">August</option>
-<option value="8">September</option>
-<option value="9">October</option>
-<option value="10">November</option>
-<option value="11">December</option>
-</select>
-
-</div>
-
-<h3 style="text-align:center;" id="title"></h3>
+<h3 style="text-align:center">📅 AI Calendar v11</h3>
 
 <div class="grid" id="grid"></div>
 
 <script>
 
-// 🟢 STATE
-let state = {
-year: new Date().getFullYear(),
-month: new Date().getMonth()
+let year = new Date().getFullYear()
+let month = new Date().getMonth()
+
+function dateStr(d){
+return `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`
 }
 
-// 🟢 INIT YEAR DROPDOWN
-const yearSelect = document.getElementById("year")
-
-for(let y=2020;y<=2035;y++){
-const opt=document.createElement("option")
-opt.value=y
-opt.innerText=y
-yearSelect.appendChild(opt)
-}
-
-yearSelect.value = state.year
-document.getElementById("month").value = state.month
-
-// 🟢 EVENT：自动刷新（重点）
-yearSelect.onchange = render
-document.getElementById("month").onchange = render
-
-// 🟢 Supabase calories
-async function getCalories(date){
-
-try{
-
-const res = await fetch(
-SUPABASE_URL+"/rest/v1/food_logs?date=eq."+date,
-{
-headers:{
-apikey:SUPABASE_KEY,
-Authorization:"Bearer "+SUPABASE_KEY
-}
-}
-)
-
-const data = await res.json()
-
-return data.reduce((s,f)=>s+f.calories,0)
-
-}catch(e){
-return 0
-}
-
-}
-
-// 🟢 RENDER CALENDAR
 async function render(){
-
-state.year = parseInt(yearSelect.value)
-state.month = parseInt(document.getElementById("month").value)
 
 const grid = document.getElementById("grid")
 grid.innerHTML = ""
 
-document.getElementById("title").innerText =
-state.year + " / " + (state.month+1)
+const first = new Date(year,month,1).getDay()
+const days = new Date(year,month+1,0).getDate()
 
-// 星期起点
-const start = new Date(state.year, state.month, 1).getDay()
-
-// 月天数
-const days = new Date(state.year, state.month+1, 0).getDate()
-
-// 空格
-for(let i=0;i<start;i++){
-const div=document.createElement("div")
-div.className="day empty"
-grid.appendChild(div)
+for(let i=0;i<first;i++){
+grid.innerHTML += `<div></div>`
 }
 
-// 日期
 for(let d=1; d<=days; d++){
 
-const dateStr =
-`${state.year}-${String(state.month+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`
+const date = dateStr(d)
 
-const cal = await getCalories(dateStr)
+const foods = await getFood(date)
 
-const div=document.createElement("div")
-div.className="day"
+let cal = 0
+foods.forEach(f=> cal += f.calories)
 
-if(cal>2000) div.classList.add("high")
-else if(cal>1200) div.classList.add("mid")
-else div.classList.add("low")
+let burn = 0
+let score = calcScore(cal,burn)
 
-div.innerHTML = d + "<br>" + cal
+let color =
+score>=80?"green":
+score>=50?"yellow":"red"
 
-div.onclick = () => {
-location.href = "day.html?date=" + dateStr
+const div = document.createElement("div")
+div.className = "day "+color
+
+div.innerHTML = `
+${d}<br>
+${Math.round(score)}<br>
+${cal} kcal<br>
+${workoutAdvice(cal)}
+`
+
+div.onclick = ()=>{
+location.href="day.html?date="+date
 }
 
 grid.appendChild(div)
