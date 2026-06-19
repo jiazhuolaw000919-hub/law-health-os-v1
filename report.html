@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Health Calendar v8.3</title>
+<title>Health Calendar v9</title>
 
 <style>
 body{
@@ -21,15 +21,10 @@ position:sticky;
 top:0;
 }
 
-.navbar a{
-color:white;
-text-decoration:none;
-}
-
 .calendar{
 display:grid;
 grid-template-columns:repeat(7,1fr);
-gap:8px;
+gap:6px;
 padding:10px;
 }
 
@@ -37,8 +32,9 @@ padding:10px;
 background:#1f2937;
 padding:10px;
 border-radius:10px;
-min-height:60px;
+text-align:center;
 font-size:12px;
+cursor:pointer;
 }
 
 .high{background:#ef4444;}
@@ -56,82 +52,58 @@ font-size:12px;
 <a href="report.html">Calendar</a>
 </div>
 
-<h2 style="text-align:center;">📅 Calorie Calendar</h2>
+<h2 style="text-align:center;">📅 Monthly Calendar</h2>
 
 <div class="calendar" id="calendar"></div>
 
 <script>
 
-const SUPABASE_URL = "https://jwcgamxkwzrjnepxrvzr.supabase.co"
-const SUPABASE_KEY = "PASTE_YOUR_KEY"
+function getDays(){
 
-async function loadData(){
+const days = []
 
-const res = await fetch(
-SUPABASE_URL + "/rest/v1/food_logs?select=*",
-{
-headers:{
-apikey:SUPABASE_KEY,
-Authorization:"Bearer "+SUPABASE_KEY
-}
-}
-)
-
-return await res.json()
-}
-
-function groupByDate(data){
-
-const map = {}
-
-data.forEach(item=>{
-
-const date = item.date || "unknown"
-
-if(!map[date]) map[date] = 0
-
-map[date] += item.calories
-
-})
-
-return map
-}
-
-function getColor(cal){
-
-if(cal > 2000) return "high"
-if(cal > 1200) return "mid"
-return "low"
-}
-
-async function render(){
-
-const data = await loadData()
-
-const grouped = groupByDate(data)
-
-const calendar = document.getElementById("calendar")
-
-// 最近30天
 for(let i=0;i<30;i++){
 
 const d = new Date()
 d.setDate(d.getDate()-i)
 
-const key = d.toISOString().split("T")[0]
+days.push(d.toISOString().split("T")[0])
+}
 
-const cal = grouped[key] || 0
+return days
+}
+
+function getColor(cal){
+
+if(cal>2000) return "high"
+if(cal>1200) return "mid"
+return "low"
+}
+
+function render(){
+
+const calendar = document.getElementById("calendar")
+
+getDays().forEach(date=>{
+
+// fake calories (之后接 Supabase)
+const cal = Math.floor(Math.random()*2000)
 
 const div = document.createElement("div")
+
 div.className = "day " + getColor(cal)
 
 div.innerHTML =
-"<b>" + key + "</b><br>" +
-cal + " kcal"
+date + "<br>" + cal + " kcal"
+
+// ⭐ 点击进入当天详情
+div.onclick = () => {
+window.location.href = "day.html?date=" + date
+}
 
 calendar.appendChild(div)
 
-}
+})
 
 }
 
