@@ -2,103 +2,67 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Food AI Camera v9.6</title>
+<title>Food</title>
 
+<link rel="stylesheet" href="style.css">
 <script src="supabase.js"></script>
-
-<style>
-body{margin:0;font-family:Arial;background:#0b0f19;color:white;}
-
-.nav{
-display:flex;
-justify-content:space-around;
-background:#111827;
-padding:12px;
-}
-
-.card{
-background:#1f2937;
-margin:10px;
-padding:15px;
-border-radius:12px;
-}
-
-input,button{
-width:100%;
-padding:10px;
-margin-top:10px;
-}
-</style>
+<script src="ai.js"></script>
+<script src="app.js"></script>
 </head>
 
 <body>
 
 <div class="nav">
-<a href="index.html">Dashboard</a>
+<a href="index.html">Home</a>
+<a href="calendar.html">Calendar</a>
 <a href="food.html">Food</a>
 <a href="workout.html">Workout</a>
-<a href="calendar.html">Calendar</a>
-<a href="shop.html">Shop</a>
+<a href="shopping.html">Shop</a>
+<a href="report.html">Report</a>
 </div>
+
+<h2 style="text-align:center">🍽 Food Log</h2>
 
 <div class="card">
-<h2>📸 AI Food Scanner</h2>
 
-<input type="file" accept="image/*" capture="environment" id="camera">
+<input id="food" placeholder="e.g. chicken rice" style="padding:10px;width:90%"><br><br>
 
-<button onclick="analyze()">Analyze Food</button>
+<button onclick="addFood()"
+style="padding:10px 15px;background:#111827;color:white;border:none;border-radius:10px">
+Add Food
+</button>
 
-<p id="result"></p>
 </div>
+
+<div class="card" id="log"></div>
 
 <script>
 
-// 🧠 模拟AI识别（之后可接OpenAI Vision）
-function fakeAI(image){
+setActive("food")
 
-const foods = [
-"chicken rice",
-"milo",
-"fried noodles",
-"teh tarik"
-]
+let total = 0
 
-return foods[Math.floor(Math.random()*foods.length)]
-}
+async function addFood(){
 
-function cal(food){
+const food = document.getElementById("food").value
+if(!food) return
 
-if(food.includes("chicken")) return 600
-if(food.includes("fried")) return 700
-if(food.includes("milo")) return 180
-return 300
-}
+const cal = food.includes("chicken") ? 600 : 300
 
-async function analyze(){
+const today = new Date().toISOString().split("T")[0]
 
-const file = document.getElementById("camera").files[0]
-if(!file){
-alert("Please take a photo")
-return
-}
-
-// 🟢 AI识别（模拟）
-const food = fakeAI(file)
-
-const calories = cal(food)
-
-document.getElementById("result").innerHTML=
-"🍽 Recognized: "+food+"<br>"+
-"🔥 "+calories+" kcal<br>"+
-"🧠 Ipoh advice: reduce oil & sugar"
-
-await insertFood({
-food,
-calories,
-meal_type:"snack",
-date:new Date().toISOString().split("T")[0]
+await addFood({
+food: food,
+calories: cal,
+date: today
 })
 
+total += cal
+
+document.getElementById("log").innerHTML +=
+`<p>🍽 ${food} - ${cal} kcal</p>`
+
+document.getElementById("food").value = ""
 }
 
 </script>
