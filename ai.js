@@ -10,10 +10,7 @@ if(cal < 1200) score -= 10
 
 score += burn * 0.05
 
-if(score > 100) score = 100
-if(score < 0) score = 0
-
-return score
+return Math.max(0, Math.min(100, score))
 }
 
 function status(score){
@@ -25,12 +22,5 @@ return "🔴 Risk"
 function workoutAdvice(cal){
 if(cal > 2600) return "🔥 40min walk + HIIT"
 if(cal > 2200) return "🚶 30min walk"
-if(cal > 1800) return "🧘 light workout"
-return "✅ maintain"
-}
-
-function predictWeight(weight, avgCal){
-let diff = avgCal - 1800
-let daily = diff / 7700
-return (weight + daily*30).toFixed(1)
+return "🧘 light workout"
 }
