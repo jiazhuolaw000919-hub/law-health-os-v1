@@ -2,15 +2,12 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Health Calendar v9</title>
+<title>Calendar v9.1</title>
+
+<script src="supabase.js"></script>
 
 <style>
-body{
-margin:0;
-font-family:Arial;
-background:#0b0f19;
-color:white;
-}
+body{margin:0;font-family:Arial;background:#0b0f19;color:white;}
 
 .navbar{
 display:flex;
@@ -33,8 +30,8 @@ background:#1f2937;
 padding:10px;
 border-radius:10px;
 text-align:center;
-font-size:12px;
 cursor:pointer;
+font-size:12px;
 }
 
 .high{background:#ef4444;}
@@ -52,58 +49,65 @@ cursor:pointer;
 <a href="report.html">Calendar</a>
 </div>
 
-<h2 style="text-align:center;">📅 Monthly Calendar</h2>
+<h2 style="text-align:center;">📅 Real Calendar</h2>
 
 <div class="calendar" id="calendar"></div>
 
 <script>
 
-function getDays(){
+function getDates(){
 
-const days = []
+const arr=[]
 
 for(let i=0;i<30;i++){
-
-const d = new Date()
+const d=new Date()
 d.setDate(d.getDate()-i)
-
-days.push(d.toISOString().split("T")[0])
+arr.push(d.toISOString().split("T")[0])
 }
 
-return days
+return arr
 }
 
-function getColor(cal){
+async function getCalories(date){
+
+const foods = await getFoodsByDate(date)
+
+let total = 0
+
+foods.forEach(f=>{
+total += f.calories
+})
+
+return total
+}
+
+function color(cal){
 
 if(cal>2000) return "high"
 if(cal>1200) return "mid"
 return "low"
 }
 
-function render(){
+async function render(){
 
-const calendar = document.getElementById("calendar")
+const calEl = document.getElementById("calendar")
 
-getDays().forEach(date=>{
+for(const date of getDates()){
 
-// fake calories (之后接 Supabase)
-const cal = Math.floor(Math.random()*2000)
+const cal = await getCalories(date)
 
-const div = document.createElement("div")
+const div=document.createElement("div")
 
-div.className = "day " + getColor(cal)
+div.className="day "+color(cal)
 
-div.innerHTML =
-date + "<br>" + cal + " kcal"
+div.innerHTML = date+"<br>"+cal+" kcal"
 
-// ⭐ 点击进入当天详情
-div.onclick = () => {
-window.location.href = "day.html?date=" + date
+div.onclick=()=>{
+window.location.href="day.html?date="+date
 }
 
-calendar.appendChild(div)
-
-})
+calEl.appendChild(div)
+}
 
 }
 
