@@ -2,17 +2,18 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Food</title>
+<title>Food AI v3</title>
 
 <link rel="stylesheet" href="style.css">
+
 <script src="app.js"></script>
 <script src="ai.js"></script>
 <script src="supabase.js"></script>
+<script src="ai-vision.js"></script>
 </head>
 
 <body>
 
-<!-- NAV -->
 <div class="nav">
 <a href="index.html">Home</a>
 <a href="calendar.html">Calendar</a>
@@ -22,8 +23,9 @@
 <a href="report.html">Report</a>
 </div>
 
-<h2 style="text-align:center">🍽 Food Log</h2>
+<h2 style="text-align:center">🍽 Food AI System</h2>
 
+<!-- FOOD INPUT -->
 <div class="card">
 
 <input id="foodInput" placeholder="e.g. chicken rice"
@@ -36,9 +38,22 @@ style="padding:10px 15px;background:#111827;color:white;border:none;border-radiu
 Add Food
 </button>
 
+<div id="log"></div>
+
 </div>
 
-<div class="card" id="log"></div>
+<!-- AI IMAGE SCANNER -->
+<div class="card">
+<h3>📸 Food AI Scanner</h3>
+
+<input type="file" id="foodImage">
+
+<br><br>
+
+<button onclick="scanFood()">Analyze Image</button>
+
+<p id="aiResult">Waiting...</p>
+</div>
 
 <script>
 
@@ -46,6 +61,7 @@ setActive("food")
 
 let total = 0
 
+// 🍽 manual food add
 async function addFood(){
 
 const input = document.getElementById("foodInput")
@@ -53,7 +69,6 @@ const food = input.value.trim()
 
 if(!food) return
 
-// 简单AI估算卡路里
 let cal = 300
 
 if(food.includes("chicken")) cal = 600
@@ -63,73 +78,22 @@ if(food.includes("tea")) cal = 120
 
 const today = new Date().toISOString().split("T")[0]
 
-// UI更新
-total += cal
-
 document.getElementById("log").innerHTML +=
 `<p>🍽 ${food} - ${cal} kcal</p>`
 
 input.value = ""
 
-// 🔌 Supabase写入（关键）
 try{
-await addFood({
-food: food,
-calories: cal,
-date: today
-})
-console.log("Saved to Supabase ✔")
+if(typeof addFood !== "undefined"){
+await addFood({food, calories:cal, date:today})
+}
 }catch(e){
-console.log("Supabase error:", e)
+console.log("supabase error",e)
 }
 
 }
 
-</script>
-
-</body>
-</html>
-
-<div class="card">
-<h3>📸 Food AI Scanner</h3>
-
-<input type="file" accept="image/*" id="img">
-
-<br><br>
-
-<button onclick="scanFood()">Analyze Food</button>
-
-<p id="result"></p>
-</div>
-
-<script>
-
-function scanFood(){
-
-const file = document.getElementById("img").files[0]
-
-if(!file){
-alert("Please select image")
-return
-}
-
-// 🧠 模拟 AI（以后可换 OpenAI Vision）
-const fakeAI = "Chicken Rice"
-
-document.getElementById("result").innerText =
-"AI Detected: " + fakeAI + " (~650 kcal)"
-}
-
-<div class="card">
-<h3>📸 Food AI Scan</h3>
-
-<input type="file" id="foodImage">
-
-<button onclick="scanFood()">Analyze</button>
-
-<p id="result"></p>
-</div>
-
+// 📸 AI scan
 async function scanFood(){
 
 const file = document.getElementById("foodImage").files[0]
@@ -145,17 +109,33 @@ reader.onload = async function(){
 
 const base64 = reader.result
 
-document.getElementById("foodResult").innerText =
+document.getElementById("aiResult").innerText =
 "Analyzing..."
+
+try{
 
 const result = await analyzeFoodImage(base64)
 
-document.getElementById("foodResult").innerText = result
+document.getElementById("aiResult").innerText =
+result
+
+}catch(e){
+
+document.getElementById("aiResult").innerText =
+"AI failed or API not set"
+
+console.log(e)
+
+}
+
 }
 
 reader.readAsDataURL(file)
 }
-  
+
 </script>
+
+</body>
+</html>
 
 
