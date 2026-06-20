@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Profile</title>
+<title>Profile v4</title>
 
 <link rel="stylesheet" href="style.css">
 
@@ -15,9 +15,7 @@
 <a href="index.html">Home</a>
 <a href="calendar.html">Calendar</a>
 <a href="food.html">Food</a>
-<a href="workout.html">Workout</a>
-<a href="profile.html">Profile</a>
-<a href="report.html">Report</a>
+<a href="dashboard.html">Dashboard</a>
 </div>
 
 <h2 class="center">👤 Profile</h2>
@@ -33,36 +31,64 @@
 <input id="height" placeholder="Height (cm)">
 <input id="weight" placeholder="Weight (kg)">
 <input id="job" placeholder="Job">
+<input id="goal" placeholder="Goal weight">
 
-<button onclick="saveProfile()">Save Profile</button>
+<button onclick="save()">Save</button>
+
+<p id="bmi"></p>
 
 </div>
 
 <script>
 
 function calcBMI(h,w){
-h = h/100
-return (w/(h*h)).toFixed(1)
+return (w/((h/100)**2)).toFixed(1)
 }
 
-async function saveProfile(){
+async function save(){
 
-const name = document.getElementById("name").value
-const gender = document.getElementById("gender").value
-const height = Number(document.getElementById("height").value)
-const weight = Number(document.getElementById("weight").value)
-const job = document.getElementById("job").value
+let h=+height.value
+let w=+weight.value
 
-const bmi = calcBMI(height,weight)
+let bmi=calcBMI(h,w)
 
-const profile = {
-name,gender,height,weight,job,bmi
+document.getElementById("bmi").innerText="BMI:"+bmi
+
+let profile={
+name:name.value,
+gender:gender.value,
+height:h,
+weight:w,
+bmi,
+job:job.value,
+goal:goal.value
 }
 
-localStorage.setItem("profile", JSON.stringify(profile))
+localStorage.setItem("profile",JSON.stringify(profile))
 
-alert("Saved!")
+if(typeof saveProfile==="function"){
+await saveProfile(profile)
 }
+
+alert("Saved")
+}
+
+function load(){
+
+let p = JSON.parse(localStorage.getItem("profile")||"null")
+if(!p) return
+
+name.value=p.name
+gender.value=p.gender
+height.value=p.height
+weight.value=p.weight
+job.value=p.job
+goal.value=p.goal
+
+document.getElementById("bmi").innerText="BMI:"+p.bmi
+}
+
+load()
 
 </script>
 
