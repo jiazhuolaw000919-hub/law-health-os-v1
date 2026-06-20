@@ -108,3 +108,23 @@ document.getElementById("monthlyScore").innerText =
 monthlyScore(sampleData)
 
 </script>
+
+<div class="card">
+<h3>📈 Weight Trend</h3>
+<canvas id="weightChart"></canvas>
+</div>
+
+<script>
+new Chart(document.getElementById("weightChart"),{
+type:"line",
+data:{
+labels:["Mon","Tue","Wed","Thu","Fri","Sat","Sun"],
+datasets:[{
+label:"Weight",
+data:[75,74.8,74.6,74.7,74.5,74.3,74.2],
+borderColor:"#111827",
+tension:0.3
+}]
+}
+})
+</script>
