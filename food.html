@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Food AI v8 System</title>
+<title>Food AI v8 System (Multi Profile Fixed)</title>
 
 <link rel="stylesheet" href="style.css">
 
@@ -26,6 +26,12 @@
 
 <h2 style="text-align:center">🍽 Food AI v8 System</h2>
 
+<!-- ACTIVE PROFILE DISPLAY -->
+<div class="card">
+<p id="activeProfile">No profile selected</p>
+</div>
+
+<!-- FOOD INPUT -->
 <div class="card">
 <input id="foodInput" placeholder="e.g. chicken rice">
 <br><br>
@@ -33,10 +39,13 @@
 <div id="log"></div>
 </div>
 
+<!-- AI SCANNER -->
 <div class="card">
-<h3>📸 AI Scanner (v8)</h3>
+<h3>📸 AI Scanner (v8 Multi-Profile)</h3>
+
 <input type="file" id="foodImage">
 <br><br>
+
 <button onclick="scanFood()">Analyze Image</button>
 <p id="aiResult">Waiting...</p>
 </div>
@@ -45,9 +54,56 @@
 
 setActive("food")
 
-// =====================
-// PROFILE-BASED AI SCORE (v8 CORE)
-// =====================
+/* =========================
+🧠 GLOBAL PROFILE SYSTEM (NEW)
+========================= */
+
+// 读取当前用户
+function getActiveProfile(){
+return JSON.parse(localStorage.getItem("activeProfile")) || {
+name:"Guest",
+id:"guest"
+}
+}
+
+// 获取所有用户
+function getProfiles(){
+return JSON.parse(localStorage.getItem("profiles")) || []
+}
+
+// 显示当前用户
+function renderActiveProfile(){
+const p = getActiveProfile()
+document.getElementById("activeProfile").innerText =
+`👤 Active Profile: ${p.name}`
+}
+
+renderActiveProfile()
+
+/* =========================
+PROFILE SAFE SAVE (NEW)
+========================= */
+
+function saveProfile(profile){
+
+let profiles = getProfiles()
+
+const index = profiles.findIndex(p => p.id === profile.id)
+
+if(index >= 0){
+profiles[index] = profile
+}else{
+profiles.push(profile)
+}
+
+localStorage.setItem("profiles", JSON.stringify(profiles))
+localStorage.setItem("activeProfile", JSON.stringify(profile))
+}
+
+/* =========================
+MEAL SCORING
+========================= */
+
 function calculateMealScore(food){
 
 let score = 50
@@ -67,11 +123,11 @@ if(score >= 50) return "OK"
 return "BAD"
 }
 
-// =====================
-// MOCK AI (v8 fallback)
-// =====================
-function mockAI(){
+/* =========================
+MOCK AI
+========================= */
 
+function mockAI(){
 return {
 food:"unknown meal",
 calories:500,
@@ -80,33 +136,31 @@ carbs:60,
 fat:20,
 confidence:0.4
 }
-
 }
 
-// =====================
-// SAFE FETCH
-// =====================
+/* =========================
+SAFE FETCH
+========================= */
+
 async function safeFetch(url, options){
 
 try{
-
 const res = await fetch(url, options)
-const data = await res.json().catch(()=>null)
-
+const data = await res.json()
 return data || { result: mockAI() }
-
 }catch(e){
-
 return { result: mockAI() }
-
 }
 
 }
 
-// =====================
-// MANUAL INPUT
-// =====================
+/* =========================
+MANUAL FOOD INPUT (PROFILE AWARE)
+========================= */
+
 async function addFoodManual(){
+
+const profile = getActiveProfile()
 
 const food = document.getElementById("foodInput").value.trim()
 if(!food) return
@@ -119,10 +173,11 @@ if(food.includes("milo")) cal = 180
 const today = new Date().toISOString().split("T")[0]
 
 document.getElementById("log").innerHTML +=
-`<p>🍽 ${food} - ${cal} kcal</p>`
+`<p>👤 ${profile.name} - 🍽 ${food} - ${cal} kcal</p>`
 
 if(typeof saveFood !== "undefined"){
 await saveFood({
+userId: profile.id,   // ✅ IMPORTANT FIX
 food,
 calories: cal,
 protein: 10,
@@ -135,10 +190,13 @@ date: today
 
 }
 
-// =====================
-// AI SCAN v8 ENGINE
-// =====================
+/* =========================
+AI SCAN ENGINE (PROFILE AWARE)
+========================= */
+
 async function scanFood(){
+
+const profile = getActiveProfile()
 
 const file = document.getElementById("foodImage").files[0]
 
@@ -174,9 +232,6 @@ fat: raw.fat || 0,
 confidence: raw.confidence || 0.5
 }
 
-// =====================
-// v8 CORE LOGIC
-// =====================
 food.score = calculateMealScore(food)
 food.healthTag = getHealthTag(food.score)
 
@@ -185,15 +240,14 @@ const today = new Date().toISOString().split("T")[0]
 if(typeof saveFood !== "undefined"){
 await saveFood({
 ...food,
+userId: profile.id,   // ✅ MULTI USER FIX
 date: today
 })
 }
 
-// =====================
-// UI
-// =====================
 document.getElementById("aiResult").innerHTML =
-`🍽 Food: ${food.food}
+`👤 ${profile.name}
+🍽 Food: ${food.food}
 🔥 Calories: ${food.calories}
 💪 Protein: ${food.protein}
 🍞 Carbs: ${food.carbs}
