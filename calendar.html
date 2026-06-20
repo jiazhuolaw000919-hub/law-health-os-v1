@@ -129,7 +129,22 @@ calories = 0
 
 let score = calculateHealthScore(calories,0)
 
+let score = calculateHealthScore(calories,0)
+
 let color = ""
+
+if(calories > 2800){
+color = "red"
+}
+else if(score >= 80){
+color = "green"
+}
+else if(score >= 50){
+color = "yellow"
+}
+else{
+color = "red"
+}
 if(score>=80) color="green"
 else if(score>=50) color="yellow"
 else color="red"
