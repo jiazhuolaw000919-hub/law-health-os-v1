@@ -196,20 +196,36 @@ reader.readAsDataURL(file)
 // =====================
 async function analyzeFoodImage(imageBase64){
 
-const res = await fetch("/api/ai",{
-method:"POST",
-headers:{
-"Content-Type":"application/json"
-},
-body:JSON.stringify({
-image:imageBase64
-})
+const res = await fetch("/api/ai", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json"
+  },
+  body: JSON.stringify({
+    image: imageBase64
+  })
 })
 
 const data = await res.json()
 
-return data.result
+// ✅ FIX 1: 防止 undefined crash
+if (!data) {
+  throw new Error("No response from AI API")
 }
+
+// ✅ FIX 2: 统一返回结构
+if (data.result) return data.result
+if (data.error) throw new Error(data.error)
+
+// fallback
+return {
+  food: "unknown",
+  calories: 0
+}
+}
+
+l
+  }
 
 </script>
 
