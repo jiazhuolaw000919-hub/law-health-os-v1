@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>AI Calendar v3</title>
+<title>AI Calendar v3 FIXED</title>
 
 <link rel="stylesheet" href="style.css">
 
@@ -11,8 +11,6 @@
 <script src="supabase.js"></script>
 
 <style>
-/* ===== v3 heatmap enhancement ===== */
-
 .grid{
 display:grid;
 grid-template-columns:repeat(7,1fr);
@@ -31,11 +29,8 @@ box-shadow:0 1px 3px rgba(0,0,0,.05);
 transition:0.2s;
 }
 
-.day:hover{
-transform:scale(1.05);
-}
+.day:hover{ transform:scale(1.05); }
 
-/* heat levels */
 .low{ background:#dcfce7; }
 .mid{ background:#fef9c3; }
 .high{ background:#fee2e2; }
@@ -83,12 +78,12 @@ border:1px solid #ddd;
 <a href="profile.html">Profile</a>
 </div>
 
-<h2 class="center">📅 AI Calendar v3</h2>
+<h2 class="center">📅 AI Calendar v3 FIXED</h2>
 
 <!-- MONTH CONTROL -->
 <div class="card">
-
 <div class="month-bar">
+
 <button class="arrow" onclick="changeMonth(-1)">‹</button>
 
 <div class="selectors">
@@ -97,8 +92,8 @@ border:1px solid #ddd;
 </div>
 
 <button class="arrow" onclick="changeMonth(1)">›</button>
-</div>
 
+</div>
 </div>
 
 <!-- SUMMARY -->
@@ -110,27 +105,12 @@ border:1px solid #ddd;
 <div class="grid" id="grid"></div>
 
 <!-- MODAL -->
-<div id="modal" style="
-display:none;
-position:fixed;
-top:0;left:0;right:0;bottom:0;
-background:rgba(0,0,0,0.5);
-align-items:center;
-justify-content:center;
-">
-
-<div style="
-background:white;
-padding:20px;
-border-radius:12px;
-width:300px;
-">
-
+<div id="modal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;
+background:rgba(0,0,0,0.5);align-items:center;justify-content:center;">
+<div style="background:white;padding:20px;border-radius:12px;width:300px;">
 <h3 id="modalDate"></h3>
 <p id="modalCalories"></p>
-
 <button onclick="closeModal()">Close</button>
-
 </div>
 </div>
 
@@ -143,14 +123,9 @@ const monthSelect = document.getElementById("monthSelect")
 const yearSelect = document.getElementById("yearSelect")
 
 let dateObj = new Date()
-let cache = {}
 
-function formatDate(y,m,d){
-return `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`
-}
-
-// ================= INIT DROPDOWN =================
-function init(){
+// ================= INIT DROPDOWNS (FIXED ONCE ONLY) =================
+function initDropdowns(){
 
 monthSelect.innerHTML = ""
 yearSelect.innerHTML = ""
@@ -174,28 +149,43 @@ monthSelect.value = dateObj.getMonth()
 yearSelect.value = dateObj.getFullYear()
 }
 
-// ================= COLOR LOGIC =================
-function getHeatClass(cal){
+// ================= SAFE CALORIE =================
+async function getCalories(date){
 
+let cal = 0
+
+try{
+if(typeof getFoodLogs !== "undefined"){
+const foods = await getFoodLogs(date) || []
+foods.forEach(f => cal += Number(f.calories || 0))
+}
+}catch(e){}
+
+return cal
+}
+
+// ================= COLOR =================
+function getHeatClass(cal){
 if(cal > 3000) return "veryhigh"
 if(cal > 2500) return "high"
 if(cal > 2000) return "mid"
 return "low"
 }
 
-// ================= LOAD =================
+// ================= LOAD CALENDAR (FIXED) =================
 async function load(){
 
 grid.innerHTML = ""
 
-let year = +yearSelect.value
-let month = +monthSelect.value
+let year = parseInt(yearSelect.value)
+let month = parseInt(monthSelect.value)
+
+if(isNaN(year) || isNaN(month)) return
 
 let first = new Date(year,month,1).getDay()
 let days = new Date(year,month+1,0).getDate()
 
 let total = 0
-let data = []
 
 for(let i=0;i<first;i++){
 grid.innerHTML += "<div></div>"
@@ -203,17 +193,10 @@ grid.innerHTML += "<div></div>"
 
 for(let d=1; d<=days; d++){
 
-let date = formatDate(year,month,d)
+let date = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`
 
-let foods = []
-let cal = 0
+let cal = await getCalories(date)
 
-try{
-foods = await getFoodLogs(date) || []
-foods.forEach(f=> cal += +f.calories)
-}catch(e){}
-
-data.push(cal)
 total += cal
 
 let div = document.createElement("div")
@@ -224,9 +207,7 @@ div.innerHTML = `
 ${cal} kcal
 `
 
-div.onclick = ()=>{
-openModal(date,cal)
-}
+div.onclick = ()=> openModal(date,cal)
 
 grid.appendChild(div)
 }
@@ -235,14 +216,13 @@ let avg = total / days || 0
 
 document.getElementById("summary").innerText =
 `Avg: ${avg.toFixed(0)} kcal | Days: ${days}`
-
 }
 
 // ================= MONTH CONTROL =================
 function changeMonth(v){
 
-let m = +monthSelect.value
-let y = +yearSelect.value
+let m = parseInt(monthSelect.value)
+let y = parseInt(yearSelect.value)
 
 m += v
 
@@ -260,7 +240,6 @@ yearSelect.onchange = load
 
 // ================= MODAL =================
 function openModal(date,cal){
-
 document.getElementById("modal").style.display = "flex"
 document.getElementById("modalDate").innerText = date
 document.getElementById("modalCalories").innerText = cal + " kcal"
@@ -270,8 +249,8 @@ function closeModal(){
 document.getElementById("modal").style.display = "none"
 }
 
-// ================= START =================
-init()
+// ================= START (ORDER FIXED) =================
+initDropdowns()
 load()
 
 </script>
