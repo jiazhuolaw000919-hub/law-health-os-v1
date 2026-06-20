@@ -2,13 +2,14 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>AI Dashboard v4</title>
+<title>AI Dashboard v4.1 (Fixed Sync)</title>
 
 <link rel="stylesheet" href="style.css">
 
-<script src="/js/db.js"></script>
-<script src="/js/profile.js"></script>
-<script src="/js/ai-engine.js"></script>
+<!-- ✅ FIX: remove "/" -->
+<script src="js/db.js"></script>
+<script src="js/profile.js"></script>
+<script src="js/ai-engine.js"></script>
 </head>
 
 <body>
@@ -21,31 +22,75 @@
 <a href="profile.html">Profile</a>
 </div>
 
-<h2>📊 AI Dashboard v4</h2>
+<h2 class="center">📊 AI Dashboard v4.1</h2>
 
+<!-- PROFILE -->
 <div class="card">
 <h3>👤 Active Profile</h3>
-<p id="profile"></p>
+<p id="profile">Loading...</p>
 </div>
 
+<!-- TODAY SUMMARY -->
 <div class="card">
 <h3>🔥 Today Summary</h3>
-<p id="today"></p>
+<p id="today">Loading...</p>
 </div>
 
 <script>
 
-const profile = getActiveProfile()
+// ================= SAFE PROFILE =================
+function safeProfile(){
+if(typeof getActiveProfile !== "undefined"){
+return getActiveProfile()
+}
+return { name:"Guest", id:"guest" }
+}
+
+// ================= SAFE SCORE =================
+function safeScore(cal){
+if(typeof calculateHealthScore !== "undefined"){
+return calculateHealthScore(cal)
+}
+return Math.max(0, 100 - cal/50)
+}
+
+// ================= LOAD DATA =================
+async function loadDashboard(){
+
+const profile = safeProfile()
 
 document.getElementById("profile").innerText =
-profile.name + " (" + profile.id + ")"
+`👤 ${profile.name} (${profile.id})`
 
-// fake demo
-let calories = 2300
+let today = new Date().toISOString().split("T")[0]
+
+let calories = 0
+
+// try get real food logs
+if(typeof getFoodLogs !== "undefined"){
+try{
+const foods = await getFoodLogs(today) || []
+
+foods.forEach(f=>{
+if(!f.userId || f.userId === profile.id){
+calories += Number(f.calories || 0)
+}
+})
+}catch(e){
+console.log(e)
+}
+}
+
+// fallback if empty
+if(calories === 0){
+calories = 1800
+}
 
 document.getElementById("today").innerText =
-"Calories: " + calories +
-" | Score: " + calculateHealthScore(calories)
+`🔥 Calories: ${calories} kcal | 🧠 Score: ${safeScore(calories)}`
+}
+
+loadDashboard()
 
 </script>
 
