@@ -1,7 +1,4 @@
-function calcScore(cal,burn){
-
-cal = cal || 0
-burn = burn || 0
+function calcScore(cal, burn){
 
 let score = 100
 
@@ -12,23 +9,17 @@ if(cal < 1200) score -= 10
 
 score += burn * 0.05
 
-return Math.max(0,Math.min(100,score))
+return Math.max(0, Math.min(100, score))
 }
 
 function status(score){
-if(score>=80) return "🟢 Healthy"
-if(score>=50) return "🟡 Normal"
+if(score > 80) return "🟢 Healthy"
+if(score > 50) return "🟡 Normal"
 return "🔴 Risk"
 }
 
 function workoutAdvice(cal){
-if(cal>2600) return "🔥 HIIT + 40min walk"
-if(cal>2200) return "🚶 30min walk"
-return "🧘 light workout"
-}
-
-function predictWeight(weight,avgCal){
-let diff = avgCal - 1800
-let daily = diff / 7700
-return (weight + daily*30).toFixed(1)
+if(cal > 2600) return "HIIT + walk"
+if(cal > 2200) return "30 min walk"
+return "light workout"
 }
