@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Profile</title>
+
+<link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+<div class="nav">
+<a href="index.html">Home</a>
+<a href="calendar.html">Calendar</a>
+<a href="food.html">Food</a>
+<a href="workout.html">Workout</a>
+<a href="profile.html">Profile</a>
+<a href="report.html">Report</a>
+</div>
+
+<div class="card">
+<h2>👤 Profile Setup</h2>
+
+<input id="name" placeholder="Name">
+<input id="age" placeholder="Age">
+<input id="weight" placeholder="Weight (kg)">
+<input id="goal" placeholder="Goal (lose / gain / maintain)">
+
+<button onclick="saveProfile()">Save</button>
+
+<p id="status"></p>
+</div>
+
+<script>
+
+function saveProfile(){
+
+const profile = {
+name: document.getElementById("name").value,
+age: document.getElementById("age").value,
+weight: document.getElementById("weight").value,
+goal: document.getElementById("goal").value
+}
+
+localStorage.setItem("profile", JSON.stringify(profile))
+
+document.getElementById("status").innerText =
+"Saved ✔"
+}
+
+</script>
+
+</body>
+</html>
