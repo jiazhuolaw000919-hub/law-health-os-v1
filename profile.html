@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Profile v10.6 System</title>
+<title>Profile v10.7 System</title>
 
 <link rel="stylesheet" href="style.css">
 
@@ -20,14 +20,16 @@
 <a href="profile.html">Profile</a>
 </div>
 
-<h2 class="center">👤 Profile System v10.6</h2>
+<h2 class="center">👤 Profile System v10.7</h2>
 
-<!-- CREATE PROFILE -->
+<!-- CREATE -->
 <div class="card">
 
 <h3>Create Profile</h3>
 
 <input id="name" placeholder="Name">
+<input id="height" placeholder="Height (cm)">
+<input id="weight" placeholder="Weight (kg)">
 
 <br><br>
 
@@ -39,13 +41,13 @@
 
 </div>
 
-<!-- ACTIVE PROFILE -->
+<!-- ACTIVE -->
 <div class="card">
 <h3>Active Profile</h3>
 <p id="activeProfile">Loading...</p>
 </div>
 
-<!-- PROFILE LIST -->
+<!-- LIST -->
 <div class="card">
 <h3>All Profiles</h3>
 <div id="profileList"></div>
@@ -53,25 +55,34 @@
 
 <script>
 
-/* =========================
-SAFE CORE
-========================= */
-
+// ================= SAFE CORE =================
 function getProfiles(){
 return JSON.parse(localStorage.getItem("profiles")) || []
 }
 
 function getActiveProfile(){
-return JSON.parse(localStorage.getItem("activeProfile")) || {id:"guest", name:"Guest"}
+return JSON.parse(localStorage.getItem("activeProfile")) || {
+id:"guest",
+name:"Guest",
+height:170,
+weight:70
+}
 }
 
-/* =========================
-CREATE PROFILE
-========================= */
+// ================= BMI =================
+function calcBMI(h,w){
+h = Number(h || 170)
+w = Number(w || 70)
+return (w / ((h/100)*(h/100))).toFixed(1)
+}
 
+// ================= CREATE PROFILE (v10.7 FIXED) =================
 function createNewProfile(){
 
 const name = document.getElementById("name").value.trim()
+const height = document.getElementById("height").value
+const weight = document.getElementById("weight").value
+
 if(!name){
 alert("Enter name")
 return
@@ -79,9 +90,14 @@ return
 
 let profiles = getProfiles()
 
+const bmi = calcBMI(height, weight)
+
 const newProfile = {
 id: Date.now().toString(),
-name:name
+name:name,
+height:Number(height || 170),
+weight:Number(weight || 70),
+bmi:Number(bmi)
 }
 
 profiles.push(newProfile)
@@ -92,10 +108,7 @@ localStorage.setItem("activeProfile", JSON.stringify(newProfile))
 render()
 }
 
-/* =========================
-SWITCH PROFILE
-========================= */
-
+// ================= SWITCH =================
 function switchProfile(id){
 
 const profile = getProfiles().find(p=>p.id===id)
@@ -106,48 +119,44 @@ render()
 }
 }
 
-/* =========================
-DELETE PROFILE
-========================= */
-
+// ================= DELETE (SAFE FIX) =================
 function deleteProfile(id){
 
-let profiles = getProfiles()
-
-profiles = profiles.filter(p => p.id !== id)
+let profiles = getProfiles().filter(p => p.id !== id)
 
 localStorage.setItem("profiles", JSON.stringify(profiles))
 
-const active = getActiveProfile()
+let active = getActiveProfile()
 
-if(active.id === id){
-const fallback = profiles[0] || {id:"guest", name:"Guest"}
+if(!profiles.length){
+const fallback = {
+id:"guest",
+name:"Guest",
+height:170,
+weight:70,
+bmi: calcBMI(170,70)
+}
 localStorage.setItem("activeProfile", JSON.stringify(fallback))
+}else if(active.id === id){
+localStorage.setItem("activeProfile", JSON.stringify(profiles[0]))
 }
 
 render()
 }
 
-/* =========================
-FULL CREATE PAGE
-========================= */
-
+// ================= NAV =================
 function goCreatePage(){
 window.location.href = "create-profile.html"
 }
 
-/* =========================
-RENDER UI
-========================= */
-
+// ================= RENDER =================
 function render(){
 
-// active
 const active = getActiveProfile()
-document.getElementById("activeProfile").innerText =
-`👤 Active: ${active.name}`
 
-// list
+document.getElementById("activeProfile").innerText =
+`👤 ${active.name} | BMI: ${active.bmi || calcBMI(active.height, active.weight)}`
+
 const list = document.getElementById("profileList")
 list.innerHTML = ""
 
@@ -158,6 +167,8 @@ div.className = "card"
 
 div.innerHTML = `
 <b>${p.name}</b>
+<br>
+BMI: ${p.bmi || calcBMI(p.height,p.weight)}
 
 <br><br>
 
@@ -168,14 +179,10 @@ Delete
 `
 
 list.appendChild(div)
-
 })
 }
 
-/* =========================
-INIT
-========================= */
-
+// ================= INIT =================
 render()
 
 </script>
