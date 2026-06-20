@@ -58,6 +58,32 @@ const grid = document.getElementById("grid")
 let dateObj = new Date()
 
 const monthSelect = document.getElementById("monthSelect")
+function initDropdowns(){
+
+monthSelect.innerHTML = ""
+yearSelect.innerHTML = ""
+
+for(let m=0;m<12;m++){
+const opt = document.createElement("option")
+opt.value = m
+opt.innerText = new Date(0,m).toLocaleString('default',{month:'long'})
+monthSelect.appendChild(opt)
+}
+
+const currentYear = new Date().getFullYear()
+
+for(let y=currentYear-3;y<=currentYear+3;y++){
+const opt = document.createElement("option")
+opt.value = y
+opt.innerText = y
+yearSelect.appendChild(opt)
+}
+
+monthSelect.value = new Date().getMonth()
+yearSelect.value = new Date().getFullYear()
+}
+initDropdowns()
+loadCalendar()
 const yearSelect = document.getElementById("yearSelect")
 
 // AI MODEL STATE
@@ -136,7 +162,7 @@ yearSelect.appendChild(opt)
 // default value
 monthSelect.value = dateObj.getMonth()
 yearSelect.value = dateObj.getFullYear()
-const month = parseInt(monthSelect.value)
+const month = parseInt(monthSelect.value || new Date().getMonth())
 
 const first = new Date(year,month,1).getDay()
 const days = new Date(year,month+1,0).getDate()
@@ -157,14 +183,13 @@ const date = formatDate(year,month,d)
 let calories = 0
 
 try{
-if(typeof getFoodLogs !== "undefined"){
 let foods = []
 
-try {
+try{
 if(typeof getFoodLogs !== "undefined"){
 foods = await getFoodLogs(date) || []
 }
-} catch(e) {
+}catch(e){
 foods = []
 }
 
