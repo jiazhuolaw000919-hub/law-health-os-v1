@@ -89,3 +89,35 @@ console.log("Supabase error:", e)
 
 </body>
 </html>
+
+<div class="card">
+<h3>📸 Food AI Scanner</h3>
+
+<input type="file" accept="image/*" id="img">
+
+<br><br>
+
+<button onclick="scanFood()">Analyze Food</button>
+
+<p id="result"></p>
+</div>
+
+<script>
+
+function scanFood(){
+
+const file = document.getElementById("img").files[0]
+
+if(!file){
+alert("Please select image")
+return
+}
+
+// 🧠 模拟 AI（以后可换 OpenAI Vision）
+const fakeAI = "Chicken Rice"
+
+document.getElementById("result").innerText =
+"AI Detected: " + fakeAI + " (~650 kcal)"
+}
+
+</script>
