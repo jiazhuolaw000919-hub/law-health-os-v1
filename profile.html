@@ -1,140 +1,142 @@
 <!DOCTYPE html>
-
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Profile v10.5 Full Sync</title>
+<title>Profile v10.6</title>
 
 <link rel="stylesheet" href="style.css">
-
 <script src="app.js"></script>
-
-<script src="js/db.js"></script>
-
-<script src="js/profile.js"></script>
-
-<script src="js/ai-engine.js"></script>
-
 </head>
 
 <body>
 
 <div class="nav">
 <a href="index.html">Home</a>
-<a href="calendar.html">Calendar</a>
 <a href="food.html">Food</a>
-<a href="workout.html">Workout</a>
-<a href="shopping.html">Shop</a>
+<a href="calendar.html">Calendar</a>
 <a href="report.html">Report</a>
 <a href="profile.html">Profile</a>
 </div>
 
-<h2 style="text-align:center">
-👤 Profile v10.5 Full Sync
-</h2>
+<h2 class="center">👤 Profile System v10.6</h2>
 
+<!-- CREATE BUTTON -->
 <div class="card">
-<h3>Current Active Profile</h3>
-<p id="activeProfile">
-No Profile
-</p>
-</div>
-
-<div class="card">
-<h3>Switch Profile</h3>
-
-<select id="profileSelect">
-</select>
-
-<br><br>
-
-<button onclick="switchProfile()">
-Switch Profile
+<button onclick="goCreateProfile()">
+➕ Create New Profile
 </button>
-
 </div>
 
+<!-- ACTIVE PROFILE -->
 <div class="card">
-
-<h3>Create New Profile</h3>
-
-<input id="name" placeholder="Name">
-
-<br><br>
-
-<select id="gender">
-<option>Male</option>
-<option>Female</option>
-</select>
-
-<br><br>
-
-<input id="age"
-type="number"
-placeholder="Age">
-
-<br><br>
-
-<input id="height"
-type="number"
-placeholder="Height (cm)">
-
-<br><br>
-
-<input id="weight"
-type="number"
-placeholder="Weight (kg)">
-
-<br><br>
-
-<input id="goalWeight"
-type="number"
-placeholder="Goal Weight (kg)">
-
-<br><br>
-
-<button onclick="saveProfileData()">
-Save Profile
-</button>
-
+<h3>Active Profile</h3>
+<p id="activeBox"></p>
 </div>
 
+<!-- PROFILE LIST -->
 <div class="card">
-<h3>BMI Analysis</h3>
-<p id="bmiBox">-</p>
-</div>
-
-<div class="card">
-<h3>AI Recommendation</h3>
-<p id="aiAdvice">-</p>
-</div>
-
-<div class="card">
-<button onclick="location.href='index.html'">
-🏠 Return Dashboard
-</button>
+<h3>All Profiles</h3>
+<div id="list"></div>
 </div>
 
 <script>
 
+/* =====================
+PROFILE CORE
+===================== */
+
 function getProfiles(){
-return JSON.parse(
-localStorage.getItem("profiles")
-) || []
+return JSON.parse(localStorage.getItem("profiles")) || []
 }
 
 function getActiveProfile(){
-return JSON.parse(
-localStorage.getItem("activeProfile")
-) || null
+return JSON.parse(localStorage.getItem("activeProfile")) || null
 }
 
-function setActiveProfile(profile){
-localStorage.setItem(
-"activeProfile",
-JSON.stringify(profile)
-)
+/* =====================
+NAV TO CREATE PAGE
+===================== */
+function goCreateProfile(){
+window.location.href = "profile-create.html"
 }
+
+/* =====================
+SWITCH PROFILE
+===================== */
+function switchProfile(id){
+
+const profiles = getProfiles()
+const p = profiles.find(x => x.id === id)
+
+if(p){
+localStorage.setItem("activeProfile", JSON.stringify(p))
+render()
+}
+}
+
+/* =====================
+DELETE PROFILE (NEW)
+===================== */
+function deleteProfile(id){
+
+let profiles = getProfiles()
+
+profiles = profiles.filter(p => p.id !== id)
+
+localStorage.setItem("profiles", JSON.stringify(profiles))
+
+// 如果删掉的是当前用户 → 自动切换第一个
+const active = getActiveProfile()
+
+if(active && active.id === id){
+localStorage.setItem("activeProfile", JSON.stringify(profiles[0] || null))
+}
+
+render()
+}
+
+/* =====================
+RENDER UI
+===================== */
+function render(){
+
+const active = getActiveProfile()
+document.getElementById("activeBox").innerText =
+active ? active.name : "No active profile"
+
+const list = document.getElementById("list")
+list.innerHTML = ""
+
+getProfiles().forEach(p => {
+
+const div = document.createElement("div")
+div.className = "card"
+
+div.innerHTML = `
+<p><b>${p.name}</b></p>
+<p>ID: ${p.id}</p>
+
+<button onclick="switchProfile('${p.id}')">
+Switch
+</button>
+
+<button onclick="deleteProfile('${p.id}')"
+style="background:red;color:white;margin-left:10px">
+Delete
+</button>
+`
+
+list.appendChild(div)
+})
+
+}
+
+render()
+
+</script>
+
+</body>
+</html>}
 
 function calculateBMI(height, weight){
 
