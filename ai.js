@@ -63,3 +63,20 @@ return "🟡 Try more protein + light exercise today."
 
 return "🔴 High risk day. Reduce carbs + go for a walk."
 }
+
+function calorieInsight(calories){
+
+if(calories < 1500){
+return "⚠️ Too low intake"
+}
+
+if(calories < 2000){
+return "🟢 Balanced intake"
+}
+
+if(calories < 2500){
+return "🟡 Slightly high"
+}
+
+return "🔴 Overeating risk"
+}
