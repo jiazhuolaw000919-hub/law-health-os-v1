@@ -2,12 +2,13 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Profile v10.8 System</title>
+<title>Profile v10.9 System</title>
 
 <link rel="stylesheet" href="style.css">
 
 <script src="app.js"></script>
-<script src="profile.js"></script>
+<script src="supabase.js"></script>
+<script src="js/db.js"></script>
 </head>
 
 <body>
@@ -20,12 +21,11 @@
 <a href="profile.html">Profile</a>
 </div>
 
-<h2 class="center">👤 Profile System v10.8</h2>
+<h2 class="center">👤 Profile System v10.9 (Cloud Ready)</h2>
 
 <!-- CREATE -->
 <div class="card">
-
-<h3>Create Profile</h3>
+<h3>Create / Update Profile</h3>
 
 <input id="name" placeholder="Name">
 <input id="height" placeholder="Height (cm)">
@@ -33,12 +33,7 @@
 
 <br><br>
 
-<button onclick="createNewProfile()">➕ Create Profile</button>
-
-<br><br>
-
-<button onclick="goCreatePage()">📄 Full Create Page</button>
-
+<button onclick="createOrUpdateProfile()">➕ Save Profile</button>
 </div>
 
 <!-- ACTIVE -->
@@ -47,7 +42,13 @@
 <p id="activeProfile">Loading...</p>
 </div>
 
-<!-- LIST -->
+<!-- HISTORY -->
+<div class="card">
+<h3>Weight History (Last 30 days)</h3>
+<div id="history"></div>
+</div>
+
+<!-- ALL -->
 <div class="card">
 <h3>All Profiles</h3>
 <div id="profileList"></div>
@@ -55,7 +56,7 @@
 
 <script>
 
-// ================= SAFE CORE =================
+/* ================= SAFE STORAGE ================= */
 function getProfiles(){
 return JSON.parse(localStorage.getItem("profiles")) || []
 }
@@ -70,68 +71,82 @@ weightHistory:[]
 }
 }
 
-// ================= BMI ENGINE (DYNAMIC) =================
+/* ================= BMI ENGINE ================= */
 function calcBMI(h,w){
 h = Number(h || 170)
 w = Number(w || 70)
 return (w / ((h/100)*(h/100))).toFixed(1)
 }
 
-// ================= WEIGHT TRACKER (NEW v10.8) =================
-function addWeightHistory(profile, weight){
+/* ================= WEIGHT TRACKER ================= */
+function updateWeightHistory(profile){
 
 let history = profile.weightHistory || []
 
 history.push({
 date: new Date().toISOString().split("T")[0],
-weight: Number(weight)
+weight: Number(profile.weight || 70)
 })
 
-profile.weightHistory = history.slice(-30) // keep last 30 days
+profile.weightHistory = history.slice(-30)
 
 return profile
 }
 
-// ================= CREATE PROFILE =================
-function createNewProfile(){
-
-const name = document.getElementById("name").value.trim()
-const height = document.getElementById("height").value
-const weight = document.getElementById("weight").value
-
-if(!name){
-alert("Enter name")
-return
-}
+/* ================= CORE SAVE ================= */
+function saveProfileToLocal(profile){
 
 let profiles = getProfiles()
 
-let newProfile = {
-id: Date.now().toString(),
-name:name,
-height:Number(height || 170),
-weight:Number(weight || 70),
-weightHistory:[]
+let index = profiles.findIndex(p => p.id === profile.id)
+
+if(index >= 0){
+profiles[index] = profile
+}else{
+profiles.push(profile)
 }
 
-// add initial weight record
-newProfile = addWeightHistory(newProfile, weight)
-
-newProfile.bmi = calcBMI(newProfile.height, newProfile.weight)
-
-profiles.push(newProfile)
-
 localStorage.setItem("profiles", JSON.stringify(profiles))
-localStorage.setItem("activeProfile", JSON.stringify(newProfile))
+localStorage.setItem("activeProfile", JSON.stringify(profile))
+}
+
+/* ================= CREATE OR UPDATE ================= */
+function createOrUpdateProfile(){
+
+const name = document.getElementById("name").value.trim()
+const height = Number(document.getElementById("height").value)
+const weight = Number(document.getElementById("weight").value)
+
+if(!name){
+alert("Name required")
+return
+}
+
+let profile = getActiveProfile()
+
+if(profile.id === "guest"){
+profile.id = Date.now().toString()
+}
+
+profile.name = name
+profile.height = height || 170
+profile.weight = weight || 70
+
+profile.bmi = calcBMI(profile.height, profile.weight)
+
+// 🧠 IMPORTANT: attach history
+profile = updateWeightHistory(profile)
+
+saveProfileToLocal(profile)
 
 render()
 }
 
-// ================= SWITCH =================
+/* ================= SWITCH ================= */
 function switchProfile(id){
 
-const profiles = getProfiles()
-const profile = profiles.find(p=>p.id===id)
+let profiles = getProfiles()
+let profile = profiles.find(p => p.id === id)
 
 if(profile){
 localStorage.setItem("activeProfile", JSON.stringify(profile))
@@ -139,69 +154,77 @@ render()
 }
 }
 
-// ================= DELETE =================
+/* ================= DELETE ================= */
 function deleteProfile(id){
 
 let profiles = getProfiles().filter(p => p.id !== id)
 
 localStorage.setItem("profiles", JSON.stringify(profiles))
 
-let active = getActiveProfile()
+if(profiles.length === 0){
 
-if(!profiles.length){
-
-const fallback = {
+let fallback = {
 id:"guest",
 name:"Guest",
 height:170,
 weight:70,
-bmi: calcBMI(170,70),
+bmi:calcBMI(170,70),
 weightHistory:[]
 }
 
 localStorage.setItem("activeProfile", JSON.stringify(fallback))
 
-}else if(active.id === id){
-
+}else{
 localStorage.setItem("activeProfile", JSON.stringify(profiles[0]))
-
 }
 
 render()
 }
 
-// ================= NAV =================
-function goCreatePage(){
-window.location.href = "create-profile.html"
+/* ================= RENDER HISTORY ================= */
+function renderHistory(){
+
+let active = getActiveProfile()
+let box = document.getElementById("history")
+
+if(!active.weightHistory || active.weightHistory.length === 0){
+box.innerHTML = "<p>No history</p>"
+return
 }
 
-// ================= RENDER =================
+box.innerHTML = active.weightHistory.map(h=>{
+return `<p>📅 ${h.date} — ${h.weight} kg</p>`
+}).join("")
+}
+
+/* ================= RENDER ================= */
 function render(){
 
-const active = getActiveProfile()
+let active = getActiveProfile()
 
 let bmi = calcBMI(active.height, active.weight)
 
-document.getElementById("activeProfile").innerText =
-`👤 ${active.name} | BMI: ${bmi} | Weight: ${active.weight}kg`
+document.getElementById("activeProfile").innerHTML =
+`👤 <b>${active.name}</b><br>
+Height: ${active.height} cm<br>
+Weight: ${active.weight} kg<br>
+BMI: ${bmi}`
 
-const list = document.getElementById("profileList")
+let list = document.getElementById("profileList")
 list.innerHTML = ""
 
 getProfiles().forEach(p=>{
 
 let bmiVal = calcBMI(p.height, p.weight)
 
-const div = document.createElement("div")
+let div = document.createElement("div")
 div.className = "card"
 
 div.innerHTML = `
-<b>${p.name}</b>
-<br>
-Height: ${p.height} cm | Weight: ${p.weight} kg
-<br>
+<b>${p.name}</b><br>
+Height: ${p.height} cm<br>
+Weight: ${p.weight} kg<br>
 BMI: ${bmiVal}
-
 <br><br>
 
 <button onclick="switchProfile('${p.id}')">Switch</button>
@@ -212,9 +235,11 @@ Delete
 
 list.appendChild(div)
 })
+
+renderHistory()
 }
 
-// ================= INIT =================
+/* ================= INIT ================= */
 render()
 
 </script>
