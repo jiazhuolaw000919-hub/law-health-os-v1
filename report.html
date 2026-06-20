@@ -6,7 +6,6 @@
 
 <link rel="stylesheet" href="style.css">
 <script src="ai.js"></script>
-<script src="app.js"></script>
 </head>
 
 <body>
@@ -20,25 +19,14 @@
 <a href="report.html">Report</a>
 </div>
 
-<h2 style="text-align:center">📊 Weekly Report</h2>
-
 <div class="card">
 
 <script>
 
-setActive("report")
+let score = calcScore(2000,300)
 
-let cal = 2200
-let burn = 300
-
-let score = calcScore(cal, burn)
-
-document.write(`
-<p>Calories avg: ${cal}</p>
-<p>Burn avg: ${burn}</p>
-<p>AI Score: ${Math.round(score)}</p>
-<p>Status: ${status(score)}</p>
-`)
+document.write("Score: " + score + "<br>")
+document.write(status(score))
 
 </script>
 
