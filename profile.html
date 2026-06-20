@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Profile v10.9 System</title>
+<title>Profile v10.9 System (Stable FIX)</title>
 
 <link rel="stylesheet" href="style.css">
 
@@ -71,14 +71,14 @@ weightHistory:[]
 }
 }
 
-/* ================= BMI ENGINE ================= */
+/* ================= BMI ================= */
 function calcBMI(h,w){
 h = Number(h || 170)
 w = Number(w || 70)
 return (w / ((h/100)*(h/100))).toFixed(1)
 }
 
-/* ================= WEIGHT TRACKER ================= */
+/* ================= WEIGHT HISTORY ================= */
 function updateWeightHistory(profile){
 
 let history = profile.weightHistory || []
@@ -88,7 +88,6 @@ date: new Date().toISOString().split("T")[0],
 weight: Number(profile.weight || 70)
 })
 
-// keep last 30 entries only
 profile.weightHistory = history.slice(-30)
 
 return profile
@@ -136,7 +135,6 @@ profile.weight = weight || 70
 
 profile.bmi = calcBMI(profile.height, profile.weight)
 
-// add weight history
 profile = updateWeightHistory(profile)
 
 saveProfileToLocal(profile)
@@ -144,7 +142,7 @@ saveProfileToLocal(profile)
 render()
 }
 
-/* ================= SWITCH PROFILE ================= */
+/* ================= SWITCH ================= */
 function switchProfile(id){
 
 let profiles = getProfiles()
@@ -156,23 +154,26 @@ render()
 }
 }
 
-/* ================= 🔥 FIXED DELETE PROFILE ================= */
+/* ================= 🔥 FIXED DELETE PROFILE (SAFE FINAL) ================= */
 function deleteProfile(id){
 
+// ❌ block guest delete
 if(id === "guest") return
 
-let profiles = getProfiles().filter(p => p.id !== id)
+let profiles = getProfiles()
 
+// remove profile
+profiles = profiles.filter(p => p.id !== id)
+
+// save updated list
 localStorage.setItem("profiles", JSON.stringify(profiles))
 
 let active = getActiveProfile()
 
-// if deleted active profile → switch safely
-if(active && active.id === id){
+// if active deleted → fallback safely
+if(active.id === id){
 
-let newActive = profiles.length > 0
-? profiles[0]
-: {
+let fallback = profiles.length > 0 ? profiles[0] : {
 id:"guest",
 name:"Guest",
 height:170,
@@ -180,7 +181,7 @@ weight:70,
 weightHistory:[]
 }
 
-localStorage.setItem("activeProfile", JSON.stringify(newActive))
+localStorage.setItem("activeProfile", JSON.stringify(fallback))
 }
 
 render()
