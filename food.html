@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Food AI v7.0</title>
+<title>Food AI v7.1</title>
 
 <link rel="stylesheet" href="style.css">
 
@@ -24,34 +24,20 @@
 <a href="profile.html">Profile</a>
 </div>
 
-<h2 style="text-align:center">🍽 Food AI System v7.0</h2>
+<h2 style="text-align:center">🍽 Food AI v7.1</h2>
 
-<!-- FOOD INPUT -->
 <div class="card">
-
-<input id="foodInput" placeholder="e.g. chicken rice"
-style="padding:10px;width:90%">
-
+<input id="foodInput" placeholder="e.g. chicken rice">
 <br><br>
-
-<button onclick="addFoodManual()">
-Add Food
-</button>
-
+<button onclick="addFoodManual()">Add Food</button>
 <div id="log"></div>
-
 </div>
 
-<!-- AI SCANNER -->
 <div class="card">
-<h3>📸 AI Food Scanner (v7)</h3>
-
+<h3>📸 AI Scanner (v7.1)</h3>
 <input type="file" id="foodImage">
-
 <br><br>
-
 <button onclick="scanFood()">Analyze Image</button>
-
 <p id="aiResult">Waiting...</p>
 </div>
 
@@ -59,43 +45,78 @@ Add Food
 
 setActive("food")
 
-// =============================
-// SAFE FETCH WRAPPER (v7 CORE)
-// =============================
-async function safeFetch(url, options){
+// =====================
+// MOCK FALLBACK AI
+// =====================
+function mockAI(){
+
+return {
+food: "unknown meal",
+calories: 500,
+protein: 20,
+carbs: 60,
+fat: 15,
+confidence: 0.4,
+source: "mock"
+}
+
+}
+
+// =====================
+// SAFE FETCH (timeout + fallback)
+// =====================
+async function safeFetch(url, options, timeout = 5000){
+
+return new Promise(async (resolve)=>{
+
+let done = false
+
+const timer = setTimeout(()=>{
+if(!done){
+done = true
+resolve({ error: "timeout", result: mockAI() })
+}
+}, timeout)
 
 try{
-const res = await fetch(url, options)
 
+const res = await fetch(url, options)
 const data = await res.json().catch(()=>null)
 
-if(!res.ok){
-throw new Error(data?.error || "API Error")
+clearTimeout(timer)
+
+if(!done){
+done = true
+resolve(data || { result: mockAI() })
 }
 
-return data
+}catch(e){
 
-}catch(err){
-console.log("safeFetch error:", err)
-return { error: String(err) }
+clearTimeout(timer)
+
+if(!done){
+done = true
+resolve({ error: String(e), result: mockAI() })
 }
 
 }
 
-// =============================
-// 🍽 MANUAL FOOD INPUT
-// =============================
+})
+
+}
+
+// =====================
+// MANUAL INPUT
+// =====================
 async function addFoodManual(){
 
-const input = document.getElementById("foodInput")
-const food = input.value.trim()
-
+const food = document.getElementById("foodInput").value.trim()
 if(!food) return
 
 let cal = 300
 if(food.includes("chicken")) cal = 600
-if(food.includes("milo")) cal = 180
 if(food.includes("rice")) cal = 500
+if(food.includes("milo")) cal = 180
 if(food.includes("tea")) cal = 120
 
 const today = new Date().toISOString().split("T")[0]
@@ -103,32 +124,30 @@ const today = new Date().toISOString().split("T")[0]
 document.getElementById("log").innerHTML +=
 `<p>🍽 ${food} - ${cal} kcal</p>`
 
-input.value = ""
-
-try{
 if(typeof saveFood !== "undefined"){
 await saveFood({
 food,
 calories: cal,
-date: today,
-source: "manual"
+protein: 0,
+carbs: 0,
+fat: 0,
+confidence: 1,
+source: "manual",
+date: today
 })
 }
-}catch(e){
-console.log(e)
-}
 
 }
 
-// =============================
-// 📸 AI SCAN (v7 ENGINE)
-// =============================
+// =====================
+// AI SCAN v7.1
+// =====================
 async function scanFood(){
 
 const file = document.getElementById("foodImage").files[0]
 
 if(!file){
-alert("Please upload image")
+alert("upload image")
 return
 }
 
@@ -142,84 +161,66 @@ try{
 
 const base64 = reader.result
 
-// 1. CALL AI API (SAFE)
 const res = await safeFetch("/api/ai", {
 method: "POST",
 headers: {"Content-Type":"application/json"},
 body: JSON.stringify({ image: base64 })
 })
 
-// 2. NORMALIZE RESPONSE
-let raw = res?.result || res?.data || res
+// normalize
+let raw = res?.result || res
 
 if(!raw){
-document.getElementById("aiResult").innerText =
-"⚠️ Empty AI response"
-return
+raw = mockAI()
 }
 
-// 3. SAFE PARSE
 let parsed = raw
 
 if(typeof parsed === "string"){
 try{
 parsed = JSON.parse(parsed)
 }catch(e){
-parsed = { food:"unknown", calories:0 }
+parsed = mockAI()
 }
 }
 
-// 4. FINAL SANITIZE
+// FINAL NORMALIZATION (IMPORTANT v7.1 CORE)
 parsed = {
 food: parsed.food || "unknown",
 calories: parsed.calories || 0,
 protein: parsed.protein || 0,
 carbs: parsed.carbs || 0,
-fat: parsed.fat || 0
+fat: parsed.fat || 0,
+confidence: parsed.confidence ?? 0.5,
+source: parsed.source || "ai"
 }
 
-// 5. DUPLICATE CHECK
+// save
 const today = new Date().toISOString().split("T")[0]
 
-if(typeof getFoodLogs !== "undefined"){
-
-const logs = await getFoodLogs(today) || []
-
-const exists = logs.some(f =>
-f.food === parsed.food &&
-f.source === "ai"
-)
-
-if(exists){
-document.getElementById("aiResult").innerText =
-"⚠️ Duplicate detected (ignored)"
-return
-}
-}
-
-// 6. SAVE
 if(typeof saveFood !== "undefined"){
 await saveFood({
 ...parsed,
-source: "ai",
 date: today
 })
 }
 
-// 7. UI OUTPUT
-document.getElementById("aiResult").innerText =
+// UI
+document.getElementById("aiResult").innerHTML =
 `🍽 Food: ${parsed.food}
 🔥 Calories: ${parsed.calories}
 💪 Protein: ${parsed.protein}
 🍞 Carbs: ${parsed.carbs}
-🥑 Fat: ${parsed.fat}`
+🥑 Fat: ${parsed.fat}
+🧠 Confidence: ${(parsed.confidence * 100).toFixed(0)}%
+📡 Source: ${parsed.source}`
 
 }catch(err){
 
 console.log(err)
 
 document.getElementById("aiResult").innerText =
-"AI system error (v7 safe mode)"
+"AI failed (v7.1 fallback active)"
 
 }
 
