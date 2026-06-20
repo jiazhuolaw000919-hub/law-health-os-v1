@@ -130,4 +130,32 @@ document.getElementById("result").innerText =
 <p id="result"></p>
 </div>
 
+async function scanFood(){
+
+const file = document.getElementById("foodImage").files[0]
+
+if(!file){
+alert("Please upload image")
+return
+}
+
+const reader = new FileReader()
+
+reader.onload = async function(){
+
+const base64 = reader.result
+
+document.getElementById("foodResult").innerText =
+"Analyzing..."
+
+const result = await analyzeFoodImage(base64)
+
+document.getElementById("foodResult").innerText = result
+}
+
+reader.readAsDataURL(file)
+}
+  
 </script>
+
+
