@@ -2,15 +2,14 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Report v10.7 AI Advanced</title>
+<title>Report v11.4 AI Dashboard Pro</title>
 
 <link rel="stylesheet" href="style.css">
 
 <script src="app.js"></script>
 <script src="ai.js"></script>
+<script src="ai-engine.js"></script>
 <script src="supabase.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-
 <script src="js/db.js"></script>
 <script src="js/profile.js"></script>
 <script src="js/ai-engine.js"></script>
@@ -28,99 +27,181 @@
 <a href="profile.html">Profile</a>
 </div>
 
-<h2 class="center">📊 AI Health Report v10.7</h2>
+<h2 class="center">📊 AI Health Report v11.4</h2>
 
 <div class="card">
-<p id="activeProfile">Loading profile...</p>
+<p id="activeProfile">Loading...</p>
 </div>
 
+<!-- AI INSIGHT PANEL -->
+<div class="card">
+<h3>🧠 AI Weekly Insight</h3>
+<p id="aiInsight">Loading...</p>
+</div>
+
+<!-- CALORIES -->
 <div class="card">
 <h3>🔥 Today Calories</h3>
 <p id="dailyCalories">Loading...</p>
 </div>
 
+<!-- RISK -->
 <div class="card">
-<h3>🧠 AI Weekly Summary</h3>
-<p id="summary">Loading...</p>
-</div>
-
-<div class="card">
-<h3>⚠ Risk Analysis</h3>
+<h3>⚠ Risk Level</h3>
 <p id="risk">Loading...</p>
 </div>
 
+<!-- FOOD ANALYSIS -->
 <div class="card">
-<h3>👤 Profile Comparison</h3>
-<p id="compare">Loading...</p>
+<h3>🍽 Food Pattern Analysis</h3>
+<p id="foodPattern">Loading...</p>
 </div>
 
+<!-- TOP RISK FOODS -->
 <div class="card">
-<h3>📊 Chart Preview</h3>
-<canvas id="chart" width="300" height="120"></canvas>
+<h3>☠ Top Risk Foods</h3>
+<div id="riskFoods"></div>
 </div>
 
+<!-- WEIGHT PREDICTION -->
 <div class="card">
-<h3>📄 Export AI PDF 2.0</h3>
-<button onclick="exportPDF()">Generate PDF</button>
+<h3>📈 Weight Prediction</h3>
+<p id="weightPrediction">Loading...</p>
+</div>
+
+<!-- WEEK SUMMARY -->
+<div class="card">
+<h3>📊 Weekly Summary</h3>
+<p id="weeklySummary">Loading...</p>
+</div>
+
+<!-- CHART -->
+<div class="card">
+<h3>📊 Chart</h3>
+<canvas id="chart" width="320" height="140"></canvas>
+</div>
+
+<!-- EXPORT -->
+<div class="card">
+<h3>📄 Export PDF v11.4</h3>
+<button onclick="exportPDF()">Generate Report</button>
 </div>
 
 <script>
 
-/* ================= PROFILE ================= */
 function getActiveProfile(){
 return JSON.parse(localStorage.getItem("activeProfile")) || {
 id:"guest",
 name:"Guest",
-height:170,
-weight:70
+weight:70,
+height:170
 }
 }
 
-/* ================= SAFE LOG ================= */
 async function safeGetLogs(date){
 try{
 if(typeof getFoodLogs === "undefined") return []
-const logs = await getFoodLogs(date)
+let logs = await getFoodLogs(date)
 return Array.isArray(logs) ? logs : []
 }catch(e){
 return []
 }
 }
 
-/* ================= WEEK AVG ================= */
-async function getWeeklyCalories(){
+/* ================= WEEK DATA ================= */
+async function getWeeklyData(){
 
-let total = 0
-let days = 7
+let calories = []
+let allFoods = []
 
 for(let i=0;i<7;i++){
+
 let d = new Date()
 d.setDate(d.getDate()-i)
 let date = d.toISOString().split("T")[0]
 
-let foods = await safeGetLogs(date)
+let logs = await safeGetLogs(date)
+
+let profile = getActiveProfile()
+
+logs = logs.filter(f => !f.userId || f.userId === profile.id)
+
+let sum = 0
+
+logs.forEach(f=>{
+sum += Number(f.calories || 0)
+allFoods.push(f)
+})
+
+calories.push(sum)
+}
+
+return {calories, allFoods}
+}
+
+/* ================= MAIN LOAD ================= */
+async function loadReport(){
 
 const profile = getActiveProfile()
 
-foods = foods.filter(f =>
-!f.userId || f.userId === profile.id
-)
+document.getElementById("activeProfile").innerText =
+`👤 ${profile.name}`
 
-foods.forEach(f=>{
-total += Number(f.calories || 0)
+let {calories, allFoods} = await getWeeklyData()
+
+let todayCal = calories[0] || 0
+
+/* BMI */
+let bmi = profile.weight / ((profile.height/100)**2)
+
+/* AI ENGINE */
+let aiInsight = getAIInsight(todayCal, bmi, calories, "")
+
+/* FOOD ANALYSIS */
+let pattern = analyzeFoodPreference(allFoods)
+
+/* WEEKLY AI */
+let weeklyAI = generateWeeklyAI(calories, bmi)
+
+/* RISK */
+let risk = getRiskLevel(todayCal, bmi)
+
+/* WEIGHT PREDICTION */
+let weightPrediction = predictWeight(profile.weight, todayCal)
+
+/* ================= UI ================= */
+
+document.getElementById("dailyCalories").innerText =
+todayCal + " kcal"
+
+document.getElementById("risk").innerText =
+risk.level + " " + risk.text
+
+document.getElementById("aiInsight").innerText =
+aiInsight.advice
+
+document.getElementById("foodPattern").innerText =
+"Top: " + pattern.top
+
+document.getElementById("weeklySummary").innerText =
+weeklyAI.insight
+
+document.getElementById("weightPrediction").innerText =
+weightPrediction + " kg"
+
+/* ================= RISK FOODS ================= */
+let container = document.getElementById("riskFoods")
+container.innerHTML = ""
+
+allFoods.slice(0,5).forEach(f=>{
+let div = document.createElement("div")
+div.innerHTML =
+`🍽 ${f.food} - 🔥 ${f.calories}`
+container.appendChild(div)
 })
-}
 
-return total / days
-}
-
-/* ================= RISK ENGINE ================= */
-function getRisk(cal,bmi){
-
-if(cal > 2500 && bmi > 28) return "🔴 HIGH RISK"
-if(cal > 2200) return "🟠 MEDIUM RISK"
-if(bmi > 28) return "🟡 WEIGHT WARNING"
-return "🟢 LOW RISK"
+/* ================= CHART ================= */
+drawChart(calories,bmi)
 }
 
 /* ================= CHART ================= */
@@ -129,93 +210,40 @@ function drawChart(calories,bmi){
 const c = document.getElementById("chart")
 const ctx = c.getContext("2d")
 
-ctx.clearRect(0,0,300,120)
+ctx.clearRect(0,0,320,140)
 
 ctx.fillStyle = "#f3f4f6"
-ctx.fillRect(0,0,300,120)
+ctx.fillRect(0,0,320,140)
 
-// calories
+// calories trend bars
+calories.forEach((cals,i)=>{
 ctx.fillStyle = "#60a5fa"
-ctx.fillRect(20,70, Math.min(250, calories/10), 20)
+ctx.fillRect(20 + i*40, 120 - cals/30, 20, cals/30)
+})
 
-// bmi
+// BMI line
 ctx.fillStyle = "#34d399"
-ctx.fillRect(20,40, bmi*5, 15)
-
-ctx.fillStyle = "#111"
-ctx.fillText("Calories",20,30)
-ctx.fillText("BMI",20,100)
+ctx.fillText("BMI: " + bmi.toFixed(1), 10, 20)
 }
 
-/* ================= LOAD ================= */
-async function loadReport(){
-
-const profile = getActiveProfile()
-
-document.getElementById("activeProfile").innerText =
-`👤 ${profile.name}`
-
-let today = new Date().toISOString().split("T")[0]
-
-let foods = await safeGetLogs(today)
-
-foods = foods.filter(f =>
-!f.userId || f.userId === profile.id
-)
-
-let calories = foods.reduce((s,f)=>
-s + Number(f.calories || 0), 0)
-
-/* BMI */
-let bmi = (profile.weight / ((profile.height/100)*(profile.height/100))).toFixed(1)
-
-/* WEEK */
-let weekly = await getWeeklyCalories()
-
-/* SUMMARY */
-document.getElementById("dailyCalories").innerText =
-`${calories} kcal`
-
-document.getElementById("summary").innerText =
-`Weekly Avg: ${weekly.toFixed(0)} kcal`
-
-/* RISK */
-document.getElementById("risk").innerText =
-getRisk(calories,bmi)
-
-/* COMPARE */
-let baseline = 2000
-document.getElementById("compare").innerText =
-`You: ${calories} kcal | Baseline: ${baseline} kcal | Diff: ${calories-baseline}`
-
-/* CHART */
-drawChart(calories,bmi)
-}
-
-/* ================= PDF EXPORT ================= */
+/* ================= PDF ================= */
 function exportPDF(){
 
 const { jsPDF } = window.jspdf
 const doc = new jsPDF()
 
-const profile = getActiveProfile()
-
-const calories = document.getElementById("dailyCalories").innerText
-const summary = document.getElementById("summary").innerText
-const risk = document.getElementById("risk").innerText
-const compare = document.getElementById("compare").innerText
-
 doc.setFontSize(16)
-doc.text("AI Health Report v10.7",10,10)
+doc.text("AI Health Report v11.4",10,10)
 
 doc.setFontSize(12)
-doc.text(`Profile: ${profile.name}`,10,25)
-doc.text(calories,10,35)
-doc.text(summary,10,45)
-doc.text(risk,10,55)
-doc.text(compare,10,65)
 
-doc.save("report-v10.7.pdf")
+doc.text(document.getElementById("dailyCalories").innerText,10,25)
+doc.text(document.getElementById("risk").innerText,10,35)
+doc.text(document.getElementById("aiInsight").innerText,10,45)
+doc.text(document.getElementById("weeklySummary").innerText,10,55)
+doc.text("Weight: " + document.getElementById("weightPrediction").innerText,10,65)
+
+doc.save("report-v11.4.pdf")
 }
 
 loadReport()
