@@ -1,36 +1,14 @@
-<!DOCTYPE html><!DOCTYPE html>
+<!DOCTYPE html>
 <html>
 <head>
 <meta charset="UTF-8">
-<title>AI Dashboard v5</title>
+<title>AI Dashboard v8.1</title>
 
 <link rel="stylesheet" href="style.css">
 
 <script src="app.js"></script>
 <script src="ai.js"></script>
 <script src="supabase.js"></script>
-
-<style>
-.card{
-background:white;
-margin:12px;
-padding:16px;
-border-radius:14px;
-box-shadow:0 2px 8px rgba(0,0,0,.06);
-}
-
-.grid{
-display:grid;
-grid-template-columns:repeat(2,1fr);
-gap:10px;
-}
-
-.kpi{
-font-size:20px;
-font-weight:bold;
-}
-</style>
-
 </head>
 
 <body>
@@ -40,91 +18,168 @@ font-weight:bold;
 <a href="calendar.html">Calendar</a>
 <a href="food.html">Food</a>
 <a href="workout.html">Workout</a>
-<a href="dashboard.html">Dashboard</a>
+<a href="shopping.html">Shop</a>
+<a href="report.html">Report</a>
 <a href="profile.html">Profile</a>
+<a href="dashboard.html">Dashboard</a>
 </div>
 
-<h2 class="center">🧠 AI Dashboard v5</h2>
+<h2 style="text-align:center">📊 AI Health Dashboard v8.1</h2>
 
-<!-- PROFILE -->
+<!-- ================= SUMMARY ================= -->
 <div class="card">
-<h3>👤 Profile AI Status</h3>
-<p id="profile"></p>
-<p id="bmi"></p>
-<p id="prediction"></p>
+<h3>🧠 Today Summary</h3>
+<p id="todayCalories">Loading...</p>
+<p id="todayScore">Loading...</p>
+<p id="riskLevel">Loading...</p>
 </div>
 
-<!-- KPI -->
-<div class="card grid">
-
-<div>
-<p class="kpi" id="todayCal">0</p>
-<p>Today Calories</p>
-</div>
-
-<div>
-<p class="kpi" id="risk">-</p>
-<p>Risk Level</p>
-</div>
-
-</div>
-
-<!-- AI INSIGHT -->
+<!-- ================= WEEK TREND ================= -->
 <div class="card">
-<h3>🧠 AI Coach</h3>
-<p id="advice"></p>
+<h3>📈 7-Day Trend</h3>
+<p id="weekTrend">Loading...</p>
+</div>
+
+<!-- ================= PROFILE ================= -->
+<div class="card">
+<h3>🧬 Profile Insight</h3>
+<p id="profileInfo">Loading...</p>
+</div>
+
+<!-- ================= RECENT FOOD ================= -->
+<div class="card">
+<h3>🍽 Recent Food</h3>
+<div id="recentFood"></div>
 </div>
 
 <script>
 
 setActive?.("dashboard")
 
-async function getToday(){
-return new Date().toISOString().split("T")[0]
-}
+// =====================
+// HELPERS
+// =====================
+function getRisk(score){
 
-async function load(){
-
-let profile = JSON.parse(localStorage.getItem("profile")||"{}")
-
-let weight = +profile.weight || 70
-let height = +profile.height || 170
-
-let bmi = getBMI(weight,height)
-
-document.getElementById("profile").innerText =
-profile.name || "No Profile"
-
-document.getElementById("bmi").innerText =
-"BMI: " + bmi.toFixed(1)
-
-// TODAY CALORIES
-let today = await getFoodLogs?.(getToday()) || []
-
-let cal = today.reduce((a,b)=>a + Number(b.calories||0),0)
-
-document.getElementById("todayCal").innerText = cal
-
-// AVG SIMULATION (simple)
-let avg = cal + 300
-
-// RISK
-let risk = riskLevel(cal, bmi)
-document.getElementById("risk").innerText = risk
-
-// PREDICTION
-let predicted = predictWeight(weight, avg)
-
-document.getElementById("prediction").innerText =
-"Predicted Weight: " + predicted + " kg"
-
-// ADVICE
-document.getElementById("advice").innerText =
-aiSuggestion(cal, bmi)
+if(score >= 80) return "LOW"
+if(score >= 50) return "MEDIUM"
+return "HIGH"
 
 }
 
-load()
+function avg(arr){
+
+if(!arr.length) return 0
+return arr.reduce((a,b)=>a+b,0)/arr.length
+
+}
+
+// =====================
+// LOAD DASHBOARD
+// =====================
+async function loadDashboard(){
+
+const today = new Date().toISOString().split("T")[0]
+
+// =====================
+// FOOD DATA
+// =====================
+let foods = []
+let todayCal = 0
+
+try{
+if(typeof getFoodLogs !== "undefined"){
+foods = await getFoodLogs(today) || []
+foods.forEach(f => todayCal += Number(f.calories || 0))
+}
+}catch(e){}
+
+// =====================
+// SCORE (simple AI model)
+// =====================
+let score = Math.max(0, 100 - (todayCal / 30))
+
+let risk = getRisk(score)
+
+// =====================
+// WEEK DATA
+// =====================
+let weekData = []
+
+for(let i=0;i<7;i++){
+
+let d = new Date()
+d.setDate(d.getDate() - i)
+
+let date = d.toISOString().split("T")[0]
+
+try{
+let logs = await getFoodLogs(date) || []
+let cal = 0
+logs.forEach(f => cal += Number(f.calories || 0))
+weekData.push(cal)
+}catch(e){
+weekData.push(0)
+}
+
+}
+
+// =====================
+// PROFILE
+// =====================
+let profile = {}
+
+try{
+if(typeof getProfile !== "undefined"){
+profile = await getProfile() || {}
+}
+}catch(e){}
+
+// BMI calc
+let bmiText = "No profile data"
+
+if(profile.height && profile.weight){
+
+let h = profile.height / 100
+let bmi = profile.weight / (h*h)
+
+bmiText = `BMI: ${bmi.toFixed(1)}`
+}
+
+// =====================
+// RENDER UI
+// =====================
+
+document.getElementById("todayCalories").innerText =
+`Calories Today: ${todayCal}`
+
+document.getElementById("todayScore").innerText =
+`Health Score: ${score.toFixed(0)}/100`
+
+document.getElementById("riskLevel").innerText =
+`Risk Level: ${risk}`
+
+document.getElementById("weekTrend").innerText =
+`Avg 7-day calories: ${avg(weekData).toFixed(0)}`
+
+document.getElementById("profileInfo").innerText =
+`${profile.name || "Guest"} | ${bmiText}`
+
+// =====================
+// RECENT FOOD
+// =====================
+let html = ""
+
+foods.slice(0,5).forEach(f=>{
+html += `<p>🍽 ${f.food} - ${f.calories} kcal</p>`
+})
+
+document.getElementById("recentFood").innerHTML =
+html || "No food today"
+
+}
+
+loadDashboard()
 
 </script>
 
