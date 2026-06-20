@@ -1,62 +1,124 @@
-<!DOCTYPE<!DOCTYPE html>
+<!DOCTYPE html>
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Profile v6</title>
+<title>Profile v8.2</title>
+
 <link rel="stylesheet" href="style.css">
+
 <script src="app.js"></script>
+<script src="supabase.js"></script>
 </head>
 
 <body>
 
-<h2 class="center">👤 User Profile</h2>
+<div class="nav">
+<a href="index.html">Home</a>
+<a href="profile.html">Profile</a>
+</div>
+
+<h2 style="text-align:center">🧬 Profile System v8.2</h2>
 
 <div class="card">
 
-<input id="name" placeholder="Name">
-<select id="gender">
-  <option>Male</option>
-  <option>Female</option>
-</select>
+<h3>Create / Switch Profile</h3>
 
+<input id="name" placeholder="Name">
+<input id="gender" placeholder="Gender">
 <input id="height" placeholder="Height (cm)">
 <input id="weight" placeholder="Weight (kg)">
-<input id="age" placeholder="Age">
-<input id="job" placeholder="Job">
+<input id="goal" placeholder="Goal (cut / bulk / maintain)">
+
+<br><br>
 
 <button onclick="saveProfile()">Save Profile</button>
+<button onclick="switchProfile()">Switch Profile</button>
 
 </div>
 
-<div class="card" id="result">
-Loading...
+<div class="card">
+<h3>Active Profile</h3>
+<p id="activeProfile">Loading...</p>
 </div>
+
+<button onclick="location.href='index.html'">
+🏠 Back to Home
+</button>
 
 <script>
 
-async function saveProfile(){
-
-const profile = {
-  name: document.getElementById("name").value,
-  gender: document.getElementById("gender").value,
-  height: +document.getElementById("height").value,
-  weight: +document.getElementById("weight").value,
-  age: +document.getElementById("age").value,
-  job: document.getElementById("job").value
+// =====================
+// MULTI PROFILE STORAGE
+// =====================
+function getProfiles(){
+return JSON.parse(localStorage.getItem("profiles") || "[]")
 }
 
-const res = await fetch("/api/profile", {
-  method: "POST",
-  headers: {"Content-Type":"application/json"},
-  body: JSON.stringify(profile)
-})
+function saveProfiles(list){
+localStorage.setItem("profiles", JSON.stringify(list))
+}
 
-const data = await res.json()
+function getActiveProfile(){
+return JSON.parse(localStorage.getItem("activeProfile"))
+}
 
-document.getElementById("result").innerText =
-JSON.stringify(data.profile, null, 2)
+// =====================
+// SAVE PROFILE
+// =====================
+function saveProfile(){
+
+let profile = {
+id: "user_" + Date.now(),
+name: document.getElementById("name").value,
+gender: document.getElementById("gender").value,
+height: Number(document.getElementById("height").value),
+weight: Number(document.getElementById("weight").value),
+goal: document.getElementById("goal").value
+}
+
+let profiles = getProfiles()
+profiles.push(profile)
+
+saveProfiles(profiles)
+localStorage.setItem("activeProfile", JSON.stringify(profile))
+
+render()
 
 }
+
+// =====================
+// SWITCH PROFILE
+// =====================
+function switchProfile(){
+
+let profiles = getProfiles()
+
+if(profiles.length === 0){
+alert("No profiles")
+return
+}
+
+let next = profiles[Math.floor(Math.random()*profiles.length)]
+
+localStorage.setItem("activeProfile", JSON.stringify(next))
+
+render()
+
+}
+
+// =====================
+// UI
+// =====================
+function render(){
+
+let p = getActiveProfile()
+
+document.getElementById("activeProfile").innerText =
+p ? `${p.name} | ${p.gender} | ${p.height}cm | ${p.weight}kg | ${p.goal}` : "No active profile"
+
+}
+
+render()
 
 </script>
 
