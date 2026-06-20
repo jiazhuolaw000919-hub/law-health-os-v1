@@ -1,9 +1,9 @@
 //////////////////////////////
-// 🧠 AI ENGINE v11.3 GPT-STYLE FULL UPGRADE
+// 🧠 AI ENGINE v11.2 CLEAN (STABLE BUILD)
 //////////////////////////////
 
 /* =========================
-🔥 FOOD NLP LAYER (STEP 2 IMPROVED)
+🍜 FOOD NORMALIZATION LAYER
 ========================= */
 function normalizeFoodAI(foodText){
 
@@ -18,7 +18,6 @@ const map = [
   {key:"tom yam", value:"tom yum soup"},
   {key:"friedrice", value:"fried rice"},
   {key:"nasilemak", value:"nasi lemak"},
-  {key:"chickrice", value:"chicken rice"},
   {key:"chickenrice", value:"chicken rice"},
   {key:"milktea", value:"milk tea"},
   {key:"milo", value:"milo drink"},
@@ -35,7 +34,7 @@ return foodText
 }
 
 /* =========================
-🍜 STEP 3: MULTI FOOD PARSER
+🍜 MULTI FOOD PARSER
 ========================= */
 function parseFoodAI(text){
 
@@ -45,69 +44,31 @@ text = text.toLowerCase()
 
 let parts = text.split(/,|\+| and | with /)
 
-let results = []
-
-for(let p of parts){
-let clean = normalizeFoodAI(p.trim())
-if(clean && clean !== "unknown food"){
-results.push(clean)
-}
-}
+let results = parts
+.map(p => normalizeFoodAI(p.trim()))
+.filter(p => p && p !== "unknown food")
 
 return results.length ? results : ["unknown food"]
 }
 
 /* =========================
-🍜 NEW: CUISINE DETECTOR (STEP 4 CORE)
+🌍 CUISINE DETECTION
 ========================= */
 function detectCuisine(food){
 
 if(!food) return "unknown"
 
-if(/rice|chicken rice|nasi lemak/.test(food)) return "Asian"
-if(/tom yum|thai/.test(food)) return "Thai"
-if(/pasta|bread|steak|burger/.test(food)) return "Western"
-if(/noodle|char kway teow/.test(food)) return "Chinese"
-if(/milo|milk tea/.test(food)) return "Drink"
+if(/chicken rice|nasi lemak|fried rice/.test(food)) return "Asian"
+if(/tom yum/.test(food)) return "Thai"
+if(/pasta|burger|steak/.test(food)) return "Western"
+if(/char kway teow|noodle/.test(food)) return "Chinese"
+if(/milk tea|milo/.test(food)) return "Drink"
 
 return "Mixed"
 }
 
 /* =========================
-🔥 CALORIE SPLITTER (AI ESTIMATION CORE)
-========================= */
-function splitCalories(food, totalCalories){
-
-if(!Array.isArray(food)) return []
-
-let avg = totalCalories / food.length
-
-return food.map(f => ({
-food: f,
-calories: Math.round(avg)
-}))
-}
-
-/* =========================
-🧠 MEAL INTELLIGENCE SCORE
-========================= */
-function calculateMealScore(items){
-
-if(!items || items.length === 0) return 0
-
-let score = 100
-
-items.forEach(i=>{
-if(i.calories > 800) score -= 25
-if(/fried|oil/.test(i.food)) score -= 10
-if(/vegetable|salad/.test(i.food)) score += 10
-})
-
-return Math.max(0, Math.min(100, score))
-}
-
-/* =========================
-CALORIES → HEALTH SCORE
+⚖️ HEALTH SCORE
 ========================= */
 function calculateHealthScore(calories, bmi = 22){
 
@@ -120,8 +81,7 @@ else if(calories < 2800) score -= 35
 else if(calories < 3200) score -= 55
 else score -= 80
 
-if(bmi >= 35) score -= 30
-else if(bmi >= 30) score -= 20
+if(bmi >= 30) score -= 20
 else if(bmi >= 27) score -= 12
 else if(bmi >= 25) score -= 6
 
@@ -129,7 +89,7 @@ return Math.max(0, Math.min(100, Math.round(score)))
 }
 
 /* =========================
-RISK ENGINE
+⚠️ RISK ENGINE
 ========================= */
 function getRiskLevel(calories, bmi){
 
@@ -147,7 +107,40 @@ return {level:"🔴", text:"High Risk", color:"red"}
 }
 
 /* =========================
-FOOD ANOMALY DETECTION
+🍽 MEAL SCORE (STABLE VERSION)
+========================= */
+function calculateMealScore(items){
+
+if(!items || items.length === 0) return 0
+
+let score = 100
+
+items.forEach(i=>{
+if(i.calories > 800) score -= 20
+if(i.cuisine === "Western") score -= 5
+if(i.cuisine === "Asian") score += 3
+})
+
+return Math.max(0, Math.min(100, score))
+}
+
+/* =========================
+🍜 CALORIE SPLIT ENGINE
+========================= */
+function splitCalories(foods, totalCalories){
+
+if(!foods.length) return []
+
+let avg = totalCalories / foods.length
+
+return foods.map(f => ({
+food: f,
+calories: Math.round(avg)
+}))
+}
+
+/* =========================
+⚠️ ANOMALY DETECTION
 ========================= */
 function detectAnomaly(calories, history = []){
 
@@ -158,18 +151,18 @@ return "insufficient data"
 let avg = history.reduce((a,b)=>a+b,0) / history.length
 
 if(calories > avg * 1.8){
-return "⚠️ Possible overeating detected"
+return "possible overeating detected"
 }
 
 if(calories < avg * 0.5){
-return "⚠️ Unusually low intake detected"
+return "unusually low intake detected"
 }
 
 return "normal"
 }
 
 /* =========================
-SMART ADVICE ENGINE
+🧠 ADVICE ENGINE
 ========================= */
 function getAdvice(calories, bmi = 22, history = []){
 
@@ -177,63 +170,41 @@ let risk = getRiskLevel(calories, bmi)
 let anomaly = detectAnomaly(calories, history)
 
 if(risk.level === "🔴"){
-return "High risk detected. Reduce carbs/sugar, prioritize protein, and add 30–45 min walking."
+return "High risk detected. Reduce carbs/sugar, prioritize protein, and walk 30–45 min."
 }
 
 if(risk.level === "🟡"){
-
 if(anomaly.includes("overeating")){
-return "You are above your normal intake trend. Consider lighter meals tomorrow."
+return "Above normal intake trend. Consider lighter meals tomorrow."
 }
-
 return "Moderate intake. Maintain balance and avoid late-night eating."
 }
 
-return "Healthy balance. Maintain current routine and hydration."
+return "Healthy balance. Keep current routine and hydration."
 }
 
 /* =========================
-📊 FOOD RISK PER ITEM (NEW)
-========================= */
-function getItemRisk(food, calories){
-
-if(calories > 800) return "HIGH"
-if(calories > 500) return "MEDIUM"
-return "LOW"
-}
-
-/* =========================
-🧠 FINAL GPT-STYLE AI ENGINE
+🧠 FINAL AI ENGINE (CLEAN OUTPUT)
 ========================= */
 function getAIInsight(calories, bmi, history = [], foodText = ""){
 
-let risk = getRiskLevel(calories, bmi)
-
-// 🍜 STEP 3: multi-food parsing
 let foods = parseFoodAI(foodText)
 
-// 🔥 STEP 4: calorie split
 let split = splitCalories(foods, calories)
 
-// 🧠 cuisine detection
-let cuisines = foods.map(f => detectCuisine(f))
-
-// 📊 per item intelligence
 let items = split.map(s => ({
 food: s.food,
 calories: s.calories,
-risk: getItemRisk(s.food, s.calories),
-cuisine: detectCuisine(s.food)
+cuisine: detectCuisine(s.food),
+risk: getRiskLevel(s.calories, bmi).level
 }))
 
 return {
 score: calculateHealthScore(calories, bmi),
 mealScore: calculateMealScore(items),
-risk: risk,
+risk: getRiskLevel(calories, bmi),
 advice: getAdvice(calories, bmi, history),
 
-// 🍜 NEW AI OUTPUT
-foods: items,
-cuisines: [...new Set(cuisines)]
+foods: items
 }
 }
