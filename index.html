@@ -68,15 +68,17 @@ setActive("home")
 // =====================
 // SAMPLE DATA (replace later with Supabase)
 // =====================
-const data = [
-{calories:1800,burn:200},
-{calories:2000,burn:300},
-{calories:2100,burn:150},
-{calories:1900,burn:250},
-{calories:1700,burn:100},
-{calories:2200,burn:300},
-{calories:1800,burn:200}
-]
+const today = new Date().toISOString().split("T")[0]
+
+const foods = await getFoodLogs?.(today) || []
+
+let totalCalories = 0
+
+foods.forEach(f=>{
+totalCalories += Number(f.calories || 0)
+})
+
+document.getElementById("dailyCalories").innerText = totalCalories
 
 // =====================
 // SCORE
