@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>AI Dashboard v10.7</title>
+<title>AI Dashboard v10.7 Stable</title>
 
 <link rel="stylesheet" href="style.css">
 
@@ -17,12 +17,6 @@ padding:12px;
 background:#fff;
 border-radius:10px;
 box-shadow:0 1px 4px rgba(0,0,0,.05);
-}
-
-.row{
-display:flex;
-gap:10px;
-flex-wrap:wrap;
 }
 
 canvas{
@@ -73,13 +67,13 @@ max-width:100%;
 
 <!-- BMI CHART -->
 <div class="card">
-<h3>📊 BMI Snapshot</h3>
+<h3>📊 BMI Snapshot Chart</h3>
 <canvas id="bmiChart" width="300" height="120"></canvas>
 </div>
 
 <script>
 
-/* ================= TIME ================= */
+/* ================= TIME SYSTEM ================= */
 function updateTime(){
 const now = new Date()
 
@@ -89,15 +83,22 @@ now.toLocaleDateString()
 document.getElementById("time").innerText =
 now.toLocaleTimeString()
 }
+
 setInterval(updateTime,1000)
 updateTime()
 
 /* ================= SAFE PROFILE ================= */
 function safeProfile(){
-if(typeof getActiveProfile !== "undefined"){
-return getActiveProfile()
+try{
+return getActiveProfile() || {
+name:"Guest",
+id:"guest",
+height:170,
+weight:70
 }
-return { name:"Guest", id:"guest", height:170, weight:70 }
+}catch(e){
+return {name:"Guest",id:"guest",height:170,weight:70}
+}
 }
 
 /* ================= BMI ================= */
@@ -124,7 +125,7 @@ return calculateHealthScore(cal)
 return Math.max(0, 100 - cal/50)
 }
 
-/* ================= AI TAG (NEW v10.7) ================= */
+/* ================= AI TAG ================= */
 function getAITag(cal, bmi){
 if(cal > 2500 && bmi > 25) return "⚠ High risk day"
 if(cal > 2200) return "📊 High intake"
@@ -132,7 +133,7 @@ if(bmi > 25) return "⚖ Weight management needed"
 return "✅ Healthy balance"
 }
 
-/* ================= CHART ================= */
+/* ================= BMI CHART ================= */
 function drawBMI(bmi){
 
 const canvas = document.getElementById("bmiChart")
@@ -143,16 +144,18 @@ ctx.clearRect(0,0,300,120)
 ctx.fillStyle = "#f3f4f6"
 ctx.fillRect(0,0,300,120)
 
-let bar = Math.min(40, bmi) * 6
+/* scale */
+let value = Math.min(40, bmi) * 6
 
 ctx.fillStyle = "#22c55e"
-ctx.fillRect(20, 70, bar, 20)
+ctx.fillRect(20, 70, value, 20)
 
 ctx.fillStyle = "#111"
+ctx.font = "14px Arial"
 ctx.fillText("BMI: " + bmi, 20, 40)
 }
 
-/* ================= LOAD ================= */
+/* ================= LOAD DASHBOARD ================= */
 async function loadDashboard(){
 
 const profile = safeProfile()
@@ -185,14 +188,17 @@ if(!f.userId || f.userId === profile.id){
 calories += Number(f.calories || 0)
 }
 })
-}catch(e){}
+}catch(e){
+console.log(e)
+}
 }
 
+/* fallback */
 if(calories === 0){
 calories = 1800
 }
 
-/* SCORE + AI TAG */
+/* UI */
 let score = safeScore(calories)
 
 document.getElementById("today").innerText =
