@@ -1,6 +1,6 @@
 function setActive(page){
 
-const pages = {
+const map = {
 home:"nav-home",
 calendar:"nav-calendar",
 food:"nav-food",
@@ -9,23 +9,11 @@ shopping:"nav-shopping",
 report:"nav-report"
 }
 
-Object.values(pages).forEach(id=>{
-const el=document.getElementById(id)
+Object.values(map).forEach(id=>{
+const el = document.getElementById(id)
 if(el) el.classList.remove("active")
 })
 
-const current=document.getElementById(pages[page])
-
-if(current){
-current.classList.add("active")
-}
-}
-
-function todayString(){
-return new Date().toISOString().split("T")[0]
-}
-
-function safeNumber(v){
-const n=Number(v)
-return isNaN(n)?0:n
+const current = document.getElementById(map[page])
+if(current) current.classList.add("active")
 }
