@@ -158,3 +158,38 @@ document.getElementById("aiSummary").innerText = summary
 loadAI()
 
 </script>
+
+<div class="card">
+<h3>📈 Weekly Trend (Live)</h3>
+<canvas id="weeklyChart"></canvas>
+</div>
+
+async function loadWeekly(){
+
+const days = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"]
+
+let values = []
+
+for(let i=0;i<7;i++){
+
+const fakeDate = "2024-06-0" + (i+1)
+
+const data = await getDailySummary(fakeDate)
+
+values.push(data.calories)
+}
+
+new Chart(document.getElementById("weeklyChart"),{
+type:"line",
+data:{
+labels:days,
+datasets:[{
+label:"Calories",
+data:values,
+borderColor:"#111827"
+}]
+}
+})
+}
+
+loadWeekly()
