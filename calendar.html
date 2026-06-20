@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>AI Calendar v10.7</title>
+<title>AI Calendar v10.8</title>
 
 <link rel="stylesheet" href="style.css">
 
@@ -35,11 +35,13 @@ transition:0.2s;
 
 .day:hover{ transform:scale(1.05); }
 
-.l1{ background:#dcfce7; }
-.l2{ background:#bbf7d0; }
-.l3{ background:#fef9c3; }
-.l4{ background:#fde68a; }
-.l5{ background:#fecaca; }
+.card{
+margin:10px;
+padding:12px;
+background:#fff;
+border-radius:10px;
+box-shadow:0 1px 4px rgba(0,0,0,.05);
+}
 
 .month-bar{
 display:flex;
@@ -62,14 +64,6 @@ padding:6px;
 border-radius:8px;
 border:1px solid #ddd;
 }
-
-.card{
-margin:10px;
-padding:12px;
-background:#fff;
-border-radius:10px;
-box-shadow:0 1px 4px rgba(0,0,0,.05);
-}
 </style>
 
 </head>
@@ -86,21 +80,22 @@ box-shadow:0 1px 4px rgba(0,0,0,.05);
 <a href="profile.html">Profile</a>
 </div>
 
-<h2 class="center">📅 AI Calendar v10.7</h2>
+<h2 class="center">📅 AI Calendar v10.8</h2>
 
-<!-- 🕒 TIME + PROFILE -->
+<!-- TIME + PROFILE -->
 <div class="card">
 <p id="time">Loading time...</p>
 <p id="profile">Loading profile...</p>
 <p id="bmi">BMI: --</p>
 </div>
 
-<!-- SUMMARY -->
+<!-- AI SUMMARY (NEW FIX) -->
 <div class="card">
 <h3>🧠 AI Summary</h3>
 <p id="summary">Loading...</p>
 </div>
 
+<!-- CALENDAR CONTROL -->
 <div class="card">
 <div class="month-bar">
 <button class="arrow" onclick="changeMonth(-1)">‹</button>
@@ -116,7 +111,7 @@ box-shadow:0 1px 4px rgba(0,0,0,.05);
 
 <div class="grid" id="grid"></div>
 
-<!-- MODAL (ENHANCED FOOD LIST) -->
+<!-- MODAL -->
 <div id="modal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;
 background:rgba(0,0,0,0.5);align-items:center;justify-content:center;">
 
@@ -140,15 +135,7 @@ const yearSelect = document.getElementById("yearSelect")
 
 let dateObj = new Date()
 
-/* ================= TIME SYSTEM ================= */
-function updateTime(){
-const now = new Date()
-
-document.getElementById("time").innerText =
-"🕒 " + now.toLocaleString()
-}
-
-/* ================= PROFILE ================= */
+// ================= SAFE PROFILE =================
 function getActiveProfile(){
 try{
 return JSON.parse(localStorage.getItem("activeProfile")) || {id:"guest",name:"Guest"}
@@ -157,14 +144,21 @@ return {id:"guest",name:"Guest"}
 }
 }
 
-/* ================= BMI ================= */
+// ================= BMI =================
 function calcBMI(h,w){
 h = Number(h || 170)
 w = Number(w || 70)
 return (w / ((h/100)*(h/100))).toFixed(1)
 }
 
-/* ================= INIT ================= */
+// ================= TIME =================
+function updateTime(){
+const now = new Date()
+document.getElementById("time").innerText =
+"🕒 " + now.toLocaleString()
+}
+
+// ================= INIT =================
 function init(){
 
 monthSelect.innerHTML = ""
@@ -197,7 +191,7 @@ document.getElementById("bmi").innerText =
 `⚖ BMI: ${calcBMI(profile.height, profile.weight)}`
 }
 
-/* ================= SAFE CALORIES ================= */
+// ================= SAFE CALORIES =================
 async function safeCalories(date){
 
 try{
@@ -215,7 +209,7 @@ return 0
 }
 }
 
-/* ================= LOAD GRID ================= */
+// ================= LOAD GRID =================
 async function load(){
 
 grid.innerHTML = ""
@@ -244,20 +238,53 @@ if(cal > max) max = cal
 
 let div = document.createElement("div")
 div.className = "day"
-
 div.innerHTML = `<b>${d}</b><br>${cal} kcal`
 div.onclick = ()=>openModal(date,cal)
 
 grid.appendChild(div)
 }
 
+// ================= AI SUMMARY (NEW v10.8) =================
 let avg = total / days || 0
 
-document.getElementById("summary").innerHTML =
-`Avg: ${avg.toFixed(0)} kcal<br>Max: ${max} kcal`
+let profile = getActiveProfile()
+let bmi = calcBMI(profile.height, profile.weight)
+
+let aiText = ""
+
+if(avg > 2500 && bmi > 25){
+aiText = "⚠ High calorie + overweight risk pattern"
+}else if(avg > 2200){
+aiText = "📊 High calorie intake trend"
+}else{
+aiText = "✅ Balanced weekly intake"
 }
 
-/* ================= CLICK DAY → FOOD LIST ================= */
+document.getElementById("summary").innerText =
+`Avg: ${avg.toFixed(0)} kcal | Max: ${max} kcal\n${aiText}`
+}
+
+// ================= CONTROL =================
+function changeMonth(v){
+
+let m = +monthSelect.value
+let y = +yearSelect.value
+
+m += v
+
+if(m < 0){ m = 11; y-- }
+if(m > 11){ m = 0; y++ }
+
+monthSelect.value = m
+yearSelect.value = y
+
+load()
+}
+
+monthSelect.onchange = load
+yearSelect.onchange = load
+
+// ================= MODAL =================
 async function openModal(date,cal){
 
 document.getElementById("modal").style.display = "flex"
@@ -295,31 +322,11 @@ list.innerHTML = "Error loading food"
 }
 }
 
-/* ================= CONTROL ================= */
-function changeMonth(v){
-
-let m = +monthSelect.value
-let y = +yearSelect.value
-
-m += v
-
-if(m < 0){ m = 11; y-- }
-if(m > 11){ m = 0; y++ }
-
-monthSelect.value = m
-yearSelect.value = y
-
-load()
-}
-
-monthSelect.onchange = load
-yearSelect.onchange = load
-
 function closeModal(){
 document.getElementById("modal").style.display = "none"
 }
 
-/* ================= BOOT ================= */
+// ================= BOOT =================
 setInterval(updateTime,1000)
 updateTime()
 
