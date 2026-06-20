@@ -33,7 +33,7 @@ style="padding:10px;width:90%">
 
 <br><br>
 
-<button onclick="addFood()"
+<button onclick="addFoodManual()"
 style="padding:10px 15px;background:#111827;color:white;border:none;border-radius:10px">
 Add Food
 </button>
@@ -62,7 +62,7 @@ setActive("food")
 let total = 0
 
 // 🍽 manual food add
-async function addFood(){
+async function addFoodManual(){
 
 const input = document.getElementById("foodInput")
 const food = input.value.trim()
@@ -84,8 +84,12 @@ document.getElementById("log").innerHTML +=
 input.value = ""
 
 try{
-if(typeof addFood !== "undefined"){
-await addFood({food, calories:cal, date:today})
+if(typeof saveFood !== "undefined"){
+await saveFood({
+food,
+calories: cal,
+date: today
+})
 }
 }catch(e){
 console.log("supabase error",e)
@@ -116,8 +120,31 @@ try{
 
 const result = await analyzeFoodImage(base64)
 
+let parsed = result
+
+if(typeof result === "string"){
+try{
+parsed = JSON.parse(result)
+}catch(e){
+parsed = result
+}
+}
+
+if(typeof parsed === "object"){
+
 document.getElementById("aiResult").innerText =
-result
+`🍽 Food: ${parsed.food || "Unknown"}
+🔥 Calories: ${parsed.calories || "-"}
+💪 Protein: ${parsed.protein || "-"}
+🍞 Carbs: ${parsed.carbs || "-"}
+🥑 Fat: ${parsed.fat || "-"}`
+
+}else{
+
+document.getElementById("aiResult").innerText =
+String(parsed)
+
+}
 
 }catch(e){
 
