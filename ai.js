@@ -120,3 +120,12 @@ return "🟡 Irregular eating pattern"
 
 return "🟢 Stable eating behavior"
 }
+
+function predictWeight(currentWeight, dailyCalories){
+
+let diff = dailyCalories - 2000
+
+let change = diff * 0.0002
+
+return (currentWeight + change).toFixed(2)
+}
