@@ -5,13 +5,14 @@
 <title>Food</title>
 
 <link rel="stylesheet" href="style.css">
-<script src="supabase.js"></script>
-<script src="ai.js"></script>
 <script src="app.js"></script>
+<script src="ai.js"></script>
+<script src="supabase.js"></script>
 </head>
 
 <body>
 
+<!-- NAV -->
 <div class="nav">
 <a href="index.html">Home</a>
 <a href="calendar.html">Calendar</a>
@@ -25,7 +26,10 @@
 
 <div class="card">
 
-<input id="food" placeholder="e.g. chicken rice" style="padding:10px;width:90%"><br><br>
+<input id="foodInput" placeholder="e.g. chicken rice"
+style="padding:10px;width:90%">
+
+<br><br>
 
 <button onclick="addFood()"
 style="padding:10px 15px;background:#111827;color:white;border:none;border-radius:10px">
@@ -44,25 +48,41 @@ let total = 0
 
 async function addFood(){
 
-const food = document.getElementById("food").value
+const input = document.getElementById("foodInput")
+const food = input.value.trim()
+
 if(!food) return
 
-const cal = food.includes("chicken") ? 600 : 300
+// 简单AI估算卡路里
+let cal = 300
+
+if(food.includes("chicken")) cal = 600
+if(food.includes("milo")) cal = 180
+if(food.includes("rice")) cal = 500
+if(food.includes("tea")) cal = 120
 
 const today = new Date().toISOString().split("T")[0]
 
-await addFood({
-food: food,
-calories: cal,
-date: today
-})
-
+// UI更新
 total += cal
 
 document.getElementById("log").innerHTML +=
 `<p>🍽 ${food} - ${cal} kcal</p>`
 
-document.getElementById("food").value = ""
+input.value = ""
+
+// 🔌 Supabase写入（关键）
+try{
+await addFood({
+food: food,
+calories: cal,
+date: today
+})
+console.log("Saved to Supabase ✔")
+}catch(e){
+console.log("Supabase error:", e)
+}
+
 }
 
 </script>
