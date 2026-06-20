@@ -1,52 +1,85 @@
-// ============================
-// APP.JS v10.6 CORE
-// ============================
+/* =========================
+   GLOBAL PROFILE ENGINE v10.6
+========================= */
 
-// ---------- PROFILE CORE ----------
+const STORAGE_KEYS = {
+  profiles: "profiles",
+  activeProfile: "activeProfile"
+}
+
+/* ---------- GET ---------- */
 function getProfiles(){
-  return JSON.parse(localStorage.getItem("profiles")) || []
+  return JSON.parse(localStorage.getItem(STORAGE_KEYS.profiles)) || []
 }
 
 function getActiveProfile(){
-  return JSON.parse(localStorage.getItem("activeProfile")) || null
+  return JSON.parse(localStorage.getItem(STORAGE_KEYS.activeProfile)) || null
+}
+
+/* ---------- SET ---------- */
+function setProfiles(profiles){
+  localStorage.setItem(STORAGE_KEYS.profiles, JSON.stringify(profiles))
 }
 
 function setActiveProfile(profile){
-  localStorage.setItem("activeProfile", JSON.stringify(profile))
+  localStorage.setItem(STORAGE_KEYS.activeProfile, JSON.stringify(profile))
 }
 
-// ---------- SAFE SAVE ----------
-function saveProfiles(profiles){
-  localStorage.setItem("profiles", JSON.stringify(profiles))
+/* ---------- INIT ---------- */
+function ensureProfileSystem(){
+
+  let profiles = getProfiles()
+
+  if(profiles.length === 0){
+    const defaultProfile = {
+      id: "guest",
+      name: "Guest"
+    }
+
+    profiles.push(defaultProfile)
+    setProfiles(profiles)
+    setActiveProfile(defaultProfile)
+  }
+
+  if(!getActiveProfile()){
+    setActiveProfile(profiles[0])
+  }
 }
 
-// ---------- FOOD STORAGE WRAPPER ----------
-async function saveFood(data){
-  let foods = JSON.parse(localStorage.getItem("foods")) || []
-  foods.push(data)
-  localStorage.setItem("foods", JSON.stringify(foods))
+/* ---------- CREATE ---------- */
+function createProfile(profile){
+
+  let profiles = getProfiles()
+
+  profiles.push({
+    id: Date.now().toString(),
+    ...profile
+  })
+
+  setProfiles(profiles)
 }
 
-// ---------- GET FOOD LOGS (MULTI PROFILE SAFE) ----------
-async function getFoodLogs(date){
+/* ---------- DELETE ---------- */
+function deleteProfile(id){
 
-  let foods = JSON.parse(localStorage.getItem("foods")) || []
+  let profiles = getProfiles().filter(p => p.id !== id)
+  setProfiles(profiles)
 
-  const profile = getActiveProfile()
+  let active = getActiveProfile()
 
-  return foods.filter(f =>
-    f.date === date &&
-    (!f.userId || !profile || f.userId === profile.id)
-  )
+  if(active && active.id === id){
+    setActiveProfile(profiles[0] || null)
+  }
 }
 
-// ---------- HEALTH SCORE ----------
-function calculateHealthScore(calories, target=2000){
-  let diff = target - calories
-  return Math.max(0, Math.min(100, 50 + diff/20))
+/* ---------- SWITCH ---------- */
+function switchProfile(id){
+
+  let profile = getProfiles().find(p => p.id === id)
+  if(profile){
+    setActiveProfile(profile)
+  }
 }
 
-// ---------- NAV ACTIVE ----------
-function setActive(page){
-  localStorage.setItem("activePage", page)
-}
+/* ---------- AUTO INIT ---------- */
+ensureProfileSystem()
