@@ -113,3 +113,18 @@ borderColor:"#111827"
 <h3>🧠 AI Daily Summary</h3>
 <p id="aiSummary">Loading...</p>
 </div>
+
+<script>
+
+const calories = 2100
+const burn = 250
+const score = calculateHealthScore(calories, burn)
+
+const summary =
+aiCoach(calories, burn, score) + " | " +
+calorieInsight(calories) + " | " +
+bingeDetect(calories, 2)
+
+document.getElementById("aiSummary").innerText = summary
+
+</script>
