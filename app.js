@@ -1,23 +1,48 @@
-function setActive(page){
+// =====================
+// v9 GLOBAL USER SYSTEM
+// =====================
 
-const map = {
-home:"nav-home",
-calendar:"nav-calendar",
-food:"nav-food",
-workout:"nav-workout",
-shopping:"nav-shopping",
-report:"nav-report"
+function getCurrentUser(){
+  return JSON.parse(localStorage.getItem("currentUser")) || null
 }
 
-Object.values(map).forEach(id=>{
-const el = document.getElementById(id)
-if(el) el.classList.remove("active")
-})
-
-const active = document.getElementById(map[page])
-if(active) active.classList.add("active")
+function setCurrentUser(user){
+  localStorage.setItem("currentUser", JSON.stringify(user))
 }
 
-function getActiveProfile(){
-return JSON.parse(localStorage.getItem("activeProfile") || "null")
+// 多用户列表
+function getAllUsers(){
+  return JSON.parse(localStorage.getItem("users")) || []
+}
+
+function saveAllUsers(users){
+  localStorage.setItem("users", JSON.stringify(users))
+}
+
+// 创建/切换 profile
+function saveProfile(profile){
+
+  let users = getAllUsers()
+
+  let existing = users.find(u => u.id === profile.id)
+
+  if(existing){
+    Object.assign(existing, profile)
+  }else{
+    users.push(profile)
+  }
+
+  saveAllUsers(users)
+  setCurrentUser(profile)
+}
+
+// 获取当前 profile
+function getProfile(){
+  return getCurrentUser()
+}
+
+// 计算 BMI
+function calculateBMI(height, weight){
+  if(!height || !weight) return 0
+  return (weight / ((height/100) ** 2)).toFixed(1)
 }
