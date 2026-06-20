@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Profile v10.7 System</title>
+<title>Profile v10.8 System</title>
 
 <link rel="stylesheet" href="style.css">
 
@@ -20,7 +20,7 @@
 <a href="profile.html">Profile</a>
 </div>
 
-<h2 class="center">👤 Profile System v10.7</h2>
+<h2 class="center">👤 Profile System v10.8</h2>
 
 <!-- CREATE -->
 <div class="card">
@@ -65,18 +65,34 @@ return JSON.parse(localStorage.getItem("activeProfile")) || {
 id:"guest",
 name:"Guest",
 height:170,
-weight:70
+weight:70,
+weightHistory:[]
 }
 }
 
-// ================= BMI =================
+// ================= BMI ENGINE (DYNAMIC) =================
 function calcBMI(h,w){
 h = Number(h || 170)
 w = Number(w || 70)
 return (w / ((h/100)*(h/100))).toFixed(1)
 }
 
-// ================= CREATE PROFILE (v10.7 FIXED) =================
+// ================= WEIGHT TRACKER (NEW v10.8) =================
+function addWeightHistory(profile, weight){
+
+let history = profile.weightHistory || []
+
+history.push({
+date: new Date().toISOString().split("T")[0],
+weight: Number(weight)
+})
+
+profile.weightHistory = history.slice(-30) // keep last 30 days
+
+return profile
+}
+
+// ================= CREATE PROFILE =================
 function createNewProfile(){
 
 const name = document.getElementById("name").value.trim()
@@ -90,15 +106,18 @@ return
 
 let profiles = getProfiles()
 
-const bmi = calcBMI(height, weight)
-
-const newProfile = {
+let newProfile = {
 id: Date.now().toString(),
 name:name,
 height:Number(height || 170),
 weight:Number(weight || 70),
-bmi:Number(bmi)
+weightHistory:[]
 }
+
+// add initial weight record
+newProfile = addWeightHistory(newProfile, weight)
+
+newProfile.bmi = calcBMI(newProfile.height, newProfile.weight)
 
 profiles.push(newProfile)
 
@@ -111,7 +130,8 @@ render()
 // ================= SWITCH =================
 function switchProfile(id){
 
-const profile = getProfiles().find(p=>p.id===id)
+const profiles = getProfiles()
+const profile = profiles.find(p=>p.id===id)
 
 if(profile){
 localStorage.setItem("activeProfile", JSON.stringify(profile))
@@ -119,7 +139,7 @@ render()
 }
 }
 
-// ================= DELETE (SAFE FIX) =================
+// ================= DELETE =================
 function deleteProfile(id){
 
 let profiles = getProfiles().filter(p => p.id !== id)
@@ -129,16 +149,22 @@ localStorage.setItem("profiles", JSON.stringify(profiles))
 let active = getActiveProfile()
 
 if(!profiles.length){
+
 const fallback = {
 id:"guest",
 name:"Guest",
 height:170,
 weight:70,
-bmi: calcBMI(170,70)
+bmi: calcBMI(170,70),
+weightHistory:[]
 }
+
 localStorage.setItem("activeProfile", JSON.stringify(fallback))
+
 }else if(active.id === id){
+
 localStorage.setItem("activeProfile", JSON.stringify(profiles[0]))
+
 }
 
 render()
@@ -154,13 +180,17 @@ function render(){
 
 const active = getActiveProfile()
 
+let bmi = calcBMI(active.height, active.weight)
+
 document.getElementById("activeProfile").innerText =
-`👤 ${active.name} | BMI: ${active.bmi || calcBMI(active.height, active.weight)}`
+`👤 ${active.name} | BMI: ${bmi} | Weight: ${active.weight}kg`
 
 const list = document.getElementById("profileList")
 list.innerHTML = ""
 
 getProfiles().forEach(p=>{
+
+let bmiVal = calcBMI(p.height, p.weight)
 
 const div = document.createElement("div")
 div.className = "card"
@@ -168,7 +198,9 @@ div.className = "card"
 div.innerHTML = `
 <b>${p.name}</b>
 <br>
-BMI: ${p.bmi || calcBMI(p.height,p.weight)}
+Height: ${p.height} cm | Weight: ${p.weight} kg
+<br>
+BMI: ${bmiVal}
 
 <br><br>
 
