@@ -2,12 +2,18 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Create Profile v10.6</title>
+<title>Create Profile</title>
 
 <link rel="stylesheet" href="style.css">
+<script src="app.js"></script>
+<script src="profile.js"></script>
 </head>
 
 <body>
+
+<div class="nav">
+<a href="profile.html">← Back</a>
+</div>
 
 <h2 class="center">➕ Create Profile</h2>
 
@@ -20,54 +26,29 @@
 <option>Female</option>
 </select>
 
-<input id="age" type="number" placeholder="Age">
-<input id="height" placeholder="Height (cm)">
-<input id="weight" placeholder="Weight (kg)">
+<input id="age" placeholder="Age"><br>
+<input id="height" placeholder="Height cm"><br>
+<input id="weight" placeholder="Weight kg"><br><br>
 
-<br><br>
-
-<button onclick="createProfile()">
-Create
-</button>
+<button onclick="save()">Create</button>
 
 </div>
 
 <script>
 
-/* =====================
-CREATE PROFILE CORE
-===================== */
+function save(){
 
-function getProfiles(){
-return JSON.parse(localStorage.getItem("profiles")) || []
-}
+  let name = document.getElementById("name").value
+  let gender = document.getElementById("gender").value
+  let age = document.getElementById("age").value
+  let height = document.getElementById("height").value
+  let weight = document.getElementById("weight").value
 
-function saveProfiles(list){
-localStorage.setItem("profiles", JSON.stringify(list))
-}
+  let profile = createProfile(name, gender, age, height, weight)
 
-function createProfile(){
+  alert("Profile created: " + profile.name)
 
-const profile = {
-id: Date.now().toString(),
-name: document.getElementById("name").value,
-gender: document.getElementById("gender").value,
-age: document.getElementById("age").value,
-height: document.getElementById("height").value,
-weight: document.getElementById("weight").value
-}
-
-let profiles = getProfiles()
-profiles.push(profile)
-
-saveProfiles(profiles)
-
-// 自动设为 active
-localStorage.setItem("activeProfile", JSON.stringify(profile))
-
-alert("Profile created!")
-
-window.location.href = "profile.html"
+  location.href = "profile.html"
 }
 
 </script>
