@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Calendar AI v2.3</title>
+<title>AI Calendar v2.4</title>
 
 <link rel="stylesheet" href="style.css">
 
@@ -22,7 +22,7 @@
 <a href="report.html">Report</a>
 </div>
 
-<h2 class="center">📅 AI Calendar</h2>
+<h2 class="center">📅 AI Health Calendar</h2>
 
 <!-- MONTH CONTROL -->
 <div class="card center">
@@ -32,6 +32,12 @@
 <select id="yearSelect"></select>
 
 <button onclick="changeMonth(1)">➡</button>
+</div>
+
+<!-- 🧠 MONTH SCORE UI -->
+<div class="card">
+<h3>🧠 Monthly Health Score</h3>
+<p id="monthlyScore">Loading...</p>
 </div>
 
 <div class="grid" id="grid"></div>
@@ -74,7 +80,15 @@ function formatDate(y,m,d){
 return `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`
 }
 
-// 🔥 SAFE LOAD
+// 🧠 AI DAILY LABEL
+function getAICategory(calories){
+
+if(calories > 3000) return "danger"
+if(calories > 2400) return "warning"
+return "safe"
+}
+
+// 🔥 LOAD CALENDAR
 async function loadCalendar(){
 
 try{
@@ -91,8 +105,9 @@ for(let i=0;i<first;i++){
 grid.innerHTML += "<div></div>"
 }
 
-let monthlyCalories = 0
-let validDays = 0
+let totalCalories = 0
+let dayCount = 0
+let bingeDays = 0
 
 for(let d=1; d<=days; d++){
 
@@ -109,8 +124,10 @@ calories += Number(f.calories || 0)
 }
 }catch(e){}
 
-monthlyCalories += calories
-validDays++
+totalCalories += calories
+dayCount++
+
+if(calories > 2800) bingeDays++
 
 let score = 0
 
@@ -120,18 +137,30 @@ score = calculateHealthScore(calories,0)
 score = 0
 }
 
-// 🔥 AI heatmap
-let color = "red"
+// 🧠 AI CATEGORY
+const category = getAICategory(calories)
 
-if(calories > 2800) color = "red"
-else if(score >= 80) color = "green"
-else if(score >= 50) color = "yellow"
-else color = "red"
+let color = "green"
+let label = "SAFE"
 
+if(category === "danger"){
+color = "red"
+label = "DANGER"
+}
+else if(category === "warning"){
+color = "yellow"
+label = "WARNING"
+}
+
+// 📅 DAY BLOCK
 const div = document.createElement("div")
 div.className = "day " + color
 
-div.innerHTML = `<b>${d}</b><br>${score}`
+div.innerHTML = `
+<b>${d}</b><br>
+${score}<br>
+<small>${label}</small>
+`
 
 div.onclick = ()=>{
 location.href = "day.html?date=" + date
@@ -140,23 +169,25 @@ location.href = "day.html?date=" + date
 grid.appendChild(div)
 }
 
-// 🧠 monthly AI score
-let monthlyScore = 0
+// 🧠 MONTH SCORE
+let avgCalories = dayCount ? totalCalories / dayCount : 0
 
-if(validDays > 0){
-monthlyScore = Math.round((monthlyCalories / validDays) / 25)
-}
+let monthlyScore =
+avgCalories < 2000 ? 90 :
+avgCalories < 2400 ? 75 :
+avgCalories < 2800 ? 60 : 40
 
-console.log("Monthly AI Score:", monthlyScore)
+document.getElementById("monthlyScore").innerText =
+`Score: ${monthlyScore} | Binge Days: ${bingeDays}`
 
 }catch(err){
-console.log("calendar error:",err)
+console.log(err)
 grid.innerHTML = "Calendar failed to load"
 }
 
 }
 
-// month switch
+// MONTH CONTROL
 function changeMonth(offset){
 
 let m = parseInt(monthSelect.value)
