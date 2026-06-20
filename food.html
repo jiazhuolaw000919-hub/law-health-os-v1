@@ -133,6 +133,23 @@ console.log(e)
 reader.readAsDataURL(file)
 }
 
+async function analyzeFoodImage(imageBase64){
+
+const res = await fetch("/api/ai",{
+method:"POST",
+headers:{
+"Content-Type":"application/json"
+},
+body:JSON.stringify({
+image:imageBase64
+})
+})
+
+const data = await res.json()
+
+return data.result
+}
+
 </script>
 
 </body>
