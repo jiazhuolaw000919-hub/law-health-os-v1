@@ -124,3 +124,27 @@ background:#fee2e2;
 .center{
 text-align:center;
 }
+
+.month-bar{
+display:flex;
+justify-content:space-between;
+align-items:center;
+padding:10px 20px;
+}
+
+.arrow{
+background:none;
+border:none;
+font-size:20px;
+cursor:pointer;
+opacity:0.7;
+}
+
+.arrow:hover{
+opacity:1;
+}
+
+.selectors{
+display:flex;
+gap:8px;
+}
