@@ -3,8 +3,9 @@ const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 
 async function getFoodLogs(date){
 
+try{
 const res = await fetch(
-SUPABASE_URL + "/rest/v1/food_logs?date=eq." + date,
+`${SUPABASE_URL}/rest/v1/food_logs?date=eq.${date}`,
 {
 headers:{
 apikey:SUPABASE_KEY,
@@ -16,17 +17,8 @@ Authorization:"Bearer " + SUPABASE_KEY
 if(!res.ok) return []
 
 return await res.json()
+
+}catch(e){
+return []
 }
-
-async function insertFoodLog(data){
-
-return fetch(SUPABASE_URL + "/rest/v1/food_logs",{
-method:"POST",
-headers:{
-apikey:SUPABASE_KEY,
-Authorization:"Bearer " + SUPABASE_KEY,
-"Content-Type":"application/json"
-},
-body:JSON.stringify(data)
-})
 }
