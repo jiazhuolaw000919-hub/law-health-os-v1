@@ -2,96 +2,52 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Dashboard</title>
+<title>Dashboard v11.4</title>
 
 <link rel="stylesheet" href="style.css">
 
 <script src="app.js"></script>
 <script src="ai.js"></script>
 <script src="supabase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 
 <body>
 
 <div class="nav">
 <a href="index.html" id="nav-home">Home</a>
-<a href="calendar.html" id="nav-calendar">Calendar</a>
-<a href="food.html" id="nav-food">Food</a>
-<a href="workout.html" id="nav-workout">Workout</a>
-<a href="shopping.html" id="nav-shopping">Shop</a>
-<a href="report.html" id="nav-report">Report</a>
+<a href="calendar.html">Calendar</a>
+<a href="food.html">Food</a>
+<a href="workout.html">Workout</a>
+<a href="shopping.html">Shop</a>
+<a href="report.html">Report</a>
 </div>
 
 <div class="card">
-<h2>🧠 Law Health OS Dashboard</h2>
-
-  <div class="card">
-<h3>📊 Weekly Health Score</h3>
-<p id="weeklyScore">Loading...</p>
+<h2>🧠 Health OS Dashboard</h2>
+<p>System: v11.4 Stable</p>
 </div>
 
 <div class="card">
-<h3>📊 Monthly Health Score</h3>
-<p id="monthlyScore">Loading...</p>
-</div>
-
-<p>📊 Weight: 80kg</p>
-<p>📉 BMI: 24.9</p>
-<p>🔥 System: Active</p>
-<p>⚡ Status: Running Stable</p>
+<h3>📊 Weekly Score</h3>
+<p id="weekly"></p>
 </div>
 
 <div class="card">
-<h3>Today Summary</h3>
-<p>Calories: --</p>
-<p>Burn: --</p>
-<p>AI Score: --</p>
+<h3>📊 Monthly Score</h3>
+<p id="monthly"></p>
 </div>
-
-<div class="bottom-nav">
-<a href="index.html">🏠</a>
-<a href="calendar.html">📅</a>
-<a href="food.html">🍽</a>
-<a href="workout.html">🏋️</a>
-<a href="shopping.html">🛒</a>
-<a href="report.html">📄</a>
-</div>
-
-<script>
-setActive("home")
-</script>
-
-</body>
-</html>
 
 <div class="card">
 <h3>📈 Weight Trend</h3>
-<canvas id="weightChart"></canvas>
+<canvas id="chart"></canvas>
 </div>
 
 <script>
-const ctx = document.getElementById("weightChart")
 
-new Chart(ctx, {
-type: "line",
-data: {
-labels: ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"],
-datasets: [{
-label: "Weight",
-data: [75,74.8,74.6,74.7,74.5,74.3,74.2],
-borderColor: "#111827",
-fill: false
-}]
-},
-options: {
-responsive: true
-}
-})
-</script>
+setActive("home")
 
-<script>
-
-const sampleData = [
+const data = [
 {calories:1800,burn:200},
 {calories:2000,burn:300},
 {calories:2100,burn:150},
@@ -101,21 +57,10 @@ const sampleData = [
 {calories:1800,burn:200}
 ]
 
-document.getElementById("weeklyScore").innerText =
-weeklyScore(sampleData)
+document.getElementById("weekly").innerText = weeklyScore(data)
+document.getElementById("monthly").innerText = monthlyScore(data)
 
-document.getElementById("monthlyScore").innerText =
-monthlyScore(sampleData)
-
-</script>
-
-<div class="card">
-<h3>📈 Weight Trend</h3>
-<canvas id="weightChart"></canvas>
-</div>
-
-<script>
-new Chart(document.getElementById("weightChart"),{
+new Chart(document.getElementById("chart"),{
 type:"line",
 data:{
 labels:["Mon","Tue","Wed","Thu","Fri","Sat","Sun"],
@@ -127,4 +72,8 @@ tension:0.3
 }]
 }
 })
+
 </script>
+
+</body>
+</html>
