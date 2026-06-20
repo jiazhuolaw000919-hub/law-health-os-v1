@@ -1,15 +1,47 @@
 //////////////////////////////
-// 🧠 AI ENGINE v11.1 PRO (UPGRADED)
+// 🧠 AI ENGINE v11.2 FULL (WITH FOOD NLP LAYER)
 //////////////////////////////
 
 /* =========================
-CALORIES → HEALTH SCORE (IMPROVED CURVE)
+🔥 FOOD NLP LAYER (CRITICAL FIX)
+========================= */
+function normalizeFoodAI(foodText){
+
+if(!foodText){
+return "unknown food"
+}
+
+foodText = foodText.toLowerCase()
+
+const map = [
+  {key:"tomyam", value:"tom yum soup"},
+  {key:"tom yam", value:"tom yum soup"},
+  {key:"tomyum", value:"tom yum soup"},
+  {key:"friedrice", value:"fried rice"},
+  {key:"nasilemak", value:"nasi lemak"},
+  {key:"chickrice", value:"chicken rice"},
+  {key:"chickenrice", value:"chicken rice"},
+  {key:"milktea", value:"milk tea"},
+  {key:"milo", value:"milo drink"},
+  {key:"char kway teow", value:"char kway teow"}
+]
+
+for(let m of map){
+if(foodText.includes(m.key)){
+return m.value
+}
+}
+
+return foodText
+}
+
+/* =========================
+CALORIES → HEALTH SCORE
 ========================= */
 function calculateHealthScore(calories, bmi = 22){
 
 let score = 100
 
-// 🔥 calorie curve (more realistic metabolic model)
 if(calories < 1500) score -= 8
 else if(calories < 2000) score -= 12
 else if(calories < 2400) score -= 20
@@ -17,7 +49,6 @@ else if(calories < 2800) score -= 35
 else if(calories < 3200) score -= 55
 else score -= 80
 
-// ⚖ BMI penalty (smarter weighted risk)
 if(bmi >= 35) score -= 30
 else if(bmi >= 30) score -= 20
 else if(bmi >= 27) score -= 12
@@ -27,7 +58,7 @@ return Math.max(0, Math.min(100, Math.round(score)))
 }
 
 /* =========================
-RISK ENGINE (v11 IMPROVED)
+RISK ENGINE
 ========================= */
 function getRiskLevel(calories, bmi){
 
@@ -45,7 +76,7 @@ return {level:"🔴", text:"High Risk", color:"red"}
 }
 
 /* =========================
-FOOD ANOMALY DETECTION (NEW)
+FOOD ANOMALY DETECTION
 ========================= */
 function detectAnomaly(calories, history = []){
 
@@ -67,19 +98,17 @@ return "normal"
 }
 
 /* =========================
-SMART ADVICE ENGINE (CONTEXT-AWARE)
+SMART ADVICE ENGINE
 ========================= */
 function getAdvice(calories, bmi = 22, history = []){
 
 let risk = getRiskLevel(calories, bmi)
 let anomaly = detectAnomaly(calories, history)
 
-// 🔴 HIGH RISK
 if(risk.level === "🔴"){
 return "High risk detected. Reduce carbs/sugar, prioritize protein, and add 30–45 min walking."
 }
 
-// 🟡 MEDIUM RISK
 if(risk.level === "🟡"){
 
 if(anomaly.includes("overeating")){
@@ -89,12 +118,11 @@ return "You are above your normal intake trend. Consider lighter meals tomorrow.
 return "Moderate intake. Maintain balance and avoid late-night eating."
 }
 
-// 🟢 LOW RISK
 return "Healthy balance. Maintain current routine and hydration."
 }
 
 /* =========================
-FOOD PATTERN LEARNING (v11 IMPROVED AI MEMORY)
+FOOD PATTERN LEARNING
 ========================= */
 function analyzeFoodPreference(foods){
 
@@ -116,7 +144,6 @@ if(/snack|chips|cookie|cake/.test(name)) map.snack = (map.snack||0)+1
 if(/noodle|pasta|bread/.test(name)) map.carb = (map.carb||0)+1
 })
 
-// sort strongest pattern
 let sorted = Object.entries(map).sort((a,b)=>b[1]-a[1])
 
 if(sorted.length === 0){
@@ -130,7 +157,7 @@ raw: map
 }
 
 /* =========================
-WEEKLY AI SUMMARY (SMART INSIGHT ENGINE)
+WEEKLY AI SUMMARY
 ========================= */
 function generateWeeklyAI(dailyCaloriesArray, bmi){
 
@@ -168,15 +195,19 @@ insight: `Avg ${Math.round(avg)} kcal | ${trend} | ${anomaly} | Risk days: ${ris
 }
 
 /* =========================
-GLOBAL AI INSIGHT ENGINE (FINAL API)
+🔥 FINAL AI ENGINE (MAIN API FIXED)
 ========================= */
-function getAIInsight(calories, bmi, history = []){
+function getAIInsight(calories, bmi, history = [], foodText = ""){
 
 let risk = getRiskLevel(calories, bmi)
+
+// 🧠 NEW: FOOD NORMALIZATION LAYER
+let cleanFood = normalizeFoodAI(foodText)
 
 return {
 score: calculateHealthScore(calories, bmi),
 risk: risk,
-advice: getAdvice(calories, bmi, history)
+advice: getAdvice(calories, bmi, history),
+food: cleanFood
 }
 }
