@@ -85,3 +85,31 @@ setActive("report")
 
 </body>
 </html>
+
+<div class="card">
+<h3>📄 Export Report</h3>
+
+<button onclick="exportPDF()">Generate PDF</button>
+</div>
+
+<script>
+
+function exportPDF(){
+
+const { jsPDF } = window.jspdf
+const doc = new jsPDF()
+
+doc.setFontSize(16)
+doc.text("Health Report", 10, 10)
+
+doc.setFontSize(12)
+doc.text("Weekly Score: 85", 10, 20)
+doc.text("Monthly Score: 80", 10, 30)
+doc.text("Status: Healthy", 10, 40)
+
+doc.text("AI Insight: Balanced diet recommended", 10, 50)
+
+doc.save("report.pdf")
+}
+
+</script>
