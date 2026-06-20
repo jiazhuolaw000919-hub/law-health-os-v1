@@ -132,8 +132,7 @@ let calories = 0
 
 try{
 if(typeof getFoodLogs !== "undefined"){
-const foods = await getFoodLogs(date)
-foods.forEach(f=>{
+const foods = await getFoodLogs?.(date) || []foods.forEach(f=>{
 calories += Number(f.calories || 0)
 })
 }
