@@ -2,123 +2,86 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Profile v8.2</title>
+<title>Profile v9</title>
 
 <link rel="stylesheet" href="style.css">
-
 <script src="app.js"></script>
-<script src="supabase.js"></script>
 </head>
 
 <body>
 
 <div class="nav">
 <a href="index.html">Home</a>
-<a href="profile.html">Profile</a>
 </div>
 
-<h2 style="text-align:center">🧬 Profile System v8.2</h2>
+<h2 class="center">👤 Profile System v9</h2>
 
 <div class="card">
 
-<h3>Create / Switch Profile</h3>
-
 <input id="name" placeholder="Name">
-<input id="gender" placeholder="Gender">
+<br><br>
+
+<select id="gender">
+  <option>Male</option>
+  <option>Female</option>
+</select>
+
+<input id="age" placeholder="Age" type="number">
 <input id="height" placeholder="Height (cm)">
 <input id="weight" placeholder="Weight (kg)">
-<input id="goal" placeholder="Goal (cut / bulk / maintain)">
 
 <br><br>
 
-<button onclick="saveProfile()">Save Profile</button>
-<button onclick="switchProfile()">Switch Profile</button>
+<button onclick="save()">Save Profile</button>
 
 </div>
 
 <div class="card">
-<h3>Active Profile</h3>
-<p id="activeProfile">Loading...</p>
+<h3>📊 Current Profile</h3>
+<div id="profileBox">Loading...</div>
 </div>
-
-<button onclick="location.href='index.html'">
-🏠 Back to Home
-</button>
 
 <script>
 
-// =====================
-// MULTI PROFILE STORAGE
-// =====================
-function getProfiles(){
-return JSON.parse(localStorage.getItem("profiles") || "[]")
-}
-
-function saveProfiles(list){
-localStorage.setItem("profiles", JSON.stringify(list))
-}
-
-function getActiveProfile(){
-return JSON.parse(localStorage.getItem("activeProfile"))
-}
-
-// =====================
-// SAVE PROFILE
-// =====================
-function saveProfile(){
+function save(){
 
 let profile = {
-id: "user_" + Date.now(),
-name: document.getElementById("name").value,
-gender: document.getElementById("gender").value,
-height: Number(document.getElementById("height").value),
-weight: Number(document.getElementById("weight").value),
-goal: document.getElementById("goal").value
+  id: Date.now().toString(),
+  name: document.getElementById("name").value,
+  gender: document.getElementById("gender").value,
+  age: document.getElementById("age").value,
+  height: document.getElementById("height").value,
+  weight: document.getElementById("weight").value
 }
 
-let profiles = getProfiles()
-profiles.push(profile)
+profile.bmi = calculateBMI(profile.height, profile.weight)
 
-saveProfiles(profiles)
-localStorage.setItem("activeProfile", JSON.stringify(profile))
+saveProfile(profile)
 
-render()
-
+load()
 }
 
-// =====================
-// SWITCH PROFILE
-// =====================
-function switchProfile(){
+function load(){
 
-let profiles = getProfiles()
+let p = getProfile()
 
-if(profiles.length === 0){
-alert("No profiles")
+if(!p){
+document.getElementById("profileBox").innerText = "No profile"
 return
 }
 
-let next = profiles[Math.floor(Math.random()*profiles.length)]
-
-localStorage.setItem("activeProfile", JSON.stringify(next))
-
-render()
-
+document.getElementById("profileBox").innerHTML =
+`
+<p>Name: ${p.name}</p>
+<p>Gender: ${p.gender}</p>
+<p>Age: ${p.age}</p>
+<p>Height: ${p.height}</p>
+<p>Weight: ${p.weight}</p>
+<p>BMI: ${p.bmi}</p>
+`
 }
 
-// =====================
-// UI
-// =====================
-function render(){
-
-let p = getActiveProfile()
-
-document.getElementById("activeProfile").innerText =
-p ? `${p.name} | ${p.gender} | ${p.height}cm | ${p.weight}kg | ${p.goal}` : "No active profile"
-
-}
-
-render()
+load()
 
 </script>
 
