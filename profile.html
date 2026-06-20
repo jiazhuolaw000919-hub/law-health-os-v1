@@ -78,7 +78,7 @@ w = Number(w || 70)
 return (w / ((h/100)*(h/100))).toFixed(1)
 }
 
-/* ================= WEIGHT TRACKER ================= */
+/* ================= WEIGHT TRACKER (FIXED v10.9) ================= */
 function updateWeightHistory(profile){
 
 let history = profile.weightHistory || []
@@ -88,6 +88,7 @@ date: new Date().toISOString().split("T")[0],
 weight: Number(profile.weight || 70)
 })
 
+// keep last 30 entries only
 profile.weightHistory = history.slice(-30)
 
 return profile
@@ -124,6 +125,7 @@ return
 
 let profile = getActiveProfile()
 
+// create new profile if guest
 if(profile.id === "guest"){
 profile.id = Date.now().toString()
 }
@@ -132,9 +134,10 @@ profile.name = name
 profile.height = height || 170
 profile.weight = weight || 70
 
+// BMI auto update
 profile.bmi = calcBMI(profile.height, profile.weight)
 
-// 🧠 IMPORTANT: attach history
+// 🔥 critical: append weight history
 profile = updateWeightHistory(profile)
 
 saveProfileToLocal(profile)
@@ -142,7 +145,7 @@ saveProfileToLocal(profile)
 render()
 }
 
-/* ================= SWITCH ================= */
+/* ================= SWITCH PROFILE ================= */
 function switchProfile(id){
 
 let profiles = getProfiles()
@@ -154,7 +157,7 @@ render()
 }
 }
 
-/* ================= DELETE ================= */
+/* ================= DELETE PROFILE ================= */
 function deleteProfile(id){
 
 let profiles = getProfiles().filter(p => p.id !== id)
@@ -181,7 +184,7 @@ localStorage.setItem("activeProfile", JSON.stringify(profiles[0]))
 render()
 }
 
-/* ================= RENDER HISTORY ================= */
+/* ================= HISTORY RENDER ================= */
 function renderHistory(){
 
 let active = getActiveProfile()
@@ -197,7 +200,7 @@ return `<p>📅 ${h.date} — ${h.weight} kg</p>`
 }).join("")
 }
 
-/* ================= RENDER ================= */
+/* ================= MAIN RENDER ================= */
 function render(){
 
 let active = getActiveProfile()
