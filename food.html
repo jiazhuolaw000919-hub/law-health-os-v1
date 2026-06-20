@@ -179,9 +179,7 @@ document.getElementById("aiResult").innerText =
 🍞 Carbs: ${parsed.carbs || "-"}
 🥑 Fat: ${parsed.fat || "-"}`
 
-}catch(e){
-
-console.log(e)
+catch(e){
 
 document.getElementById("aiResult").innerText =
 "AI failed or API not set"
