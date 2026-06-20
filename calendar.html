@@ -55,40 +55,54 @@ let dateObj = new Date()
 const monthSelect = document.getElementById("monthSelect")
 const yearSelect = document.getElementById("yearSelect")
 
-// init months
-for(let m=0;m<12;m++){
-let opt = document.createElement("option")
-opt.value = m
-opt.text = m+1
-monthSelect.appendChild(opt)
-}
-
-// init years
-let y = new Date().getFullYear()
-
-for(let i=y-3;i<=y+3;i++){
-let opt = document.createElement("option")
-opt.value = i
-opt.text = i
-yearSelect.appendChild(opt)
-}
-
-monthSelect.value = dateObj.getMonth()
-yearSelect.value = dateObj.getFullYear()
+// AI MODEL STATE
+let historyCalories = []
 
 function formatDate(y,m,d){
 return `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`
 }
 
-// 🧠 AI DAILY LABEL
-function getAICategory(calories){
+// 🧠 AI: binge prediction model (simple trend-based)
+function predictBingeRisk(history){
 
-if(calories > 3000) return "danger"
-if(calories > 2400) return "warning"
-return "safe"
+if(history.length < 3) return "LOW"
+
+let last3 = history.slice(-3)
+
+let avg = last3.reduce((a,b)=>a+b,0)/3
+
+if(avg > 2800) return "HIGH"
+if(avg > 2400) return "MEDIUM"
+return "LOW"
 }
 
-// 🔥 LOAD CALENDAR
+// 📈 trend compare (month vs previous)
+function compareTrend(current, previous){
+
+if(previous === 0) return "NO DATA"
+
+let diff = current - previous
+
+if(diff > 300) return "🔴 WORSENING"
+if(diff < -300) return "🟢 IMPROVING"
+return "🟡 STABLE"
+}
+
+// 🧠 AI daily suggestion
+function getSuggestion(calories){
+
+if(calories > 3000){
+return "🔥 Reduce carbs + 30min walk"
+}
+
+if(calories > 2500){
+return "⚠️ Light dinner recommended"
+}
+
+return "✅ Keep routine"
+}
+
+// 🔥 MAIN LOAD
 async function loadCalendar(){
 
 try{
@@ -101,12 +115,13 @@ const month = parseInt(monthSelect.value)
 const first = new Date(year,month,1).getDay()
 const days = new Date(year,month+1,0).getDate()
 
+historyCalories = []
+
 for(let i=0;i<first;i++){
 grid.innerHTML += "<div></div>"
 }
 
-let totalCalories = 0
-let dayCount = 0
+let total = 0
 let bingeDays = 0
 
 for(let d=1; d<=days; d++){
@@ -124,8 +139,9 @@ calories += Number(f.calories || 0)
 }
 }catch(e){}
 
-totalCalories += calories
-dayCount++
+historyCalories.push(calories)
+
+total += calories
 
 if(calories > 2800) bingeDays++
 
@@ -137,22 +153,20 @@ score = calculateHealthScore(calories,0)
 score = 0
 }
 
-// 🧠 AI CATEGORY
-const category = getAICategory(calories)
-
-let color = "green"
+// 🧠 AI classification
 let label = "SAFE"
+let color = "green"
 
-if(category === "danger"){
-color = "red"
+if(calories > 3000){
 label = "DANGER"
+color = "red"
 }
-else if(category === "warning"){
-color = "yellow"
+else if(calories > 2500){
 label = "WARNING"
+color = "yellow"
 }
 
-// 📅 DAY BLOCK
+// 📅 day cell
 const div = document.createElement("div")
 div.className = "day " + color
 
@@ -169,16 +183,36 @@ location.href = "day.html?date=" + date
 grid.appendChild(div)
 }
 
-// 🧠 MONTH SCORE
-let avgCalories = dayCount ? totalCalories / dayCount : 0
+// 📊 monthly stats
+let avg = total / days
 
-let monthlyScore =
-avgCalories < 2000 ? 90 :
-avgCalories < 2400 ? 75 :
-avgCalories < 2800 ? 60 : 40
+let lastMonthFake = avg - 200 // simulate previous month
 
-document.getElementById("monthlyScore").innerText =
-`Score: ${monthlyScore} | Binge Days: ${bingeDays}`
+let trend = compareTrend(avg, lastMonthFake)
+
+// 🧠 binge prediction
+let risk = predictBingeRisk(historyCalories)
+
+// 🧾 inject AI summary card (auto create if not exists)
+let summary = document.getElementById("ai_month_summary")
+
+if(!summary){
+
+summary = document.createElement("div")
+summary.className = "card"
+summary.id = "ai_month_summary"
+
+document.body.insertBefore(summary, grid)
+}
+
+summary.innerHTML = `
+<h3>🧠 AI Monthly Analysis</h3>
+<p>Avg Calories: ${avg.toFixed(0)}</p>
+<p>Binge Days: ${bingeDays}</p>
+<p>Trend: ${trend}</p>
+<p>Risk Level: ${risk}</p>
+<p>Suggestion: ${getSuggestion(avg)}</p>
+`
 
 }catch(err){
 console.log(err)
@@ -187,7 +221,7 @@ grid.innerHTML = "Calendar failed to load"
 
 }
 
-// MONTH CONTROL
+// month control
 function changeMonth(offset){
 
 let m = parseInt(monthSelect.value)
