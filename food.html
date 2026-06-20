@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Food AI v3</title>
+<title>Food AI v3 Stable</title>
 
 <link rel="stylesheet" href="style.css">
 
@@ -23,7 +23,7 @@
 <a href="report.html">Report</a>
 </div>
 
-<h2 style="text-align:center">🍽 Food AI System</h2>
+<h2 style="text-align:center">🍽 Food AI System (Stable)</h2>
 
 <!-- FOOD INPUT -->
 <div class="card">
@@ -42,7 +42,7 @@ Add Food
 
 </div>
 
-<!-- AI IMAGE SCANNER -->
+<!-- AI SCANNER -->
 <div class="card">
 <h3>📸 Food AI Scanner</h3>
 
@@ -59,9 +59,9 @@ Add Food
 
 setActive("food")
 
-let total = 0
-
-// 🍽 manual food add
+// =====================
+// 🍽 MANUAL FOOD INPUT
+// =====================
 async function addFoodManual(){
 
 const input = document.getElementById("foodInput")
@@ -70,7 +70,6 @@ const food = input.value.trim()
 if(!food) return
 
 let cal = 300
-
 if(food.includes("chicken")) cal = 600
 if(food.includes("milo")) cal = 180
 if(food.includes("rice")) cal = 500
@@ -78,11 +77,13 @@ if(food.includes("tea")) cal = 120
 
 const today = new Date().toISOString().split("T")[0]
 
+// UI update
 document.getElementById("log").innerHTML +=
 `<p>🍽 ${food} - ${cal} kcal</p>`
 
 input.value = ""
 
+// save to DB
 try{
 if(typeof saveFood !== "undefined"){
 await saveFood({
@@ -92,12 +93,14 @@ date: today
 })
 }
 }catch(e){
-console.log("supabase error",e)
+console.log("saveFood error:", e)
 }
 
 }
 
-// 📸 AI scan
+// =====================
+// 📸 AI FOOD SCAN
+// =====================
 async function scanFood(){
 
 const file = document.getElementById("foodImage").files[0]
@@ -107,6 +110,8 @@ alert("Please upload image")
 return
 }
 
+document.getElementById("aiResult").innerText = "Analyzing..."
+
 const reader = new FileReader()
 
 reader.onload = async function(){
@@ -115,44 +120,44 @@ const base64 = reader.result
 
 try{
 
-if(typeof saveFood !== "undefined"){
-
-await saveFood({
-food: parsed.food || "unknown",
-calories: parsed.calories || 0,
-protein: parsed.protein || 0,
-carbs: parsed.carbs || 0,
-fat: parsed.fat || 0,
-date: new Date().toISOString().split("T")[0]
-})
-
-}
-
-}catch(e){
-console.log("save failed", e)
-}
-document.getElementById("aiResult").innerText =
-"Analyzing..."
-
-try{
-
+// 1. call AI
 const raw = await analyzeFoodImage(base64)
 
-const raw = await analyzeFoodImage(base64)
-
+// 2. parse safe
 let parsed = raw
 
 if(typeof parsed === "string"){
 try{
 parsed = JSON.parse(parsed)
 }catch(e){
-parsed = {
-food:"unknown",
-calories:0
+try{
+parsed = Function("return " + parsed)()
+}catch(e2){
+parsed = { food:"unknown", calories:0 }
 }
 }
 }
 
+// 3. dedup AI (SAFE)
+const today = new Date().toISOString().split("T")[0]
+
+if(typeof getFoodLogs !== "undefined"){
+
+const logs = await getFoodLogs(today) || []
+
+const exists = logs.some(f =>
+f.food === parsed.food &&
+f.source === "ai"
+)
+
+if(exists){
+document.getElementById("aiResult").innerText =
+"⚠️ Duplicate AI food ignored"
+return
+}
+}
+
+// 4. save AI food
 if(typeof saveFood !== "undefined"){
 await saveFood({
 food: parsed.food || "unknown",
@@ -160,12 +165,12 @@ calories: parsed.calories || 0,
 protein: parsed.protein || 0,
 carbs: parsed.carbs || 0,
 fat: parsed.fat || 0,
-date: new Date().toISOString().split("T")[0]
+source: "ai",
+date: today
 })
 }
 
-if(typeof parsed === "object"){
-
+// 5. UI render
 document.getElementById("aiResult").innerText =
 `🍽 Food: ${parsed.food || "Unknown"}
 🔥 Calories: ${parsed.calories || "-"}
@@ -173,19 +178,12 @@ document.getElementById("aiResult").innerText =
 🍞 Carbs: ${parsed.carbs || "-"}
 🥑 Fat: ${parsed.fat || "-"}`
 
-}else{
-
-document.getElementById("aiResult").innerText =
-String(parsed)
-
-}
-
 }catch(e){
+
+console.log(e)
 
 document.getElementById("aiResult").innerText =
 "AI failed or API not set"
-
-console.log(e)
 
 }
 
@@ -194,6 +192,9 @@ console.log(e)
 reader.readAsDataURL(file)
 }
 
+// =====================
+// AI API CALL
+// =====================
 async function analyzeFoodImage(imageBase64){
 
 const res = await fetch("/api/ai",{
