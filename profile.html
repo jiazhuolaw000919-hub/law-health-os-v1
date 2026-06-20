@@ -21,7 +21,7 @@
 <a href="profile.html">Profile</a>
 </div>
 
-<h2 class="center">👤 Profile System v10.9 (Cloud Ready)</h2>
+<h2 class="center">👤 Profile System v10.9 (Stable FIX)</h2>
 
 <!-- CREATE -->
 <div class="card">
@@ -78,7 +78,7 @@ w = Number(w || 70)
 return (w / ((h/100)*(h/100))).toFixed(1)
 }
 
-/* ================= WEIGHT TRACKER (FIXED v10.9) ================= */
+/* ================= WEIGHT TRACKER ================= */
 function updateWeightHistory(profile){
 
 let history = profile.weightHistory || []
@@ -94,7 +94,7 @@ profile.weightHistory = history.slice(-30)
 return profile
 }
 
-/* ================= CORE SAVE ================= */
+/* ================= SAVE ================= */
 function saveProfileToLocal(profile){
 
 let profiles = getProfiles()
@@ -111,7 +111,7 @@ localStorage.setItem("profiles", JSON.stringify(profiles))
 localStorage.setItem("activeProfile", JSON.stringify(profile))
 }
 
-/* ================= CREATE OR UPDATE ================= */
+/* ================= CREATE / UPDATE ================= */
 function createOrUpdateProfile(){
 
 const name = document.getElementById("name").value.trim()
@@ -134,10 +134,9 @@ profile.name = name
 profile.height = height || 170
 profile.weight = weight || 70
 
-// BMI auto update
 profile.bmi = calcBMI(profile.height, profile.weight)
 
-// 🔥 critical: append weight history
+// add weight history
 profile = updateWeightHistory(profile)
 
 saveProfileToLocal(profile)
@@ -157,34 +156,37 @@ render()
 }
 }
 
-/* ================= DELETE PROFILE ================= */
+/* ================= 🔥 FIXED DELETE PROFILE ================= */
 function deleteProfile(id){
+
+if(id === "guest") return
 
 let profiles = getProfiles().filter(p => p.id !== id)
 
 localStorage.setItem("profiles", JSON.stringify(profiles))
 
-if(profiles.length === 0){
+let active = getActiveProfile()
 
-let fallback = {
+// if deleted active profile → switch safely
+if(active && active.id === id){
+
+let newActive = profiles.length > 0
+? profiles[0]
+: {
 id:"guest",
 name:"Guest",
 height:170,
 weight:70,
-bmi:calcBMI(170,70),
 weightHistory:[]
 }
 
-localStorage.setItem("activeProfile", JSON.stringify(fallback))
-
-}else{
-localStorage.setItem("activeProfile", JSON.stringify(profiles[0]))
+localStorage.setItem("activeProfile", JSON.stringify(newActive))
 }
 
 render()
 }
 
-/* ================= HISTORY RENDER ================= */
+/* ================= HISTORY ================= */
 function renderHistory(){
 
 let active = getActiveProfile()
@@ -200,7 +202,7 @@ return `<p>📅 ${h.date} — ${h.weight} kg</p>`
 }).join("")
 }
 
-/* ================= MAIN RENDER ================= */
+/* ================= RENDER ================= */
 function render(){
 
 let active = getActiveProfile()
