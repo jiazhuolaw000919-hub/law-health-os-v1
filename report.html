@@ -2,12 +2,16 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Report</title>
+<title>Report v11.4</title>
 
 <link rel="stylesheet" href="style.css">
 
+<script src="app.js"></script>
 <script src="ai.js"></script>
 <script src="supabase.js"></script>
+
+<!-- PDF library -->
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 </head>
 
 <body>
@@ -23,51 +27,28 @@
 
 <h2 class="center">📊 AI Health Report</h2>
 
+<!-- DAILY CALORIES -->
 <div class="card">
-
-<script>
-
-let calories = 2100
-let burn = 300
-
-// 🧠 防 crash
-let score = 0
-let label = "Loading..."
-
-if(typeof calculateHealthScore === "function"){
-score = calculateHealthScore(calories, burn)
-}
-
-if(typeof healthLabel === "function"){
-label = healthLabel(score)
-}
-
-document.write(`
-<p>🔥 Calories: ${calories}</p>
-<p>🏃 Burn: ${burn}</p>
-<p>📊 AI Score: ${score}</p>
-<p>🧠 Status: ${label}</p>
-`)
-</script>
-
+<h3>🔥 Today Calories</h3>
+<p id="dailyCalories">Loading...</p>
 </div>
 
+<!-- AI SUMMARY -->
 <div class="card">
-<h3>Weekly Insight</h3>
+<h3>🧠 AI Summary</h3>
+<p id="summary">Loading...</p>
+</div>
 
-<script>
+<!-- INSIGHT -->
+<div class="card">
+<h3>💡 Weekly Insight</h3>
+<p id="advice">Loading...</p>
+</div>
 
-let advice = "No data"
-
-if(typeof workoutSuggestion === "function"){
-advice = workoutSuggestion(calories)
-}
-
-document.write(`
-<p>💡 Advice: ${advice}</p>
-`)
-</script>
-
+<!-- EXPORT -->
+<div class="card">
+<h3>📄 Export Report</h3>
+<button onclick="exportPDF()">Generate PDF</button>
 </div>
 
 <div class="bottom-nav">
@@ -80,20 +61,52 @@ document.write(`
 </div>
 
 <script>
+
+// safe setActive
+if(typeof setActive !== "undefined"){
 setActive("report")
-</script>
+}
 
-</body>
-</html>
+// =====================
+// LOAD REPORT DATA
+// =====================
+async function loadReport(){
 
-<div class="card">
-<h3>📄 Export Report</h3>
+const today = new Date().toISOString().split("T")[0]
 
-<button onclick="exportPDF()">Generate PDF</button>
-</div>
+let foods = []
 
-<script>
+if(typeof getFoodLogs !== "undefined"){
+foods = await getFoodLogs(today) || []
+}
 
+let totalCalories = 0
+foods.forEach(f=>{
+totalCalories += Number(f.calories || 0)
+})
+
+document.getElementById("dailyCalories").innerText =
+totalCalories + " kcal"
+
+// AI fallback
+let score = typeof calculateHealthScore === "function"
+? calculateHealthScore(totalCalories, 300)
+: 0
+
+document.getElementById("summary").innerText =
+"Health Score: " + score
+
+document.getElementById("advice").innerText =
+typeof workoutSuggestion === "function"
+? workoutSuggestion(totalCalories)
+: "No suggestion available"
+}
+
+loadReport()
+
+// =====================
+// PDF EXPORT
+// =====================
 function exportPDF(){
 
 const { jsPDF } = window.jspdf
@@ -103,33 +116,13 @@ doc.setFontSize(16)
 doc.text("Health Report", 10, 10)
 
 doc.setFontSize(12)
-doc.text("Weekly Score: 85", 10, 20)
-doc.text("Monthly Score: 80", 10, 30)
-doc.text("Status: Healthy", 10, 40)
-
-doc.text("AI Insight: Balanced diet recommended", 10, 50)
+doc.text("Today's Calories: Loading...", 10, 20)
+doc.text("AI Report generated from Health OS", 10, 30)
 
 doc.save("report.pdf")
 }
 
-<p id="dailyCalories">Loading...</p>
-
-async function loadReport(){
-
-const today = new Date().toISOString().split("T")[0]
-
-const foods = await getFoodLogs?.(today) || []
-
-let totalCalories = 0
-
-foods.forEach(f=>{
-totalCalories += Number(f.calories || 0)
-})
-
-document.getElementById("dailyCalories").innerText =
-totalCalories
-}
-
-loadReport()
-
 </script>
+
+</body>
+</html>
