@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>AI Calendar v3.5 FIXED FINAL</title>
+<title>AI Calendar v10.6</title>
 
 <link rel="stylesheet" href="style.css">
 
@@ -10,7 +10,7 @@
 <script src="ai.js"></script>
 <script src="supabase.js"></script>
 
-<!-- STEP 2 CORE SYSTEM -->
+<!-- CORE SYSTEM -->
 <script src="js/db.js"></script>
 <script src="js/profile.js"></script>
 <script src="js/ai-engine.js"></script>
@@ -87,7 +87,7 @@ box-shadow:0 1px 4px rgba(0,0,0,.05);
 <a href="profile.html">Profile</a>
 </div>
 
-<h2 class="center">📅 AI Calendar v3.5 FIXED FINAL</h2>
+<h2 class="center">📅 AI Calendar v10.6</h2>
 
 <div class="card">
 <div class="month-bar">
@@ -127,12 +127,12 @@ const yearSelect = document.getElementById("yearSelect")
 
 let dateObj = new Date()
 
-/* ================= PROFILE SAFE ================= */
+/* ================= PROFILE SAFE CORE ================= */
 function getActiveProfile(){
 try{
-return JSON.parse(localStorage.getItem("activeProfile")) || null
+return JSON.parse(localStorage.getItem("activeProfile")) || {id:"guest", name:"Guest"}
 }catch(e){
-return null
+return {id:"guest", name:"Guest"}
 }
 }
 
@@ -161,27 +161,27 @@ monthSelect.value = dateObj.getMonth()
 yearSelect.value = dateObj.getFullYear()
 }
 
-/* ================= SAFE CALORIES (MULTI PROFILE FIX) ================= */
+/* ================= SAFE CALORIES (v10.6 MULTI PROFILE FIX) ================= */
 async function safeCalories(date){
 
 try{
 if(typeof getFoodLogs === "undefined") return 0
 
 const profile = getActiveProfile()
-const logs = await getFoodLogs(date) || []
-
 if(!profile) return 0
+
+const logs = await getFoodLogs(date) || []
 
 return logs
 .filter(f => !f.userId || f.userId === profile.id)
-.reduce((s,f)=>s+Number(f.calories||0),0)
+.reduce((s,f)=>s + Number(f.calories || 0), 0)
 
 }catch(e){
 return 0
 }
 }
 
-/* ================= HEAT ================= */
+/* ================= HEAT LEVEL ================= */
 function getLevel(cal){
 if(cal < 1500) return "l1"
 if(cal < 2200) return "l2"
@@ -265,10 +265,10 @@ function closeModal(){
 document.getElementById("modal").style.display = "none"
 }
 
-/* ================= START (SAFE BOOT) ================= */
+/* ================= BOOT SAFE ================= */
 document.addEventListener("DOMContentLoaded",()=>{
 init()
-setTimeout(load, 200)
+setTimeout(load, 150)
 })
 
 </script>
