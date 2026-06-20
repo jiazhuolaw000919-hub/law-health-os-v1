@@ -1,158 +1,35 @@
-function calculateHealthScore(calories, burn){
-
-let score = 100
-
-score -= Math.abs(calories - 1800) * 0.03
-
-if(calories > 2200) score -= 15
-if(calories > 2600) score -= 25
-if(calories < 1200) score -= 20
-
-score += burn * 0.05
-
-if(score > 100) score = 100
-if(score < 0) score = 0
-
-return Math.round(score)
+function getBMI(weight,height){
+return weight / ((height/100) ** 2)
 }
 
-function bingeDetect(calories, streak){
-
-let risk = 0
-
-if(calories > 2500) risk += 40
-if(calories > 3000) risk += 30
-if(streak >= 2) risk += 20
-if(streak >= 3) risk += 30
-
-if(risk >= 70) return "🔴 HIGH BINGE RISK"
-if(risk >= 40) return "🟡 MODERATE RISK"
-return "🟢 LOW RISK"
-}
-
-if(calories > 2800) return "🔴 Binge Risk"
-if(calories > 2400) return "🟡 High Intake"
-return "🟢 Normal"
-}
-
-function weeklyScore(data){
-
-let total = 0
-
-data.forEach(d=>{
-total += calculateHealthScore(d.calories,d.burn||0)
-})
-
-return Math.round(total / data.length)
-}
-
-function monthlyScore(data){
-return weeklyScore(data)
-}
-
-function generateShoppingList(calories){
-
-if(calories < 1600){
-return ["Eggs","Chicken","Oats","Vegetables"]
-}
-
-if(calories > 2400){
-return ["Salad","Lean Protein","Low sugar drinks"]
-}
-
-return ["Balanced diet","Fruit","Rice"]
-}
-
-function aiCoach(calories, burn, score){
-
-if(score >= 80){
-return "🟢 Good job! Keep your routine."
-}
-
-if(score >= 50){
-return "🟡 Try more protein + light exercise today."
-}
-
-return "🔴 High risk day. Reduce carbs + go for a walk."
-}
-
-function calorieInsight(calories){
-
-if(calories < 1500){
-return "⚠️ Too low intake"
-}
-
-if(calories < 2000){
-return "🟢 Balanced intake"
-}
-
-if(calories < 2500){
-return "🟡 Slightly high"
-}
-
-return "🔴 Overeating risk"
-}
-
-let bingeStreak = 0
-
-function updateStreak(calories){
-
-if(calories > 2800){
-bingeStreak++
-} else {
-bingeStreak = 0
-}
-
-return bingeStreak
-}
-
-function behaviorAnalysis(history){
-
-let highDays = history.filter(d => d.calories > 2400).length
-
-if(highDays >= 5){
-return "🔴 Consistent overeating pattern detected"
-}
-
-if(highDays >= 3){
-return "🟡 Irregular eating pattern"
-}
-
-return "🟢 Stable eating behavior"
-}
-
-function predictWeight(currentWeight, dailyCalories){
-
-let diff = dailyCalories - 2000
-
-let change = diff * 0.0002
-
-return (currentWeight + change).toFixed(2)
-}
-
-function safeAI(fn, fallback){
-try{
-return fn()
-}catch(e){
-return fallback
-}
-}
-
-function getHealthScore(cal){
-if(cal<2000) return 90
-if(cal<2500) return 75
-if(cal<3000) return 60
-return 40
-}
-
-function healthRisk(avg){
-if(avg>3000) return "HIGH"
-if(avg>2500) return "MED"
+function riskLevel(cal, bmi){
+if(cal > 3000 && bmi > 27) return "VERY HIGH"
+if(cal > 2800) return "HIGH"
+if(cal > 2400) return "MEDIUM"
 return "LOW"
 }
 
-function suggestion(avg){
-if(avg>3000) return "Reduce carbs + sugar"
-if(avg>2500) return "Light dinner"
-return "Good routine"
+// 📈 weight prediction (simple trend model)
+function predictWeight(currentWeight, avgCal){
+
+let change = (avgCal - 2200) * 0.01
+
+return (currentWeight + change).toFixed(1)
+}
+
+function aiSuggestion(cal, bmi){
+
+if(cal > 3000){
+return "🚨 High intake: cut sugar + carbs immediately"
+}
+
+if(bmi > 27){
+return "⚠️ BMI high: add 20–30 min cardio daily"
+}
+
+if(cal > 2500){
+return "🍽 Reduce dinner portion slightly"
+}
+
+return "✅ Good balance, maintain routine"
 }
