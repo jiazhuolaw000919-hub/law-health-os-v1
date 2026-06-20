@@ -21,8 +21,6 @@
 <a href="report.html" id="nav-report">Report</a>
 </div>
 
-<h2 style="text-align:center">Calendar</h2>
-
 <div class="grid" id="grid"></div>
 
 <div class="bottom-nav">
@@ -54,7 +52,7 @@ const days=new Date(year,month+1,0).getDate()
 
 for(let i=0;i<first;i++) grid.innerHTML+="<div></div>"
 
-for(let d=1;d<=days;d++){
+for(let d=1; d<=days; d++){
 
 const date=dateStr(d)
 const foods=await getFood(date)
@@ -64,18 +62,15 @@ foods.forEach(f=>cal+=f.calories||0)
 
 let score=calcScore(cal,0)
 
-let color=score>80?"green":score>50?"yellow":"red"
+let div=document.createElement("div")
+div.className="day"
 
-const div=document.createElement("div")
-div.className="day "+color
-
-div.innerHTML=`${d}<br>${Math.round(score)}<br>${cal}`
+div.innerHTML = d + "<br>" + Math.round(score)
 
 div.onclick=()=>location.href="day.html?date="+date
 
 grid.appendChild(div)
 }
-
 }
 
 render()
