@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>AI Dashboard v11.1</title>
+<title>AI Dashboard v11.2</title>
 
 <link rel="stylesheet" href="style.css">
 
@@ -23,7 +23,6 @@ canvas{
 max-width:100%;
 }
 </style>
-
 </head>
 
 <body>
@@ -36,7 +35,7 @@ max-width:100%;
 <a href="profile.html">Profile</a>
 </div>
 
-<h2 class="center">📊 AI Dashboard v11.1</h2>
+<h2 class="center">📊 AI Dashboard v11.2</h2>
 
 <!-- TIME -->
 <div class="card">
@@ -73,7 +72,7 @@ max-width:100%;
 
 <!-- BMI TREND -->
 <div class="card">
-<h3>📊 BMI Trend (Real / Fallback)</h3>
+<h3>📊 BMI Trend (Real Data)</h3>
 <canvas id="bmiChart" width="300" height="120"></canvas>
 </div>
 
@@ -88,9 +87,19 @@ document.getElementById("time").innerText = now.toLocaleTimeString()
 setInterval(updateTime,1000)
 updateTime()
 
-/* ================= PROFILE ================= */
+/* ================= SAFE PROFILE ================= */
 function safeProfile(){
-return getActiveProfile?.() || {
+try{
+const p = getActiveProfile?.()
+return {
+name:p?.name || "Guest",
+id:p?.id || "guest",
+height:p?.height || 170,
+weight:p?.weight || 70,
+weightHistory:p?.weightHistory || []
+}
+}catch(e){
+return {
 name:"Guest",
 id:"guest",
 height:170,
@@ -98,31 +107,34 @@ weight:70,
 weightHistory:[]
 }
 }
+}
 
 /* ================= BMI ================= */
 function calcBMI(h,w){
-h = Number(h || 170)
-w = Number(w || 70)
 return (w / ((h/100)*(h/100))).toFixed(1)
 }
 
+/* ================= TAG ================= */
 function getBmiTag(bmi){
 bmi = Number(bmi)
-
 if(bmi < 18.5) return "🟡 Underweight"
 if(bmi < 25) return "🟢 Normal"
 if(bmi < 30) return "🟠 Overweight"
 return "🔴 Obese"
 }
 
-/* ================= RISK ================= */
 function getRiskTag(cal,bmi){
 if(cal > 2500 && bmi > 28) return "🔴 High Risk"
 if(cal > 2200) return "🟠 Medium Risk"
 return "🟢 Low Risk"
 }
 
-/* ================= REAL CALORIE HISTORY ================= */
+/* ================= SAFE CALORIE ================= */
+function safeNumber(n){
+return isNaN(n) ? 0 : Number(n)
+}
+
+/* ================= 7 DAY CALORIES ================= */
 async function get7DayCalories(){
 
 let arr = []
@@ -132,26 +144,23 @@ let d = new Date()
 d.setDate(d.getDate()-i)
 let date = d.toISOString().split("T")[0]
 
+let total = 0
+
 if(typeof getFoodLogs !== "undefined"){
 try{
 let foods = await getFoodLogs(date)
 
-let total = 0
-
 foods.forEach(f=>{
 if(!f.userId || f.userId === safeProfile().id){
-total += Number(f.calories || 0)
+total += safeNumber(f.calories)
 }
 })
+}catch(e){
+total = 0
+}
+}
 
 arr.push(total)
-
-}catch(e){
-arr.push(0)
-}
-}else{
-arr.push(0)
-}
 }
 
 return arr
@@ -159,6 +168,8 @@ return arr
 
 /* ================= CALORIE CHART ================= */
 function drawCalorieChart(data){
+
+if(!data || !data.length) return
 
 const c = document.getElementById("calChart")
 const ctx = c.getContext("2d")
@@ -173,10 +184,11 @@ ctx.lineTo(20 + i*40, 100 - data[i]/50)
 }
 
 ctx.strokeStyle = "#3b82f6"
+ctx.lineWidth = 2
 ctx.stroke()
 }
 
-/* ================= BMI CHART (REAL + FALLBACK) ================= */
+/* ================= BMI CHART ================= */
 function drawBMIChart(profile){
 
 const c = document.getElementById("bmiChart")
@@ -185,17 +197,30 @@ const ctx = c.getContext("2d")
 ctx.clearRect(0,0,300,120)
 
 let history = profile.weightHistory || []
-
 let values = []
 
-if(history.length >= 3){
+if(history.length >= 2){
+
 values = history.slice(-7).map(h=>{
 return calcBMI(profile.height, h.weight)
 })
+
 }else{
+
 let base = calcBMI(profile.height, profile.weight)
-values = [base-0.5, base, base+0.2, base-0.3, base, base+0.1, base]
+
+values = [
+base-0.2,
+base,
+base+0.1,
+base-0.1,
+base,
+base+0.2,
+base
+]
 }
+
+values = values.map(v => Number(v))
 
 ctx.beginPath()
 ctx.moveTo(20,100 - values[0]*2)
@@ -205,10 +230,11 @@ ctx.lineTo(20 + i*40, 100 - values[i]*2)
 }
 
 ctx.strokeStyle = "#22c55e"
+ctx.lineWidth = 2
 ctx.stroke()
 }
 
-/* ================= LOAD ================= */
+/* ================= LOAD DASHBOARD ================= */
 async function loadDashboard(){
 
 const profile = safeProfile()
@@ -235,13 +261,13 @@ const foods = await getFoodLogs(today)
 
 foods.forEach(f=>{
 if(!f.userId || f.userId === profile.id){
-calories += Number(f.calories || 0)
+calories += safeNumber(f.calories)
 }
 })
-}catch(e){}
+}catch(e){
+calories = 0
 }
-
-if(calories === 0) calories = 1800
+}
 
 document.getElementById("today").innerText =
 `🔥 Calories: ${calories} kcal | BMI: ${bmi}`
