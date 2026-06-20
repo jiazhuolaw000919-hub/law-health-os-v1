@@ -1,9 +1,9 @@
 //////////////////////////////
-// 🧠 AI ENGINE v11.2 FULL (WITH FOOD NLP LAYER)
+// 🧠 AI ENGINE v11.3 GPT-STYLE FULL UPGRADE
 //////////////////////////////
 
 /* =========================
-🔥 FOOD NLP LAYER (CRITICAL FIX)
+🔥 FOOD NLP LAYER (STEP 2 IMPROVED)
 ========================= */
 function normalizeFoodAI(foodText){
 
@@ -16,7 +16,6 @@ foodText = foodText.toLowerCase()
 const map = [
   {key:"tomyam", value:"tom yum soup"},
   {key:"tom yam", value:"tom yum soup"},
-  {key:"tomyum", value:"tom yum soup"},
   {key:"friedrice", value:"fried rice"},
   {key:"nasilemak", value:"nasi lemak"},
   {key:"chickrice", value:"chicken rice"},
@@ -33,6 +32,78 @@ return m.value
 }
 
 return foodText
+}
+
+/* =========================
+🍜 STEP 3: MULTI FOOD PARSER
+========================= */
+function parseFoodAI(text){
+
+if(!text) return []
+
+text = text.toLowerCase()
+
+let parts = text.split(/,|\+| and | with /)
+
+let results = []
+
+for(let p of parts){
+let clean = normalizeFoodAI(p.trim())
+if(clean && clean !== "unknown food"){
+results.push(clean)
+}
+}
+
+return results.length ? results : ["unknown food"]
+}
+
+/* =========================
+🍜 NEW: CUISINE DETECTOR (STEP 4 CORE)
+========================= */
+function detectCuisine(food){
+
+if(!food) return "unknown"
+
+if(/rice|chicken rice|nasi lemak/.test(food)) return "Asian"
+if(/tom yum|thai/.test(food)) return "Thai"
+if(/pasta|bread|steak|burger/.test(food)) return "Western"
+if(/noodle|char kway teow/.test(food)) return "Chinese"
+if(/milo|milk tea/.test(food)) return "Drink"
+
+return "Mixed"
+}
+
+/* =========================
+🔥 CALORIE SPLITTER (AI ESTIMATION CORE)
+========================= */
+function splitCalories(food, totalCalories){
+
+if(!Array.isArray(food)) return []
+
+let avg = totalCalories / food.length
+
+return food.map(f => ({
+food: f,
+calories: Math.round(avg)
+}))
+}
+
+/* =========================
+🧠 MEAL INTELLIGENCE SCORE
+========================= */
+function calculateMealScore(items){
+
+if(!items || items.length === 0) return 0
+
+let score = 100
+
+items.forEach(i=>{
+if(i.calories > 800) score -= 25
+if(/fried|oil/.test(i.food)) score -= 10
+if(/vegetable|salad/.test(i.food)) score += 10
+})
+
+return Math.max(0, Math.min(100, score))
 }
 
 /* =========================
@@ -122,92 +193,47 @@ return "Healthy balance. Maintain current routine and hydration."
 }
 
 /* =========================
-FOOD PATTERN LEARNING
+📊 FOOD RISK PER ITEM (NEW)
 ========================= */
-function analyzeFoodPreference(foods){
+function getItemRisk(food, calories){
 
-if(!foods || foods.length === 0){
-return "No food data available"
-}
-
-let map = {}
-
-foods.forEach(f=>{
-let name = (f.food || "").toLowerCase()
-
-if(!name) return
-
-if(/rice|fried rice/.test(name)) map.rice = (map.rice||0)+1
-if(/chicken|beef|fish|egg/.test(name)) map.protein = (map.protein||0)+1
-if(/milo|tea|coffee|coke/.test(name)) map.drink = (map.drink||0)+1
-if(/snack|chips|cookie|cake/.test(name)) map.snack = (map.snack||0)+1
-if(/noodle|pasta|bread/.test(name)) map.carb = (map.carb||0)+1
-})
-
-let sorted = Object.entries(map).sort((a,b)=>b[1]-a[1])
-
-if(sorted.length === 0){
-return "No clear pattern yet"
-}
-
-return {
-top: sorted[0][0],
-raw: map
-}
+if(calories > 800) return "HIGH"
+if(calories > 500) return "MEDIUM"
+return "LOW"
 }
 
 /* =========================
-WEEKLY AI SUMMARY
-========================= */
-function generateWeeklyAI(dailyCaloriesArray, bmi){
-
-if(!dailyCaloriesArray || dailyCaloriesArray.length === 0){
-return {
-avg:0,
-trend:"no data",
-riskDays:0,
-insight:"No data available"
-}
-}
-
-let avg = dailyCaloriesArray.reduce((a,b)=>a+b,0) / dailyCaloriesArray.length
-
-let max = Math.max(...dailyCaloriesArray)
-let min = Math.min(...dailyCaloriesArray)
-
-let trend = "stable"
-
-if(avg >= 2800) trend = "very high intake trend"
-else if(avg >= 2400) trend = "high intake trend"
-else if(avg <= 1800) trend = "low intake trend"
-
-let riskDays = dailyCaloriesArray.filter(c => c > 2500).length
-
-let anomaly = (max - min > 1200) ? "high fluctuation detected" : "stable intake pattern"
-
-return {
-avg: Math.round(avg),
-trend,
-riskDays,
-anomaly,
-insight: `Avg ${Math.round(avg)} kcal | ${trend} | ${anomaly} | Risk days: ${riskDays}`
-}
-}
-
-/* =========================
-🔥 FINAL AI ENGINE (MAIN API FIXED)
+🧠 FINAL GPT-STYLE AI ENGINE
 ========================= */
 function getAIInsight(calories, bmi, history = [], foodText = ""){
 
 let risk = getRiskLevel(calories, bmi)
 
-// 🧠 NEW: FOOD NORMALIZATION LAYER
-let cleanFood = normalizeFoodAI(foodText)
+// 🍜 STEP 3: multi-food parsing
+let foods = parseFoodAI(foodText)
+
+// 🔥 STEP 4: calorie split
+let split = splitCalories(foods, calories)
+
+// 🧠 cuisine detection
+let cuisines = foods.map(f => detectCuisine(f))
+
+// 📊 per item intelligence
+let items = split.map(s => ({
+food: s.food,
+calories: s.calories,
+risk: getItemRisk(s.food, s.calories),
+cuisine: detectCuisine(s.food)
+}))
 
 return {
 score: calculateHealthScore(calories, bmi),
+mealScore: calculateMealScore(items),
 risk: risk,
 advice: getAdvice(calories, bmi, history),
-food: cleanFood
+
+// 🍜 NEW AI OUTPUT
+foods: items,
+cuisines: [...new Set(cuisines)]
 }
 }
