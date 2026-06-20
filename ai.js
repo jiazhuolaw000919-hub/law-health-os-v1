@@ -105,3 +105,18 @@ bingeStreak = 0
 
 return bingeStreak
 }
+
+function behaviorAnalysis(history){
+
+let highDays = history.filter(d => d.calories > 2400).length
+
+if(highDays >= 5){
+return "🔴 Consistent overeating pattern detected"
+}
+
+if(highDays >= 3){
+return "🟡 Irregular eating pattern"
+}
+
+return "🟢 Stable eating behavior"
+}
