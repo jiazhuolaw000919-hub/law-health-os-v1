@@ -1,16 +1,14 @@
-<!DOCTYPE html>
+<!DOCTYPE html><!DOCTYPE html>
 <html>
 <head>
 <meta charset="UTF-8">
-<title>AI Dashboard v4</title>
+<title>AI Dashboard v5</title>
 
 <link rel="stylesheet" href="style.css">
 
 <script src="app.js"></script>
 <script src="ai.js"></script>
 <script src="supabase.js"></script>
-
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
 .card{
@@ -31,11 +29,6 @@ gap:10px;
 font-size:20px;
 font-weight:bold;
 }
-
-.small{
-color:#6b7280;
-font-size:12px;
-}
 </style>
 
 </head>
@@ -47,132 +40,87 @@ font-size:12px;
 <a href="calendar.html">Calendar</a>
 <a href="food.html">Food</a>
 <a href="workout.html">Workout</a>
-<a href="shopping.html">Shop</a>
-<a href="report.html">Report</a>
+<a href="dashboard.html">Dashboard</a>
 <a href="profile.html">Profile</a>
 </div>
 
-<h2 class="center">📊 AI Dashboard v4</h2>
+<h2 class="center">🧠 AI Dashboard v5</h2>
 
 <!-- PROFILE -->
 <div class="card">
-<h3>👤 Profile</h3>
+<h3>👤 Profile AI Status</h3>
 <p id="profile"></p>
+<p id="bmi"></p>
+<p id="prediction"></p>
 </div>
 
 <!-- KPI -->
 <div class="card grid">
+
 <div>
 <p class="kpi" id="todayCal">0</p>
-<p class="small">Today Calories</p>
-</div>
-
-<div>
-<p class="kpi" id="weekCal">0</p>
-<p class="small">7 Days</p>
-</div>
-
-<div>
-<p class="kpi" id="avgCal">0</p>
-<p class="small">Average</p>
+<p>Today Calories</p>
 </div>
 
 <div>
 <p class="kpi" id="risk">-</p>
-<p class="small">AI Risk</p>
-</div>
-</div>
-
-<!-- CHART -->
-<div class="card">
-<canvas id="chart"></canvas>
+<p>Risk Level</p>
 </div>
 
-<!-- INSIGHT -->
+</div>
+
+<!-- AI INSIGHT -->
 <div class="card">
-<h3>🧠 AI Insight</h3>
-<p id="insight"></p>
+<h3>🧠 AI Coach</h3>
+<p id="advice"></p>
 </div>
 
 <script>
 
 setActive?.("dashboard")
 
-function today(){
+async function getToday(){
 return new Date().toISOString().split("T")[0]
-}
-
-function last7(){
-let arr=[]
-for(let i=6;i>=0;i--){
-let d=new Date()
-d.setDate(d.getDate()-i)
-arr.push(d.toISOString().split("T")[0])
-}
-return arr
-}
-
-async function getLogs(date){
-if(typeof getFoodLogs!=="function") return []
-return await getFoodLogs(date)||[]
 }
 
 async function load(){
 
-let days = last7()
+let profile = JSON.parse(localStorage.getItem("profile")||"{}")
 
-let labels=[]
-let data=[]
-let total=0
+let weight = +profile.weight || 70
+let height = +profile.height || 170
 
-for(let d of days){
-let logs = await getLogs(d)
-let cal = logs.reduce((a,b)=>a+Number(b.calories||0),0)
-
-labels.push(d.slice(5))
-data.push(cal)
-total+=cal
-}
-
-// KPI
-document.getElementById("todayCal").innerText = data[6]
-document.getElementById("weekCal").innerText = total
-document.getElementById("avgCal").innerText = (total/7).toFixed(0)
-
-// RISK AI
-let risk="LOW"
-if(total>20000) risk="HIGH"
-else if(total>15000) risk="MED"
-
-document.getElementById("risk").innerText=risk
-
-// INSIGHT
-document.getElementById("insight").innerText =
-risk==="HIGH"
-?"⚠️ High intake trend detected"
-:"✅ Stable eating pattern"
-
-// PROFILE
-let p = null
-if(typeof getProfile==="function"){
-p = await getProfile()
-}
+let bmi = getBMI(weight,height)
 
 document.getElementById("profile").innerText =
-p ? `${p.name} | BMI ${p.bmi}` : "No profile"
+profile.name || "No Profile"
 
-// CHART
-new Chart(document.getElementById("chart"),{
-type:"line",
-data:{
-labels,
-datasets:[{
-label:"Calories",
-data,
-borderColor:"#111827"
-}]
-}
-})
+document.getElementById("bmi").innerText =
+"BMI: " + bmi.toFixed(1)
+
+// TODAY CALORIES
+let today = await getFoodLogs?.(getToday()) || []
+
+let cal = today.reduce((a,b)=>a + Number(b.calories||0),0)
+
+document.getElementById("todayCal").innerText = cal
+
+// AVG SIMULATION (simple)
+let avg = cal + 300
+
+// RISK
+let risk = riskLevel(cal, bmi)
+document.getElementById("risk").innerText = risk
+
+// PREDICTION
+let predicted = predictWeight(weight, avg)
+
+document.getElementById("prediction").innerText =
+"Predicted Weight: " + predicted + " kg"
+
+// ADVICE
+document.getElementById("advice").innerText =
+aiSuggestion(cal, bmi)
 
 }
 
