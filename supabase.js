@@ -1,9 +1,9 @@
 const SUPABASE_URL = "https://jwcgamxkwzrjnepxrvzr.supabase.co"
-const SUPABASE_KEY = "YOUR_ANON_KEY"
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpxZXZjZnlobmx0dHpkaXlsZnJoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE4MjgzNTIsImV4cCI6MjA5NzQwNDM1Mn0.RNWddp1TuYwVAHZlWfdq4iGdgiqNU9DKgAi8pnC6ULs"
 
-/* =========================
-SAFE FETCH CORE
-========================= */
+//////////////////////////////
+// SAFE FETCH CORE
+//////////////////////////////
 async function safeFetch(url, options){
 try{
 const res = await fetch(url, options)
@@ -15,9 +15,9 @@ return null
 }
 }
 
-/* =========================
-PROFILE CORE
-========================= */
+//////////////////////////////
+// PROFILE CORE
+//////////////////////////////
 function getActiveProfile(){
 try{
 return JSON.parse(localStorage.getItem("activeProfile")) || {
@@ -25,16 +25,24 @@ id:"guest",
 name:"Guest",
 height:170,
 weight:70,
-weightHistory:[]
+weightHistory:[],
+updatedAt: new Date().toISOString()
 }
 }catch(e){
-return {id:"guest",name:"Guest",height:170,weight:70,weightHistory:[]}
+return {
+id:"guest",
+name:"Guest",
+height:170,
+weight:70,
+weightHistory:[],
+updatedAt: new Date().toISOString()
+}
 }
 }
 
-/* =========================
-FOOD LOG READ (SAFE)
-========================= */
+//////////////////////////////
+// FOOD LOG READ
+//////////////////////////////
 async function getFoodLogs(date){
 
 const profile = getActiveProfile()
@@ -53,9 +61,9 @@ Authorization: "Bearer " + SUPABASE_KEY
 return Array.isArray(data) ? data : []
 }
 
-/* =========================
-FOOD LOG WRITE (DEDUP READY)
-========================= */
+//////////////////////////////
+// FOOD LOG WRITE
+//////////////////////////////
 async function saveFood(data){
 
 const profile = getActiveProfile()
@@ -68,7 +76,7 @@ protein: Number(data.protein || 0),
 carbs: Number(data.carbs || 0),
 fat: Number(data.fat || 0),
 date: data.date,
-createdAt: new Date().toISOString() // 🔥 IMPORTANT for sync ordering
+createdAt: new Date().toISOString()
 }
 
 return await safeFetch(`${SUPABASE_URL}/rest/v1/food_logs`,{
@@ -83,9 +91,9 @@ body: JSON.stringify(payload)
 })
 }
 
-/* =========================
-GET CLOUD PROFILES
-========================= */
+//////////////////////////////
+// CLOUD PROFILES
+//////////////////////////////
 async function getProfilesCloud(){
 
 const data = await safeFetch(`${SUPABASE_URL}/rest/v1/profiles`,{
@@ -99,9 +107,9 @@ Authorization: "Bearer " + SUPABASE_KEY
 return Array.isArray(data) ? data : []
 }
 
-/* =========================
-SAFE PROFILE UPSERT
-========================= */
+//////////////////////////////
+// PROFILE UPSERT
+//////////////////////////////
 async function saveProfile(profile){
 
 const payload = {
@@ -126,9 +134,9 @@ body: JSON.stringify(payload)
 })
 }
 
-/* =========================
-SMART SYNC ENGINE v11.5 (FIXED)
-========================= */
+//////////////////////////////
+// SMART SYNC ENGINE (MERGE SAFE)
+//////////////////////////////
 async function syncProfiles(){
 
 try{
@@ -136,12 +144,12 @@ try{
 let cloud = await getProfilesCloud()
 let local = JSON.parse(localStorage.getItem("profiles")) || []
 
-/* 1️⃣ MERGE (NO DUPLICATE IDS) */
+// MERGE (dedupe by id)
 let map = new Map()
 
 ;[...local, ...cloud].forEach(p=>{
 if(p && p.id){
-map.set(p.id, {
+map.set(p.id,{
 ...map.get(p.id),
 ...p
 })
@@ -152,7 +160,7 @@ let merged = Array.from(map.values())
 
 localStorage.setItem("profiles", JSON.stringify(merged))
 
-/* 2️⃣ ACTIVE PROFILE CONFLICT RESOLUTION */
+// ACTIVE PROFILE CONFLICT RESOLUTION
 let active = getActiveProfile()
 
 if(active && cloud.length){
@@ -161,16 +169,18 @@ let server = cloud.find(p => p.id === active.id)
 
 if(server){
 
-/* choose latest update */
 if(server.updatedAt && active.updatedAt){
+
 if(new Date(server.updatedAt) > new Date(active.updatedAt)){
 localStorage.setItem("activeProfile", JSON.stringify(server))
 }
+
 }else{
 localStorage.setItem("activeProfile", JSON.stringify(server))
 }
 
 }
+
 }
 
 }catch(e){
@@ -178,19 +188,85 @@ console.log("sync error:", e)
 }
 }
 
-/* =========================
-FOOD SYNC HOOK (future AI expansion)
-========================= */
-async function syncFood(date){
-return await getFoodLogs(date)
+//////////////////////////////
+// REALTIME ENGINE (🔥 NEW CORE)
+//////////////////////////////
+
+let realtimeChannel = null
+
+function initRealtime(){
+
+if(typeof supabase === "undefined"){
+console.log("Supabase client not loaded")
+return
 }
 
-/* =========================
-AUTO SYNC LOOP
-========================= */
-setInterval(syncProfiles, 10000)
+realtimeChannel = supabase
+  .channel('health-realtime')
 
-/* =========================
-INIT SYNC
-========================= */
+  .on('postgres_changes',{
+    event:'*',
+    schema:'public',
+    table:'food_logs'
+  },(payload)=>{
+
+    console.log("🔥 FOOD REALTIME UPDATE:", payload)
+
+    syncProfiles()
+
+    window.dispatchEvent(new Event("foodSyncUpdate"))
+  })
+
+  .on('postgres_changes',{
+    event:'*',
+    schema:'public',
+    table:'profiles'
+  },(payload)=>{
+
+    console.log("🔥 PROFILE REALTIME UPDATE:", payload)
+
+    syncProfiles()
+
+    window.dispatchEvent(new Event("profileSyncUpdate"))
+  })
+
+  .subscribe()
+
+}
+
+initRealtime()
+
+//////////////////////////////
+// SAFE SYNC WRAPPER (DEBOUNCE READY)
+//////////////////////////////
+let syncLock = false
+
+async function safeSync(){
+if(syncLock) return
+syncLock = true
+
+await syncProfiles()
+
+syncLock = false
+}
+
+//////////////////////////////
+// AUTO SYNC LOOP (fallback)
+//////////////////////////////
+setInterval(safeSync, 10000)
+
+//////////////////////////////
+// OFFLINE-FIRST SUPPORT
+//////////////////////////////
+window.addEventListener("online", ()=>{
+safeSync()
+})
+
+window.addEventListener("focus", ()=>{
+safeSync()
+})
+
+//////////////////////////////
+// INIT
+//////////////////////////////
 syncProfiles()
