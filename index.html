@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>AI Calendar v3</title>
+<title>AI Dashboard v4</title>
 
 <link rel="stylesheet" href="style.css">
 
@@ -10,62 +10,31 @@
 <script src="ai.js"></script>
 <script src="supabase.js"></script>
 
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 <style>
-/* ===== v3 heatmap enhancement ===== */
+.card{
+background:white;
+margin:12px;
+padding:16px;
+border-radius:14px;
+box-shadow:0 2px 8px rgba(0,0,0,.06);
+}
 
 .grid{
 display:grid;
-grid-template-columns:repeat(7,1fr);
-gap:6px;
-padding:14px;
+grid-template-columns:repeat(2,1fr);
+gap:10px;
 }
 
-.day{
-background:#fff;
-border-radius:10px;
-padding:10px;
-min-height:70px;
+.kpi{
+font-size:20px;
+font-weight:bold;
+}
+
+.small{
+color:#6b7280;
 font-size:12px;
-cursor:pointer;
-box-shadow:0 1px 3px rgba(0,0,0,.05);
-transition:0.2s;
-}
-
-.day:hover{
-transform:scale(1.05);
-}
-
-/* heat levels */
-.low{ background:#dcfce7; }
-.mid{ background:#fef9c3; }
-.high{ background:#fee2e2; }
-.veryhigh{ background:#fecaca; }
-
-.month-bar{
-display:flex;
-justify-content:space-between;
-align-items:center;
-padding:10px 14px;
-}
-
-.arrow{
-background:#111827;
-color:white;
-border:none;
-border-radius:8px;
-padding:6px 10px;
-cursor:pointer;
-}
-
-.selectors{
-display:flex;
-gap:8px;
-}
-
-select{
-padding:6px;
-border-radius:8px;
-border:1px solid #ddd;
 }
 </style>
 
@@ -82,195 +51,130 @@ border:1px solid #ddd;
 <a href="report.html">Report</a>
 </div>
 
-<h2 class="center">📅 AI Calendar v3</h2>
+<h2 class="center">📊 AI Dashboard v4</h2>
 
-<!-- MONTH CONTROL -->
+<!-- PROFILE -->
 <div class="card">
-
-<div class="month-bar">
-<button class="arrow" onclick="changeMonth(-1)">‹</button>
-
-<div class="selectors">
-<select id="monthSelect"></select>
-<select id="yearSelect"></select>
+<h3>👤 Profile</h3>
+<p id="profile"></p>
 </div>
 
-<button class="arrow" onclick="changeMonth(1)">›</button>
+<!-- KPI -->
+<div class="card grid">
+<div>
+<p class="kpi" id="todayCal">0</p>
+<p class="small">Today Calories</p>
 </div>
 
+<div>
+<p class="kpi" id="weekCal">0</p>
+<p class="small">7 Days</p>
 </div>
 
-<!-- SUMMARY -->
+<div>
+<p class="kpi" id="avgCal">0</p>
+<p class="small">Average</p>
+</div>
+
+<div>
+<p class="kpi" id="risk">-</p>
+<p class="small">AI Risk</p>
+</div>
+</div>
+
+<!-- CHART -->
 <div class="card">
-<h3>🧠 Monthly AI Summary</h3>
-<p id="summary">Loading...</p>
+<canvas id="chart"></canvas>
 </div>
 
-<div class="grid" id="grid"></div>
-
-<!-- MODAL -->
-<div id="modal" style="
-display:none;
-position:fixed;
-top:0;left:0;right:0;bottom:0;
-background:rgba(0,0,0,0.5);
-align-items:center;
-justify-content:center;
-">
-
-<div style="
-background:white;
-padding:20px;
-border-radius:12px;
-width:300px;
-">
-
-<h3 id="modalDate"></h3>
-<p id="modalCalories"></p>
-
-<button onclick="closeModal()">Close</button>
-
-</div>
+<!-- INSIGHT -->
+<div class="card">
+<h3>🧠 AI Insight</h3>
+<p id="insight"></p>
 </div>
 
 <script>
 
-setActive?.("calendar")
+setActive?.("dashboard")
 
-const grid = document.getElementById("grid")
-const monthSelect = document.getElementById("monthSelect")
-const yearSelect = document.getElementById("yearSelect")
-
-let dateObj = new Date()
-let cache = {}
-
-function formatDate(y,m,d){
-return `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`
+function today(){
+return new Date().toISOString().split("T")[0]
 }
 
-// ================= INIT DROPDOWN =================
-function init(){
-
-monthSelect.innerHTML = ""
-yearSelect.innerHTML = ""
-
-for(let m=0;m<12;m++){
-let opt = document.createElement("option")
-opt.value = m
-opt.textContent = new Date(0,m).toLocaleString('default',{month:'long'})
-monthSelect.appendChild(opt)
+function last7(){
+let arr=[]
+for(let i=6;i>=0;i--){
+let d=new Date()
+d.setDate(d.getDate()-i)
+arr.push(d.toISOString().split("T")[0])
+}
+return arr
 }
 
-let y = new Date().getFullYear()
-for(let i=y-3;i<=y+3;i++){
-let opt = document.createElement("option")
-opt.value = i
-opt.textContent = i
-yearSelect.appendChild(opt)
+async function getLogs(date){
+if(typeof getFoodLogs!=="function") return []
+return await getFoodLogs(date)||[]
 }
 
-monthSelect.value = dateObj.getMonth()
-yearSelect.value = dateObj.getFullYear()
-}
-
-// ================= COLOR LOGIC =================
-function getHeatClass(cal){
-
-if(cal > 3000) return "veryhigh"
-if(cal > 2500) return "high"
-if(cal > 2000) return "mid"
-return "low"
-}
-
-// ================= LOAD =================
 async function load(){
 
-grid.innerHTML = ""
+let days = last7()
 
-let year = +yearSelect.value
-let month = +monthSelect.value
+let labels=[]
+let data=[]
+let total=0
 
-let first = new Date(year,month,1).getDay()
-let days = new Date(year,month+1,0).getDate()
+for(let d of days){
+let logs = await getLogs(d)
+let cal = logs.reduce((a,b)=>a+Number(b.calories||0),0)
 
-let total = 0
-let data = []
-
-for(let i=0;i<first;i++){
-grid.innerHTML += "<div></div>"
-}
-
-for(let d=1; d<=days; d++){
-
-let date = formatDate(year,month,d)
-
-let foods = []
-let cal = 0
-
-try{
-foods = await getFoodLogs(date) || []
-foods.forEach(f=> cal += +f.calories)
-}catch(e){}
-
+labels.push(d.slice(5))
 data.push(cal)
-total += cal
-
-let div = document.createElement("div")
-div.className = "day " + getHeatClass(cal)
-
-div.innerHTML = `
-<b>${d}</b><br>
-${cal} kcal
-`
-
-div.onclick = ()=>{
-openModal(date,cal)
+total+=cal
 }
 
-grid.appendChild(div)
+// KPI
+document.getElementById("todayCal").innerText = data[6]
+document.getElementById("weekCal").innerText = total
+document.getElementById("avgCal").innerText = (total/7).toFixed(0)
+
+// RISK AI
+let risk="LOW"
+if(total>20000) risk="HIGH"
+else if(total>15000) risk="MED"
+
+document.getElementById("risk").innerText=risk
+
+// INSIGHT
+document.getElementById("insight").innerText =
+risk==="HIGH"
+?"⚠️ High intake trend detected"
+:"✅ Stable eating pattern"
+
+// PROFILE
+let p = null
+if(typeof getProfile==="function"){
+p = await getProfile()
 }
 
-let avg = total / days || 0
+document.getElementById("profile").innerText =
+p ? `${p.name} | BMI ${p.bmi}` : "No profile"
 
-document.getElementById("summary").innerText =
-`Avg: ${avg.toFixed(0)} kcal | Days: ${days}`
+// CHART
+new Chart(document.getElementById("chart"),{
+type:"line",
+data:{
+labels,
+datasets:[{
+label:"Calories",
+data,
+borderColor:"#111827"
+}]
+}
+})
 
 }
 
-// ================= MONTH CONTROL =================
-function changeMonth(v){
-
-let m = +monthSelect.value
-let y = +yearSelect.value
-
-m += v
-
-if(m < 0){ m = 11; y-- }
-if(m > 11){ m = 0; y++ }
-
-monthSelect.value = m
-yearSelect.value = y
-
-load()
-}
-
-monthSelect.onchange = load
-yearSelect.onchange = load
-
-// ================= MODAL =================
-function openModal(date,cal){
-
-document.getElementById("modal").style.display = "flex"
-document.getElementById("modalDate").innerText = date
-document.getElementById("modalCalories").innerText = cal + " kcal"
-}
-
-function closeModal(){
-document.getElementById("modal").style.display = "none"
-}
-
-// ================= START =================
-init()
 load()
 
 </script>
