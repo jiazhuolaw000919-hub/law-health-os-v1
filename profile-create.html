@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Create Profile v10.6</title>
+
+<link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+<h2 class="center">➕ Create Profile</h2>
+
+<div class="card">
+
+<input id="name" placeholder="Name"><br><br>
+
+<select id="gender">
+<option>Male</option>
+<option>Female</option>
+</select>
+
+<input id="age" type="number" placeholder="Age">
+<input id="height" placeholder="Height (cm)">
+<input id="weight" placeholder="Weight (kg)">
+
+<br><br>
+
+<button onclick="createProfile()">
+Create
+</button>
+
+</div>
+
+<script>
+
+/* =====================
+CREATE PROFILE CORE
+===================== */
+
+function getProfiles(){
+return JSON.parse(localStorage.getItem("profiles")) || []
+}
+
+function saveProfiles(list){
+localStorage.setItem("profiles", JSON.stringify(list))
+}
+
+function createProfile(){
+
+const profile = {
+id: Date.now().toString(),
+name: document.getElementById("name").value,
+gender: document.getElementById("gender").value,
+age: document.getElementById("age").value,
+height: document.getElementById("height").value,
+weight: document.getElementById("weight").value
+}
+
+let profiles = getProfiles()
+profiles.push(profile)
+
+saveProfiles(profiles)
+
+// 自动设为 active
+localStorage.setItem("activeProfile", JSON.stringify(profile))
+
+alert("Profile created!")
+
+window.location.href = "profile.html"
+}
+
+</script>
+
+</body>
+</html>
