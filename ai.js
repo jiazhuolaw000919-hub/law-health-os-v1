@@ -28,7 +28,7 @@ function weeklyScore(data){
 let total = 0
 
 data.forEach(d=>{
-total += calculateHealthScore(d.calories, d.burn || 0)
+total += calculateHealthScore(d.calories,d.burn||0)
 })
 
 return Math.round(total / data.length)
@@ -49,7 +49,4 @@ return ["Salad","Lean Protein","Low sugar drinks"]
 }
 
 return ["Balanced diet","Fruit","Rice"]
-}
-
-return ["Balanced groceries", "Fruits", "Rice"]
 }
