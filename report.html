@@ -112,4 +112,24 @@ doc.text("AI Insight: Balanced diet recommended", 10, 50)
 doc.save("report.pdf")
 }
 
+<p id="dailyCalories">Loading...</p>
+
+async function loadReport(){
+
+const today = new Date().toISOString().split("T")[0]
+
+const foods = await getFoodLogs?.(today) || []
+
+let totalCalories = 0
+
+foods.forEach(f=>{
+totalCalories += Number(f.calories || 0)
+})
+
+document.getElementById("dailyCalories").innerText =
+totalCalories
+}
+
+loadReport()
+
 </script>
