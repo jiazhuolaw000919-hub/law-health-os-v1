@@ -2,88 +2,274 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Profile v9</title>
+<title>Food AI v9 System (Full Sync Multi-Profile)</title>
 
 <link rel="stylesheet" href="style.css">
+
 <script src="app.js"></script>
+<script src="ai.js"></script>
+<script src="supabase.js"></script>
+<script src="ai-vision.js"></script>
 </head>
 
 <body>
 
 <div class="nav">
 <a href="index.html">Home</a>
+<a href="calendar.html">Calendar</a>
+<a href="food.html">Food</a>
+<a href="workout.html">Workout</a>
+<a href="shopping.html">Shop</a>
+<a href="report.html">Report</a>
+<a href="profile.html">Profile</a>
 </div>
 
-<h2 class="center">👤 Profile System v9</h2>
+<h2 style="text-align:center">🍽 Food AI v9 System (Global Sync)</h2>
 
+<!-- ACTIVE PROFILE -->
 <div class="card">
-
-<input id="name" placeholder="Name">
-<br><br>
-
-<select id="gender">
-  <option>Male</option>
-  <option>Female</option>
-</select>
-
-<input id="age" placeholder="Age" type="number">
-<input id="height" placeholder="Height (cm)">
-<input id="weight" placeholder="Weight (kg)">
-
-<br><br>
-
-<button onclick="save()">Save Profile</button>
-
+<p id="activeProfile">No profile selected</p>
 </div>
 
+<!-- PROFILE SWITCHER -->
 <div class="card">
-<h3>📊 Current Profile</h3>
-<div id="profileBox">Loading...</div>
+<select id="profileSwitcher" onchange="switchProfile()"></select>
+</div>
+
+<!-- FOOD INPUT -->
+<div class="card">
+<input id="foodInput" placeholder="e.g. chicken rice">
+<br><br>
+<button onclick="addFoodManual()">Add Food</button>
+<div id="log"></div>
+</div>
+
+<!-- AI SCANNER -->
+<div class="card">
+<h3>📸 AI Scanner (v9 Multi-Profile Sync)</h3>
+
+<input type="file" id="foodImage">
+<br><br>
+
+<button onclick="scanFood()">Analyze Image</button>
+<p id="aiResult">Waiting...</p>
 </div>
 
 <script>
 
-function save(){
+setActive("food")
 
-let profile = {
-  id: Date.now().toString(),
-  name: document.getElementById("name").value,
-  gender: document.getElementById("gender").value,
-  age: document.getElementById("age").value,
-  height: document.getElementById("height").value,
-  weight: document.getElementById("weight").value
+/* ================= PROFILE SYSTEM ================= */
+
+function getProfiles(){
+return JSON.parse(localStorage.getItem("profiles")) || []
 }
 
-profile.bmi = calculateBMI(profile.height, profile.weight)
-
-saveProfile(profile)
-
-load()
+function getActiveProfile(){
+return JSON.parse(localStorage.getItem("activeProfile")) || null
 }
 
-function load(){
+function ensureProfile(){
+let profiles = getProfiles()
 
-let p = getProfile()
+if(profiles.length === 0){
+const defaultProfile = { id:"guest", name:"Guest" }
+profiles.push(defaultProfile)
 
-if(!p){
-document.getElementById("profileBox").innerText = "No profile"
+localStorage.setItem("profiles", JSON.stringify(profiles))
+localStorage.setItem("activeProfile", JSON.stringify(defaultProfile))
+}
+
+if(!getActiveProfile()){
+localStorage.setItem("activeProfile", JSON.stringify(getProfiles()[0]))
+}
+}
+
+function renderProfile(){
+const p = getActiveProfile()
+document.getElementById("activeProfile").innerText =
+`👤 Active: ${p.name}`
+}
+
+function renderSwitcher(){
+const select = document.getElementById("profileSwitcher")
+select.innerHTML = ""
+
+getProfiles().forEach(p=>{
+const opt = document.createElement("option")
+opt.value = p.id
+opt.innerText = p.name
+select.appendChild(opt)
+})
+
+const active = getActiveProfile()
+if(active) select.value = active.id
+}
+
+function switchProfile(){
+const id = document.getElementById("profileSwitcher").value
+const profile = getProfiles().find(p=>p.id===id)
+
+if(profile){
+localStorage.setItem("activeProfile", JSON.stringify(profile))
+renderProfile()
+}
+}
+
+ensureProfile()
+renderProfile()
+renderSwitcher()
+
+/* ================= AI + SCORING ================= */
+
+function calculateMealScore(food){
+let score = 50
+if(food.protein > 20) score += 20
+if(food.carbs > 80) score -= 10
+if(food.fat > 30) score -= 15
+if(food.calories > 800) score -= 20
+return Math.max(0, Math.min(100, score))
+}
+
+function getHealthTag(score){
+if(score >= 80) return "GOOD"
+if(score >= 50) return "OK"
+return "BAD"
+}
+
+function mockAI(){
+return {
+food:"unknown meal",
+calories:500,
+protein:15,
+carbs:60,
+fat:20,
+confidence:0.4
+}
+}
+
+async function safeFetch(url, options){
+try{
+const res = await fetch(url, options)
+const data = await res.json()
+return data || { result: mockAI() }
+}catch(e){
+return { result: mockAI() }
+}
+}
+
+/* ================= ADD FOOD ================= */
+
+async function addFoodManual(){
+
+const profile = getActiveProfile()
+const food = document.getElementById("foodInput").value.trim()
+if(!food) return
+
+let cal = 300
+if(food.includes("chicken")) cal = 600
+if(food.includes("rice")) cal = 500
+if(food.includes("milo")) cal = 180
+
+const today = new Date().toISOString().split("T")[0]
+
+document.getElementById("log").innerHTML +=
+`<p>👤 ${profile.name} - 🍽 ${food} - ${cal} kcal</p>`
+
+if(typeof saveFood !== "undefined"){
+await saveFood({
+userId: profile.id,
+food,
+calories: cal,
+date: today
+})
+}
+}
+
+/* ================= AI SCAN ================= */
+
+async function scanFood(){
+
+const profile = getActiveProfile()
+const file = document.getElementById("foodImage").files[0]
+
+if(!file){
+alert("Upload image")
 return
 }
 
-document.getElementById("profileBox").innerHTML =
-`
-<p>Name: ${p.name}</p>
-<p>Gender: ${p.gender}</p>
-<p>Age: ${p.age}</p>
-<p>Height: ${p.height}</p>
-<p>Weight: ${p.weight}</p>
-<p>BMI: ${p.bmi}</p>
-`
+document.getElementById("aiResult").innerText = "Analyzing..."
+
+const reader = new FileReader()
+
+reader.onload = async function(){
+
+try{
+
+const base64 = reader.result
+
+const res = await safeFetch("/api/ai", {
+method:"POST",
+headers:{ "Content-Type":"application/json" },
+body: JSON.stringify({
+image: base64,
+userId: profile.id
+})
+})
+
+let raw = res?.result || mockAI()
+
+let food = {
+food: raw.food || "unknown",
+calories: raw.calories || 0,
+protein: raw.protein || 0,
+carbs: raw.carbs || 0,
+fat: raw.fat || 0,
+confidence: raw.confidence || 0.5
 }
 
-load()
+food.score = calculateMealScore(food)
+food.healthTag = getHealthTag(food.score)
+
+const today = new Date().toISOString().split("T")[0]
+
+if(typeof saveFood !== "undefined"){
+await saveFood({
+...food,
+userId: profile.id,
+date: today
+})
+}
+
+document.getElementById("aiResult").innerHTML =
+`👤 ${profile.name}
+🍽 Food: ${food.food}
+🔥 Calories: ${food.calories}
+💪 Protein: ${food.protein}
+🍞 Carbs: ${food.carbs}
+🥑 Fat: ${food.fat}
+
+📊 Score: ${food.score}/100
+🧠 Status: ${food.healthTag}
+🧠 Confidence: ${(food.confidence*100).toFixed(0)}%`
+
+}catch(e){
+console.log(e)
+document.getElementById("aiResult").innerText =
+"AI system fallback triggered"
+}
+
+}
+
+reader.readAsDataURL(file)
+}
 
 </script>
+
+<!-- ✅ STEP 2 FIXED: ALL JS FILES MUST BE HERE -->
+<script src="js/db.js"></script>
+<script src="js/profile.js"></script>
+<script src="js/ai-engine.js"></script>
 
 </body>
 </html>
