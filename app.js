@@ -17,3 +17,7 @@ if(el) el.classList.remove("active")
 const active = document.getElementById(map[page])
 if(active) active.classList.add("active")
 }
+
+function getActiveProfile(){
+return JSON.parse(localStorage.getItem("activeProfile") || "null")
+}
