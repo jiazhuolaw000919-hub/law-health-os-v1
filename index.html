@@ -128,3 +128,33 @@ bingeDetect(calories, 2)
 document.getElementById("aiSummary").innerText = summary
 
 </script>
+
+<div class="card">
+<h3>🧠 AI Daily Summary (Live)</h3>
+<p id="aiSummary">Loading...</p>
+</div>
+
+<script>
+
+async function loadAI(){
+
+const today = new Date().toISOString().split("T")[0]
+
+const data = await getDailySummary(today)
+
+const calories = data.calories
+const burn = 250
+
+const score = calculateHealthScore(calories, burn)
+
+const summary =
+aiCoach(calories, burn, score) + " | " +
+calorieInsight(calories) + " | " +
+bingeDetect(calories)
+
+document.getElementById("aiSummary").innerText = summary
+}
+
+loadAI()
+
+</script>
