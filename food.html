@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Food AI v7.1</title>
+<title>Food AI v8 System</title>
 
 <link rel="stylesheet" href="style.css">
 
@@ -24,7 +24,7 @@
 <a href="profile.html">Profile</a>
 </div>
 
-<h2 style="text-align:center">🍽 Food AI v7.1</h2>
+<h2 style="text-align:center">🍽 Food AI v8 System</h2>
 
 <div class="card">
 <input id="foodInput" placeholder="e.g. chicken rice">
@@ -34,7 +34,7 @@
 </div>
 
 <div class="card">
-<h3>📸 AI Scanner (v7.1)</h3>
+<h3>📸 AI Scanner (v8)</h3>
 <input type="file" id="foodImage">
 <br><br>
 <button onclick="scanFood()">Analyze Image</button>
@@ -46,62 +46,60 @@
 setActive("food")
 
 // =====================
-// MOCK FALLBACK AI
+// PROFILE-BASED AI SCORE (v8 CORE)
+// =====================
+function calculateMealScore(food){
+
+let score = 50
+
+if(food.protein > 20) score += 20
+if(food.carbs > 80) score -= 10
+if(food.fat > 30) score -= 15
+if(food.calories > 800) score -= 20
+
+return Math.max(0, Math.min(100, score))
+}
+
+function getHealthTag(score){
+
+if(score >= 80) return "GOOD"
+if(score >= 50) return "OK"
+return "BAD"
+}
+
+// =====================
+// MOCK AI (v8 fallback)
 // =====================
 function mockAI(){
 
 return {
-food: "unknown meal",
-calories: 500,
-protein: 20,
-carbs: 60,
-fat: 15,
-confidence: 0.4,
-source: "mock"
+food:"unknown meal",
+calories:500,
+protein:15,
+carbs:60,
+fat:20,
+confidence:0.4
 }
 
 }
 
 // =====================
-// SAFE FETCH (timeout + fallback)
+// SAFE FETCH
 // =====================
-async function safeFetch(url, options, timeout = 5000){
-
-return new Promise(async (resolve)=>{
-
-let done = false
-
-const timer = setTimeout(()=>{
-if(!done){
-done = true
-resolve({ error: "timeout", result: mockAI() })
-}
-}, timeout)
+async function safeFetch(url, options){
 
 try{
 
 const res = await fetch(url, options)
 const data = await res.json().catch(()=>null)
 
-clearTimeout(timer)
-
-if(!done){
-done = true
-resolve(data || { result: mockAI() })
-}
+return data || { result: mockAI() }
 
 }catch(e){
 
-clearTimeout(timer)
-
-if(!done){
-done = true
-resolve({ error: String(e), result: mockAI() })
-}
+return { result: mockAI() }
 
 }
-
-})
 
 }
 
@@ -117,7 +115,6 @@ let cal = 300
 if(food.includes("chicken")) cal = 600
 if(food.includes("rice")) cal = 500
 if(food.includes("milo")) cal = 180
-if(food.includes("tea")) cal = 120
 
 const today = new Date().toISOString().split("T")[0]
 
@@ -128,11 +125,10 @@ if(typeof saveFood !== "undefined"){
 await saveFood({
 food,
 calories: cal,
-protein: 0,
-carbs: 0,
-fat: 0,
+protein: 10,
+carbs: 50,
+fat: 10,
 confidence: 1,
-source: "manual",
 date: today
 })
 }
@@ -140,14 +136,14 @@ date: today
 }
 
 // =====================
-// AI SCAN v7.1
+// AI SCAN v8 ENGINE
 // =====================
 async function scanFood(){
 
 const file = document.getElementById("foodImage").files[0]
 
 if(!file){
-alert("upload image")
+alert("Upload image")
 return
 }
 
@@ -162,65 +158,56 @@ try{
 const base64 = reader.result
 
 const res = await safeFetch("/api/ai", {
-method: "POST",
-headers: {"Content-Type":"application/json"},
+method:"POST",
+headers:{ "Content-Type":"application/json" },
 body: JSON.stringify({ image: base64 })
 })
 
-// normalize
-let raw = res?.result || res
+let raw = res?.result || mockAI()
 
-if(!raw){
-raw = mockAI()
+let food = {
+food: raw.food || "unknown",
+calories: raw.calories || 0,
+protein: raw.protein || 0,
+carbs: raw.carbs || 0,
+fat: raw.fat || 0,
+confidence: raw.confidence || 0.5
 }
 
-let parsed = raw
+// =====================
+// v8 CORE LOGIC
+// =====================
+food.score = calculateMealScore(food)
+food.healthTag = getHealthTag(food.score)
 
-if(typeof parsed === "string"){
-try{
-parsed = JSON.parse(parsed)
-}catch(e){
-parsed = mockAI()
-}
-}
-
-// FINAL NORMALIZATION (IMPORTANT v7.1 CORE)
-parsed = {
-food: parsed.food || "unknown",
-calories: parsed.calories || 0,
-protein: parsed.protein || 0,
-carbs: parsed.carbs || 0,
-fat: parsed.fat || 0,
-confidence: parsed.confidence ?? 0.5,
-source: parsed.source || "ai"
-}
-
-// save
 const today = new Date().toISOString().split("T")[0]
 
 if(typeof saveFood !== "undefined"){
 await saveFood({
-...parsed,
+...food,
 date: today
 })
 }
 
+// =====================
 // UI
+// =====================
 document.getElementById("aiResult").innerHTML =
-`🍽 Food: ${parsed.food}
-🔥 Calories: ${parsed.calories}
-💪 Protein: ${parsed.protein}
-🍞 Carbs: ${parsed.carbs}
-🥑 Fat: ${parsed.fat}
-🧠 Confidence: ${(parsed.confidence * 100).toFixed(0)}%
-📡 Source: ${parsed.source}`
+`🍽 Food: ${food.food}
+🔥 Calories: ${food.calories}
+💪 Protein: ${food.protein}
+🍞 Carbs: ${food.carbs}
+🥑 Fat: ${food.fat}
 
-}catch(err){
+📊 Score: ${food.score}/100
+🧠 Status: ${food.healthTag}
+🧠 Confidence: ${(food.confidence*100).toFixed(0)}%`
 
-console.log(err)
+}catch(e){
 
+console.log(e)
 document.getElementById("aiResult").innerText =
-"AI failed (v7.1 fallback active)"
+"AI system fallback triggered"
 
 }
 
