@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Food AI v11 PRO</title>
+<title>Food AI v10.9 System (Step 1 Upgrade)</title>
 
 <link rel="stylesheet" href="style.css">
 
@@ -10,25 +10,6 @@
 <script src="ai.js"></script>
 <script src="supabase.js"></script>
 <script src="ai-vision.js"></script>
-
-<style>
-.card{margin:10px;padding:12px;background:#fff;border-radius:10px}
-.food-item{
-display:flex;
-justify-content:space-between;
-padding:8px;
-border-bottom:1px solid #eee;
-}
-.btn{
-padding:5px 8px;
-border:none;
-border-radius:6px;
-cursor:pointer;
-}
-.del{background:#ef4444;color:#fff}
-.undo{background:#22c55e;color:#fff}
-</style>
-
 </head>
 
 <body>
@@ -43,217 +24,379 @@ cursor:pointer;
 <a href="profile.html">Profile</a>
 </div>
 
-<h2 class="center">🍽 Food AI v11 PRO</h2>
+<h2 style="text-align:center">🍽 Food AI v10.9 (STEP 1 STABLE)</h2>
 
-<!-- PROFILE -->
+<!-- ACTIVE PROFILE -->
 <div class="card">
-<p id="activeProfile">Loading...</p>
+<p id="activeProfile">Loading profile...</p>
 </div>
 
-<!-- INPUT -->
+<!-- PROFILE SWITCHER -->
 <div class="card">
-<input id="foodInput" placeholder="e.g. chicken rice">
-<button onclick="addFoodManual()">Add</button>
+<select id="profileSwitcher" onchange="switchProfileUI()"></select>
 
 <br><br>
 
-<input type="file" id="foodImage">
-<button onclick="scanFood()">AI Scan</button>
+<button onclick="goCreateProfile()">➕ Create Profile</button>
 
-<p id="aiResult"></p>
-
-<div id="confirmBox" style="display:none;">
-<button onclick="confirmSaveFood()">✅ Confirm Save</button>
-<button onclick="cancelSaveFood()" style="background:red;color:white;">Cancel</button>
+<button onclick="deleteActiveProfile()" style="background:red;color:white">
+🗑 Delete Active Profile
+</button>
 </div>
 
-</div>
-
-<!-- FOOD LIST -->
+<!-- FOOD INPUT -->
 <div class="card">
-<h3>Today Foods</h3>
-<div id="foodList"></div>
+<input id="foodInput" placeholder="e.g. chicken rice">
+<br><br>
+
+<button onclick="addFoodManual()">Add Food</button>
+
+<div id="log"></div>
+</div>
+
+<!-- AI SCANNER -->
+<div class="card">
+<h3>📸 AI Scanner v10.9</h3>
+
+<input type="file" id="foodImage">
+<br><br>
+
+<button onclick="scanFood()" id="scanBtn">Analyze Image</button>
+
+<p id="aiResult">Waiting...</p>
+
+<!-- CONFIRM BOX -->
+<div id="confirmBox" style="display:none; margin-top:10px;">
+  <button onclick="confirmSaveFood()">✅ Confirm Save</button>
+  <button onclick="cancelSaveFood()" style="background:red;color:white;">
+    ❌ Cancel
+  </button>
+</div>
+
 </div>
 
 <script>
 
 setActive?.("food")
 
+/* ================= STATE (FIXED STEP 1) ================= */
 let pendingFood = null
-let undoStack = null
+let scanLock = false
+let lastAIResult = null
 
-function getProfile(){
-return JSON.parse(localStorage.getItem("activeProfile")) || {id:"guest",name:"Guest"}
+/* ================= PROFILE CORE ================= */
+
+function getProfiles(){
+return JSON.parse(localStorage.getItem("profiles")) || []
 }
 
-/* ================= LOAD FOOD ================= */
-async function loadFood(){
-
-const profile = getProfile()
-const today = new Date().toISOString().split("T")[0]
-
-let logs = []
-
-if(typeof getFoodLogs !== "undefined"){
-logs = await getFoodLogs(today)
+function getActiveProfile(){
+return JSON.parse(localStorage.getItem("activeProfile")) || {
+id:"guest",
+name:"Guest",
+learning:{
+proteinUser:0,
+carbUser:0,
+junkUser:0,
+totalFoods:0
+}
+}
 }
 
-let box = document.getElementById("foodList")
-box.innerHTML = ""
+/* ================= INIT ================= */
 
-logs.forEach(f=>{
+function ensureProfile(){
 
-let div = document.createElement("div")
-div.className = "food-item"
+let profiles = getProfiles()
 
-div.innerHTML = `
-<div>
-<b>${f.food}</b><br>
-${f.calories} kcal
-</div>
+if(profiles.length === 0){
+const defaultProfile = {
+id:"guest",
+name:"Guest",
+learning:{
+proteinUser:0,
+carbUser:0,
+junkUser:0,
+totalFoods:0
+}
+}
 
-<div>
-<button class="btn del" onclick="deleteFoodItem('${f.id}', this)">Delete</button>
-</div>
-`
+profiles.push(defaultProfile)
+localStorage.setItem("profiles", JSON.stringify(profiles))
+localStorage.setItem("activeProfile", JSON.stringify(defaultProfile))
+}
 
-box.appendChild(div)
+if(!getActiveProfile()){
+localStorage.setItem("activeProfile", JSON.stringify(getProfiles()[0]))
+}
+}
+
+/* ================= UI ================= */
+
+function renderProfile(){
+const p = getActiveProfile()
+document.getElementById("activeProfile").innerText =
+`👤 Active: ${p.name}`
+}
+
+function renderSwitcher(){
+
+const select = document.getElementById("profileSwitcher")
+if(!select) return
+
+select.innerHTML = ""
+
+getProfiles().forEach(p=>{
+const opt = document.createElement("option")
+opt.value = p.id
+opt.innerText = p.name
+select.appendChild(opt)
 })
+
+const active = getActiveProfile()
+if(active) select.value = active.id
 }
 
-/* ================= DELETE + UNDO ================= */
-async function deleteFoodItem(id, btn){
+function switchProfileUI(){
+const id = document.getElementById("profileSwitcher").value
+const profile = getProfiles().find(p=>p.id===id)
 
-if(!id) return
-
-// backup for undo
-undoStack = {id, element: btn.parentElement.parentElement}
-
-btn.parentElement.parentElement.remove()
-
-// call supabase delete
-if(typeof deleteFood !== "undefined"){
-await deleteFood(id)
+if(profile){
+localStorage.setItem("activeProfile", JSON.stringify(profile))
+renderProfile()
+}
 }
 
-// show undo UI
-showUndo()
+function goCreateProfile(){
+window.location.href = "profile.html?mode=create"
 }
 
-function showUndo(){
+function deleteActiveProfile(){
 
-let undo = document.createElement("div")
-undo.innerHTML = `
-<button class="btn undo" onclick="undoDelete()">Undo Delete</button>
-`
-document.body.appendChild(undo)
+let profiles = getProfiles()
+let active = getActiveProfile()
 
-setTimeout(()=>{
-undo.remove()
-undoStack = null
-}, 10000)
+profiles = profiles.filter(p => p.id !== active.id)
+
+localStorage.setItem("profiles", JSON.stringify(profiles))
+
+let newActive = profiles[0] || {
+id:"guest",
+name:"Guest",
+learning:{
+proteinUser:0,
+carbUser:0,
+junkUser:0,
+totalFoods:0
+}
 }
 
-async function undoDelete(){
+localStorage.setItem("activeProfile", JSON.stringify(newActive))
 
-if(!undoStack) return
-
-// NOTE: real restore requires re-insert
-if(typeof saveFood !== "undefined"){
-alert("Undo requires re-scan or re-add (v11 limitation)")
+renderProfile()
+renderSwitcher()
 }
 
-undoStack = null
-loadFood()
+/* ================= LEARNING ================= */
+
+function updateLearning(profile, food){
+
+if(!profile.learning){
+profile.learning = {
+proteinUser:0,
+carbUser:0,
+junkUser:0,
+totalFoods:0
+}
+}
+
+profile.learning.totalFoods++
+
+if(food.protein > 25) profile.learning.proteinUser++
+if(food.carbs > 80) profile.learning.carbUser++
+if(food.calories > 800) profile.learning.junkUser++
+
+localStorage.setItem("activeProfile", JSON.stringify(profile))
+}
+
+/* ================= FOOD ENGINE ================= */
+
+function calculateMealScore(food){
+let score = 50
+if(food.protein > 20) score += 20
+if(food.carbs > 80) score -= 10
+if(food.fat > 30) score -= 15
+if(food.calories > 800) score -= 20
+return Math.max(0, Math.min(100, score))
+}
+
+function getHealthTag(score){
+if(score >= 80) return "GOOD"
+if(score >= 50) return "OK"
+return "BAD"
 }
 
 /* ================= MANUAL FOOD ================= */
+
 async function addFoodManual(){
 
-const profile = getProfile()
+const profile = getActiveProfile()
 const food = document.getElementById("foodInput").value.trim()
 if(!food) return
 
+let cal = 300
+if(food.includes("chicken")) cal = 600
+if(food.includes("rice")) cal = 500
+if(food.includes("milo")) cal = 180
+
 const today = new Date().toISOString().split("T")[0]
 
-pendingFood = {
+document.getElementById("log").innerHTML +=
+`<p>👤 ${profile.name} - 🍽 ${food} - ${cal} kcal</p>`
+
+updateLearning(profile, {
+calories: cal,
+protein: 10,
+carbs: 50
+})
+
+try{
+if(typeof saveFood !== "undefined"){
+await saveFood({
+userId: profile.id,
 food,
-calories: food.includes("rice")?500:300,
-protein:10,
-carbs:50,
-fat:10,
-date:today,
-userId:profile.id
+calories: cal,
+date: today
+})
+}
+}catch(e){
+console.log("offline save fallback")
+}
 }
 
-document.getElementById("aiResult").innerText =
-"Ready to save. Please confirm."
-document.getElementById("confirmBox").style.display = "block"
-}
+/* ================= AI SCAN (STEP 1 FIXED) ================= */
 
-/* ================= AI SCAN ================= */
 async function scanFood(){
 
-const file = document.getElementById("foodImage").files[0]
-if(!file) return alert("upload image")
+if(scanLock) return
+scanLock = true
 
-document.getElementById("aiResult").innerText = "Analyzing..."
+const profile = getActiveProfile()
+const file = document.getElementById("foodImage").files[0]
+
+if(!file){
+alert("Upload image")
+scanLock = false
+return
+}
+
+document.getElementById("scanBtn").innerText = "Analyzing..."
+document.getElementById("aiResult").innerText = "Processing..."
 
 const reader = new FileReader()
 
 reader.onload = async function(){
 
-const res = await fetch("/api/ai",{
+try{
+
+const base64 = reader.result
+
+const res = await fetch("/api/ai", {
 method:"POST",
-headers:{"Content-Type":"application/json"},
-body:JSON.stringify({image:reader.result})
+headers:{ "Content-Type":"application/json" },
+body: JSON.stringify({
+image: base64,
+userId: profile.id
+})
 })
 
 let data = await res.json()
-let r = data.result || {}
+let raw = data.result || {}
 
-pendingFood = {
-food:r.food,
-calories:r.calories,
-protein:r.protein,
-carbs:r.carbs,
-fat:r.fat,
-date:new Date().toISOString().split("T")[0],
-userId:getProfile().id
+lastAIResult = {
+food: raw.food || "unknown",
+calories: raw.calories || 0,
+protein: raw.protein || 0,
+carbs: raw.carbs || 0,
+fat: raw.fat || 0,
+confidence: raw.confidence || 0.5
 }
 
-document.getElementById("aiResult").innerHTML =
-`🍽 ${r.food} | ${r.calories} kcal`
+lastAIResult.score = calculateMealScore(lastAIResult)
+lastAIResult.healthTag = getHealthTag(lastAIResult.score)
 
+updateLearning(profile, lastAIResult)
+
+/* NO SAVE YET */
+pendingFood = {
+...lastAIResult,
+userId: profile.id,
+date: new Date().toISOString().split("T")[0]
+}
+
+/* SHOW CONFIRM */
 document.getElementById("confirmBox").style.display = "block"
+
+document.getElementById("aiResult").innerHTML =
+`👤 ${profile.name}<br>
+🍽 ${lastAIResult.food}<br>
+🔥 ${lastAIResult.calories} kcal<br>
+💪 Protein: ${lastAIResult.protein}<br>
+🍞 Carbs: ${lastAIResult.carbs}<br>
+🥑 Fat: ${lastAIResult.fat}<br>
+📊 Score: ${lastAIResult.score}/100<br>
+🧠 ${lastAIResult.healthTag}`
+
+}catch(e){
+console.log(e)
+document.getElementById("aiResult").innerText = "AI error fallback"
+}
+
+scanLock = false
+document.getElementById("scanBtn").innerText = "Analyze Image"
+
 }
 
 reader.readAsDataURL(file)
 }
 
-/* ================= CONFIRM SAVE ================= */
+/* ================= CONFIRM ================= */
+
 async function confirmSaveFood(){
 
 if(!pendingFood) return
 
+document.getElementById("confirmBox").style.display = "none"
+
+try{
 if(typeof saveFood !== "undefined"){
 await saveFood(pendingFood)
 }
 
-document.getElementById("confirmBox").style.display = "none"
+document.getElementById("log").innerHTML +=
+`<p>✅ Saved: ${pendingFood.food} - ${pendingFood.calories} kcal</p>`
+
 pendingFood = null
 
-loadFood()
+}catch(e){
+console.log(e)
+alert("Save failed")
+}
 }
 
 /* ================= CANCEL ================= */
+
 function cancelSaveFood(){
+
 pendingFood = null
 document.getElementById("confirmBox").style.display = "none"
+
+document.getElementById("aiResult").innerText = "Cancelled"
 }
 
-/* ================= INIT ================= */
-loadFood()
+ensureProfile()
+renderProfile()
+renderSwitcher()
 
 </script>
 
