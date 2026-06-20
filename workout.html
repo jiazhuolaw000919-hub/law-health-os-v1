@@ -2,9 +2,13 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Workout</title>
+<title>Workout v9.1 (Profile Sync)</title>
 
 <link rel="stylesheet" href="style.css">
+
+<script src="app.js"></script>
+<script src="ai.js"></script>
+<script src="supabase.js"></script>
 </head>
 
 <body>
@@ -18,12 +22,88 @@
 <a href="report.html">Report</a>
 <a href="profile.html">Profile</a>
 </div>
-  
+
+<h2 class="center">🏋️ Workout v9.1 (Multi-Profile Sync)</h2>
+
+<!-- PROFILE DISPLAY -->
 <div class="card">
-<h3>Workout Log</h3>
-<p>Running 30min</p>
-<p>Gym 45min</p>
+<p id="activeProfile">Loading profile...</p>
 </div>
+
+<!-- WORKOUT INPUT -->
+<div class="card">
+
+<h3>➕ Add Workout</h3>
+
+<input id="workoutInput" placeholder="e.g. running 30min">
+<br><br>
+
+<button onclick="addWorkout()">
+Add Workout
+</button>
+
+<div id="log"></div>
+
+</div>
+
+<script>
+
+// ================= PROFILE =================
+function getActiveProfile(){
+return JSON.parse(localStorage.getItem("activeProfile")) || {
+id:"guest",
+name:"Guest"
+}
+}
+
+function renderProfile(){
+const p = getActiveProfile()
+document.getElementById("activeProfile").innerText =
+`👤 Active Profile: ${p.name}`
+}
+
+renderProfile()
+
+// ================= WORKOUT SAVE =================
+async function addWorkout(){
+
+const profile = getActiveProfile()
+const input = document.getElementById("workoutInput")
+const text = input.value.trim()
+
+if(!text) return
+
+let caloriesBurned = 200
+
+if(text.includes("running")) caloriesBurned = 300
+if(text.includes("gym")) caloriesBurned = 250
+if(text.includes("cycling")) caloriesBurned = 220
+if(text.includes("swim")) caloriesBurned = 400
+
+const today = new Date().toISOString().split("T")[0]
+
+// UI
+document.getElementById("log").innerHTML +=
+`<p>🏋️ ${text} - 🔥 ${caloriesBurned} kcal</p>`
+
+// SAVE TO SYSTEM (IMPORTANT FOR REPORT + CALENDAR)
+if(typeof saveWorkout !== "undefined"){
+try{
+await saveWorkout({
+userId: profile.id,
+activity: text,
+calories: caloriesBurned,
+date: today
+})
+}catch(e){
+console.log("saveWorkout error:", e)
+}
+}
+
+input.value = ""
+}
+
+</script>
 
 </body>
 </html>
