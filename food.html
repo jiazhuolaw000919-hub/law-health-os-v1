@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Food AI v8 System (Multi Profile Fixed)</title>
+<title>Food AI v9 System (Full Sync Multi-Profile)</title>
 
 <link rel="stylesheet" href="style.css">
 
@@ -24,11 +24,16 @@
 <a href="profile.html">Profile</a>
 </div>
 
-<h2 style="text-align:center">🍽 Food AI v8 System</h2>
+<h2 style="text-align:center">🍽 Food AI v9 System (Global Sync)</h2>
 
-<!-- ACTIVE PROFILE DISPLAY -->
+<!-- ACTIVE PROFILE -->
 <div class="card">
 <p id="activeProfile">No profile selected</p>
+</div>
+
+<!-- SWITCH PROFILE -->
+<div class="card">
+<select id="profileSwitcher" onchange="switchProfile()"></select>
 </div>
 
 <!-- FOOD INPUT -->
@@ -41,7 +46,7 @@
 
 <!-- AI SCANNER -->
 <div class="card">
-<h3>📸 AI Scanner (v8 Multi-Profile)</h3>
+<h3>📸 AI Scanner (v9 Multi-Profile Sync)</h3>
 
 <input type="file" id="foodImage">
 <br><br>
@@ -55,57 +60,87 @@
 setActive("food")
 
 /* =========================
-🧠 GLOBAL PROFILE SYSTEM (NEW)
+🧠 GLOBAL PROFILE SYSTEM v9 FIX
 ========================= */
 
-// 读取当前用户
-function getActiveProfile(){
-return JSON.parse(localStorage.getItem("activeProfile")) || {
-name:"Guest",
-id:"guest"
-}
-}
-
-// 获取所有用户
 function getProfiles(){
 return JSON.parse(localStorage.getItem("profiles")) || []
 }
 
-// 显示当前用户
-function renderActiveProfile(){
-const p = getActiveProfile()
-document.getElementById("activeProfile").innerText =
-`👤 Active Profile: ${p.name}`
+function getActiveProfile(){
+return JSON.parse(localStorage.getItem("activeProfile")) || null
 }
 
-renderActiveProfile()
-
-/* =========================
-PROFILE SAFE SAVE (NEW)
-========================= */
-
-function saveProfile(profile){
-
+/* ✅ FIX: 自动初始化默认用户 */
+function ensureProfile(){
 let profiles = getProfiles()
 
-const index = profiles.findIndex(p => p.id === profile.id)
-
-if(index >= 0){
-profiles[index] = profile
-}else{
-profiles.push(profile)
+if(profiles.length === 0){
+const defaultProfile = {
+id:"guest",
+name:"Guest"
+}
+profiles.push(defaultProfile)
+localStorage.setItem("profiles", JSON.stringify(profiles))
+localStorage.setItem("activeProfile", JSON.stringify(defaultProfile))
 }
 
-localStorage.setItem("profiles", JSON.stringify(profiles))
-localStorage.setItem("activeProfile", JSON.stringify(profile))
+if(!getActiveProfile()){
+localStorage.setItem("activeProfile", JSON.stringify(getProfiles()[0]))
+}
+}
+
+function renderProfile(){
+const p = getActiveProfile()
+document.getElementById("activeProfile").innerText =
+`👤 Active: ${p.name}`
 }
 
 /* =========================
-MEAL SCORING
+PROFILE SWITCHER FIX
+========================= */
+
+function renderSwitcher(){
+const select = document.getElementById("profileSwitcher")
+select.innerHTML = ""
+
+getProfiles().forEach(p=>{
+const opt = document.createElement("option")
+opt.value = p.id
+opt.innerText = p.name
+select.appendChild(opt)
+})
+
+const active = getActiveProfile()
+if(active){
+select.value = active.id
+}
+}
+
+function switchProfile(){
+const id = document.getElementById("profileSwitcher").value
+
+const profile = getProfiles().find(p=>p.id===id)
+
+if(profile){
+localStorage.setItem("activeProfile", JSON.stringify(profile))
+renderProfile()
+}
+}
+
+/* =========================
+INIT
+========================= */
+
+ensureProfile()
+renderProfile()
+renderSwitcher()
+
+/* =========================
+MEAL SCORE
 ========================= */
 
 function calculateMealScore(food){
-
 let score = 50
 
 if(food.protein > 20) score += 20
@@ -117,7 +152,6 @@ return Math.max(0, Math.min(100, score))
 }
 
 function getHealthTag(score){
-
 if(score >= 80) return "GOOD"
 if(score >= 50) return "OK"
 return "BAD"
@@ -143,7 +177,6 @@ SAFE FETCH
 ========================= */
 
 async function safeFetch(url, options){
-
 try{
 const res = await fetch(url, options)
 const data = await res.json()
@@ -151,17 +184,15 @@ return data || { result: mockAI() }
 }catch(e){
 return { result: mockAI() }
 }
-
 }
 
 /* =========================
-MANUAL FOOD INPUT (PROFILE AWARE)
+ADD FOOD (SYNC FIX)
 ========================= */
 
 async function addFoodManual(){
 
 const profile = getActiveProfile()
-
 const food = document.getElementById("foodInput").value.trim()
 if(!food) return
 
@@ -177,7 +208,7 @@ document.getElementById("log").innerHTML +=
 
 if(typeof saveFood !== "undefined"){
 await saveFood({
-userId: profile.id,   // ✅ IMPORTANT FIX
+userId: profile.id,
 food,
 calories: cal,
 protein: 10,
@@ -187,11 +218,10 @@ confidence: 1,
 date: today
 })
 }
-
 }
 
 /* =========================
-AI SCAN ENGINE (PROFILE AWARE)
+AI SCAN (FULL SYNC FIX)
 ========================= */
 
 async function scanFood(){
@@ -199,7 +229,6 @@ async function scanFood(){
 const profile = getActiveProfile()
 
 const file = document.getElementById("foodImage").files[0]
-
 if(!file){
 alert("Upload image")
 return
@@ -218,7 +247,10 @@ const base64 = reader.result
 const res = await safeFetch("/api/ai", {
 method:"POST",
 headers:{ "Content-Type":"application/json" },
-body: JSON.stringify({ image: base64 })
+body: JSON.stringify({
+image: base64,
+userId: profile.id   // ✅ IMPORTANT: 全系统同步关键
+})
 })
 
 let raw = res?.result || mockAI()
@@ -240,7 +272,7 @@ const today = new Date().toISOString().split("T")[0]
 if(typeof saveFood !== "undefined"){
 await saveFood({
 ...food,
-userId: profile.id,   // ✅ MULTI USER FIX
+userId: profile.id,
 date: today
 })
 }
@@ -258,11 +290,9 @@ document.getElementById("aiResult").innerHTML =
 🧠 Confidence: ${(food.confidence*100).toFixed(0)}%`
 
 }catch(e){
-
 console.log(e)
 document.getElementById("aiResult").innerText =
 "AI system fallback triggered"
-
 }
 
 }
