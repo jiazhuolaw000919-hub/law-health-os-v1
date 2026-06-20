@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>AI Calendar v10.8</title>
+<title>AI Calendar v11.0</title>
 
 <link rel="stylesheet" href="style.css">
 
@@ -80,7 +80,7 @@ border:1px solid #ddd;
 <a href="profile.html">Profile</a>
 </div>
 
-<h2 class="center">📅 AI Calendar v10.8</h2>
+<h2 class="center">📅 AI Calendar v11.0</h2>
 
 <!-- TIME + PROFILE -->
 <div class="card">
@@ -89,13 +89,13 @@ border:1px solid #ddd;
 <p id="bmi">BMI: --</p>
 </div>
 
-<!-- AI SUMMARY (NEW FIX) -->
+<!-- AI SUMMARY -->
 <div class="card">
 <h3>🧠 AI Summary</h3>
 <p id="summary">Loading...</p>
 </div>
 
-<!-- CALENDAR CONTROL -->
+<!-- CALENDAR -->
 <div class="card">
 <div class="month-bar">
 <button class="arrow" onclick="changeMonth(-1)">‹</button>
@@ -120,10 +120,17 @@ background:rgba(0,0,0,0.5);align-items:center;justify-content:center;">
 <h3 id="modalDate"></h3>
 <p id="modalCalories"></p>
 
+<!-- FOOD LIST -->
 <div id="foodList"></div>
 
+<!-- AI MINI TAG -->
+<p id="miniAI" style="margin-top:10px;font-weight:bold;"></p>
+
 <br>
+
+<button onclick="openDayPage()">📄 View Full Day Page</button>
 <button onclick="closeModal()">Close</button>
+
 </div>
 </div>
 
@@ -135,7 +142,7 @@ const yearSelect = document.getElementById("yearSelect")
 
 let dateObj = new Date()
 
-// ================= SAFE PROFILE =================
+// ================= PROFILE =================
 function getActiveProfile(){
 try{
 return JSON.parse(localStorage.getItem("activeProfile")) || {id:"guest",name:"Guest"}
@@ -244,7 +251,7 @@ div.onclick = ()=>openModal(date,cal)
 grid.appendChild(div)
 }
 
-// ================= AI SUMMARY (NEW v10.8) =================
+// ================= AI SUMMARY =================
 let avg = total / days || 0
 
 let profile = getActiveProfile()
@@ -262,6 +269,12 @@ aiText = "✅ Balanced weekly intake"
 
 document.getElementById("summary").innerText =
 `Avg: ${avg.toFixed(0)} kcal | Max: ${max} kcal\n${aiText}`
+}
+
+// ================= OPEN DAY PAGE =================
+function openDayPage(){
+const date = document.getElementById("modalDate").innerText
+window.location.href = `day.html?date=${date}`
 }
 
 // ================= CONTROL =================
@@ -294,6 +307,9 @@ document.getElementById("modalCalories").innerText = cal + " kcal"
 const list = document.getElementById("foodList")
 list.innerHTML = "Loading..."
 
+const miniAI = document.getElementById("miniAI")
+miniAI.innerText = ""
+
 try{
 
 if(typeof getFoodLogs === "undefined"){
@@ -316,6 +332,17 @@ return
 list.innerHTML = filtered.map(f =>
 `<p>🍽 ${f.food} - ${f.calories} kcal</p>`
 ).join("")
+
+// ===== AI MINI ANALYSIS =====
+let total = filtered.reduce((s,f)=>s + Number(f.calories||0),0)
+
+if(total > 2500){
+miniAI.innerText = "🔴 High risk day"
+}else if(total > 2000){
+miniAI.innerText = "🟡 Moderate intake"
+}else{
+miniAI.innerText = "🟢 Healthy balance"
+}
 
 }catch(e){
 list.innerHTML = "Error loading food"
