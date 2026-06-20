@@ -2,12 +2,12 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Day Detail v11.3</title>
+<title>Day</title>
 
 <link rel="stylesheet" href="style.css">
 
-<script src="supabase.js"></script>
 <script src="app.js"></script>
+<script src="supabase.js"></script>
 </head>
 
 <body>
@@ -21,15 +21,10 @@
 <a href="report.html">Report</a>
 </div>
 
-<h2 class="center">📅 Day Detail</h2>
-
 <div class="card center">
-
-<!-- 🔙 返回 Calendar -->
-<button onclick="goBack()">
-⬅ Back to Calendar
+<button onclick="location.href='calendar.html'">
+⬅ Back
 </button>
-
 </div>
 
 <div class="card" id="box">Loading...</div>
@@ -43,16 +38,12 @@ const date = params.get("date")
 
 const box = document.getElementById("box")
 
-function goBack(){
-location.href = "calendar.html"
-}
+async function load(){
 
 if(!date){
-box.innerHTML = "⚠️ No date selected"
-throw new Error("no date")
+box.innerHTML="No date"
+return
 }
-
-async function load(){
 
 let foods = []
 
@@ -71,11 +62,11 @@ let total = 0
 let html = `<h3>${date}</h3>`
 
 foods.forEach(f=>{
-html += `<p>🍽 ${f.food} - ${f.calories} kcal</p>`
-total += Number(f.calories || 0)
+html += `<p>🍽 ${f.food} - ${f.calories}</p>`
+total += Number(f.calories||0)
 })
 
-html += `<hr><b>Total: ${total} kcal</b>`
+html += `<hr><b>Total: ${total}</b>`
 
 box.innerHTML = html
 }
