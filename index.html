@@ -2,48 +2,40 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Day</title>
+<title>Dashboard</title>
 
 <link rel="stylesheet" href="style.css">
-<script src="supabase.js"></script>
+<script src="app.js"></script>
+<script src="ai.js"></script>
 </head>
 
 <body>
 
 <div class="nav">
-<a href="index.html">Home</a>
-<a href="calendar.html">Calendar</a>
-<a href="food.html">Food</a>
-<a href="workout.html">Workout</a>
-<a href="shopping.html">Shop</a>
-<a href="report.html">Report</a>
+<a href="index.html" id="nav-home">Home</a>
+<a href="calendar.html" id="nav-cal">Calendar</a>
+<a href="food.html" id="nav-food">Food</a>
+<a href="workout.html" id="nav-workout">Workout</a>
+<a href="shopping.html" id="nav-shop">Shop</a>
+<a href="report.html" id="nav-report">Report</a>
 </div>
 
-<div class="card" id="content"></div>
+<div class="card">
+<h2>Dashboard</h2>
+<p>Weight: 80kg</p>
+<p>BMI: 25</p>
+</div>
 
-<script>
+<div class="bottom-nav">
+<a href="index.html">🏠</a>
+<a href="calendar.html">📅</a>
+<a href="food.html">🍽</a>
+<a href="workout.html">🏋️</a>
+<a href="shopping.html">🛒</a>
+<a href="report.html">📄</a>
+</div>
 
-const date=new URLSearchParams(location.search).get("date")
-
-async function load(){
-
-const foods=await getFood(date)
-
-let html=""
-let total=0
-
-foods.forEach(f=>{
-html+=`<p>${f.food} - ${f.calories}</p>`
-total+=f.calories||0
-})
-
-document.getElementById("content").innerHTML =
-html + "<hr>Total: " + total
-}
-
-load()
-
-</script>
+<script>setActive("home")</script>
 
 </body>
 </html>
