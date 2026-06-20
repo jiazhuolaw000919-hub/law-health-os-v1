@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Dashboard v11.4</title>
+<title>Dashboard v11.4 Stable</title>
 
 <link rel="stylesheet" href="style.css">
 
@@ -10,6 +10,8 @@
 <script src="ai.js"></script>
 <script src="supabase.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<link rel="manifest" href="manifest.json">
 </head>
 
 <body>
@@ -25,9 +27,10 @@
 
 <div class="card">
 <h2>🧠 Health OS Dashboard</h2>
-<p>System: v11.4 Stable</p>
+<p>v11.4 Stable Clean</p>
 </div>
 
+<!-- SCORE -->
 <div class="card">
 <h3>📊 Weekly Score</h3>
 <p id="weekly"></p>
@@ -38,15 +41,33 @@
 <p id="monthly"></p>
 </div>
 
+<!-- AI SUMMARY (ONLY ONE) -->
+<div class="card">
+<h3>🧠 AI Daily Summary (Live)</h3>
+<p id="aiSummary">Loading...</p>
+</div>
+
+<!-- CHART -->
 <div class="card">
 <h3>📈 Weight Trend</h3>
 <canvas id="chart"></canvas>
+</div>
+
+<!-- AI STATUS -->
+<div class="card">
+<h3>🧠 AI Health Status</h3>
+<p id="risk"></p>
+<p id="behavior"></p>
+<p id="prediction"></p>
 </div>
 
 <script>
 
 setActive("home")
 
+// =====================
+// SAMPLE DATA (replace later with Supabase)
+// =====================
 const data = [
 {calories:1800,burn:200},
 {calories:2000,burn:300},
@@ -57,9 +78,15 @@ const data = [
 {calories:1800,burn:200}
 ]
 
+// =====================
+// SCORE
+// =====================
 document.getElementById("weekly").innerText = weeklyScore(data)
 document.getElementById("monthly").innerText = monthlyScore(data)
 
+// =====================
+// CHART
+// =====================
 new Chart(document.getElementById("chart"),{
 type:"line",
 data:{
@@ -73,113 +100,73 @@ tension:0.3
 }
 })
 
-</script>
-
-</body>
-</html>
-
-<link rel="manifest" href="manifest.json">
-
-<script>
-if("serviceWorker" in navigator){
-navigator.serviceWorker.register("sw.js")
-}
-</script>
-
-<div class="card">
-<h3>📈 Real Weight Trend</h3>
-<canvas id="weightChart"></canvas>
-</div>
-
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-<script>
-
-new Chart(document.getElementById("weightChart"),{
-type:"line",
-data:{
-labels:["Mon","Tue","Wed","Thu","Fri"],
-datasets:[{
-label:"Weight",
-data:[75,74.8,74.6,74.4,74.2],
-borderColor:"#111827"
-}]
-}
-})
-
-</script>
-
-<div class="card">
-<h3>🧠 AI Daily Summary</h3>
-<p id="aiSummary">Loading...</p>
-</div>
-
-<script>
-
-const calories = 2100
-const burn = 250
-const score = calculateHealthScore(calories, burn)
-
-const summary =
-aiCoach(calories, burn, score) + " | " +
-calorieInsight(calories) + " | " +
-bingeDetect(calories, 2)
-
-document.getElementById("aiSummary").innerText = summary
-
-</script>
-
-<div class="card">
-<h3>🧠 AI Daily Summary (Live)</h3>
-<p id="aiSummary">Loading...</p>
-</div>
-
-<script>
-
+// =====================
+// LIVE AI SUMMARY
+// =====================
 async function loadAI(){
 
 const today = new Date().toISOString().split("T")[0]
+const d = await getDailySummary(today)
 
-const data = await getDailySummary(today)
-
-const calories = data.calories
+const calories = d.calories
 const burn = 250
+const score = calculateHealthScore(calories,burn)
 
-const score = calculateHealthScore(calories, burn)
-
-const summary =
-aiCoach(calories, burn, score) + " | " +
+document.getElementById("aiSummary").innerText =
+aiCoach(calories,burn,score) + " | " +
 calorieInsight(calories) + " | " +
 bingeDetect(calories)
 
-document.getElementById("aiSummary").innerText = summary
 }
-
 loadAI()
 
-</script>
+// =====================
+// FINAL AI STATUS
+// =====================
+async function loadFinalAI(){
 
-<div class="card">
-<h3>📈 Weekly Trend (Live)</h3>
-<canvas id="weeklyChart"></canvas>
-</div>
+const today = new Date().toISOString().split("T")[0]
+const d = await getDailySummary(today)
 
+const calories = d.calories
+const burn = 250
+const score = calculateHealthScore(calories,burn)
+
+document.getElementById("risk").innerText =
+"Risk: " + riskLevel(score)
+
+document.getElementById("behavior").innerText =
+behaviorAnalysis([
+{calories:1800},
+{calories:2500},
+{calories:2600},
+{calories:1700},
+{calories:2300}
+])
+
+document.getElementById("prediction").innerText =
+"Predicted Weight: " + predictWeight(75,calories) + " kg"
+
+}
+loadFinalAI()
+
+// =====================
+// WEEKLY LIVE CHART
+// =====================
 async function loadWeekly(){
 
 const days = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"]
-
 let values = []
 
 for(let i=0;i<7;i++){
 
 const fakeDate = "2024-06-0" + (i+1)
+const d = await getDailySummary(fakeDate)
 
-const data = await getDailySummary(fakeDate)
-
-values.push(data.calories)
+values.push(d.calories)
 }
 
-new Chart(document.getElementById("weeklyChart"),{
+new Chart(document.getElementById("chart"),{
 type:"line",
 data:{
 labels:days,
@@ -190,48 +177,18 @@ borderColor:"#111827"
 }]
 }
 })
+
 }
 
 loadWeekly()
 
-<div class="card">
-<h3>🧠 AI Health Status</h3>
-<p id="risk"></p>
-<p id="behavior"></p>
-<p id="prediction"></p>
-</div>
+</script>
 
 <script>
-
-async function loadFinalAI(){
-
-const today = new Date().toISOString().split("T")[0]
-
-const data = await getDailySummary(today)
-
-const calories = data.calories
-const burn = 250
-
-const score = calculateHealthScore(calories, burn)
-
-const risk = riskLevel(score)
-
-const behavior = behaviorAnalysis([
-{calories:1800},
-{calories:2500},
-{calories:2600},
-{calories:1700},
-{calories:2300}
-])
-
-const predicted = predictWeight(75, calories)
-
-document.getElementById("risk").innerText = "Risk: " + risk
-document.getElementById("behavior").innerText = behavior
-document.getElementById("prediction").innerText =
-"Predicted Weight: " + predicted + " kg"
+if("serviceWorker" in navigator){
+navigator.serviceWorker.register("sw.js")
 }
-
-loadFinalAI()
-
 </script>
+
+</body>
+</html>
