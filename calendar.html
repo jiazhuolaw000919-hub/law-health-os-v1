@@ -2,81 +2,13 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>AI Calendar v3.5</title>
+<title>AI Calendar v3.5 FIXED</title>
 
 <link rel="stylesheet" href="style.css">
 
 <script src="app.js"></script>
 <script src="ai.js"></script>
 <script src="supabase.js"></script>
-
-<style>
-.grid{
-display:grid;
-grid-template-columns:repeat(7,1fr);
-gap:6px;
-padding:14px;
-}
-
-.day{
-background:#fff;
-border-radius:10px;
-padding:10px;
-min-height:70px;
-font-size:12px;
-cursor:pointer;
-box-shadow:0 1px 3px rgba(0,0,0,.05);
-transition:0.2s;
-}
-
-.day:hover{
-transform:scale(1.05);
-}
-
-/* ===== v3.5 GRADIENT HEAT ===== */
-.l1{ background:#dcfce7; }
-.l2{ background:#bbf7d0; }
-.l3{ background:#fef9c3; }
-.l4{ background:#fde68a; }
-.l5{ background:#fecaca; }
-
-.month-bar{
-display:flex;
-justify-content:space-between;
-align-items:center;
-padding:10px 14px;
-}
-
-.arrow{
-background:#111827;
-color:white;
-border:none;
-border-radius:8px;
-padding:6px 10px;
-cursor:pointer;
-}
-
-.selectors{
-display:flex;
-gap:8px;
-}
-
-select{
-padding:6px;
-border-radius:8px;
-border:1px solid #ddd;
-}
-
-.card{
-margin:10px;
-padding:12px;
-background:#fff;
-border-radius:10px;
-box-shadow:0 1px 4px rgba(0,0,0,.05);
-}
-
-</style>
-
 </head>
 
 <body>
@@ -91,11 +23,10 @@ box-shadow:0 1px 4px rgba(0,0,0,.05);
 <a href="profile.html">Profile</a>
 </div>
 
-<h2 class="center">📅 AI Calendar v3.5</h2>
+<h2 class="center">📅 AI Calendar v3.5 FIXED</h2>
 
 <div class="card">
 <div class="month-bar">
-
 <button class="arrow" onclick="changeMonth(-1)">‹</button>
 
 <div class="selectors">
@@ -104,7 +35,6 @@ box-shadow:0 1px 4px rgba(0,0,0,.05);
 </div>
 
 <button class="arrow" onclick="changeMonth(1)">›</button>
-
 </div>
 </div>
 
@@ -135,8 +65,10 @@ const yearSelect = document.getElementById("yearSelect")
 
 let dateObj = new Date()
 
-// ================= INIT =================
+/* ================= INIT SAFE ================= */
 function init(){
+
+if(!monthSelect || !yearSelect) return
 
 monthSelect.innerHTML = ""
 yearSelect.innerHTML = ""
@@ -160,20 +92,19 @@ monthSelect.value = dateObj.getMonth()
 yearSelect.value = dateObj.getFullYear()
 }
 
-// ================= SAFE DATA =================
+/* ================= SAFE CALORIES ================= */
 async function safeCalories(date){
 try{
 if(typeof getFoodLogs === "undefined") return 0
 const logs = await getFoodLogs(date) || []
-return logs.reduce((sum,f)=> sum + Number(f.calories||0), 0)
+return logs.reduce((s,f)=>s+Number(f.calories||0),0)
 }catch(e){
 return 0
 }
 }
 
-// ================= HEAT MAP (v3.5) =================
+/* ================= HEAT LEVEL ================= */
 function getLevel(cal){
-
 if(cal < 1500) return "l1"
 if(cal < 2200) return "l2"
 if(cal < 2700) return "l3"
@@ -181,38 +112,15 @@ if(cal < 3200) return "l4"
 return "l5"
 }
 
-// ================= STREAK LOGIC =================
-function calcStreak(dailyData){
-
-let streak = 0
-
-for(let i=dailyData.length-1;i>=0;i--){
-if(dailyData[i] > 0) streak++
-else break
-}
-
-return streak
-}
-
-// ================= AI RISK SCORE =================
-function getRisk(avg, max){
-
-let score = (avg + max) / 2
-
-if(score > 3000) return "HIGH RISK"
-if(score > 2500) return "MEDIUM"
-return "LOW"
-}
-
-// ================= LOAD =================
+/* ================= LOAD ================= */
 async function load(){
+
+if(!monthSelect.value || !yearSelect.value) return
 
 grid.innerHTML = ""
 
 let year = +yearSelect.value
 let month = +monthSelect.value
-
-if(!year || month === undefined) return
 
 let first = new Date(year,month,1).getDay()
 let days = new Date(year,month+1,0).getDate()
@@ -228,22 +136,16 @@ grid.innerHTML += "<div></div>"
 for(let d=1; d<=days; d++){
 
 let date = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`
-
 let cal = await safeCalories(date)
 
 arr.push(cal)
-
 total += cal
 if(cal > max) max = cal
 
 let div = document.createElement("div")
 div.className = "day " + getLevel(cal)
 
-div.innerHTML = `
-<b>${d}</b><br>
-${cal} kcal
-`
-
+div.innerHTML = `<b>${d}</b><br>${cal} kcal`
 div.onclick = ()=>openModal(date,cal)
 
 grid.appendChild(div)
@@ -251,19 +153,11 @@ grid.appendChild(div)
 
 let avg = total / days || 0
 
-let streak = calcStreak(arr)
-let risk = getRisk(avg,max)
-
 document.getElementById("summary").innerHTML =
-`
-Avg: ${avg.toFixed(0)} kcal<br>
-Max: ${max} kcal<br>
-🔥 Streak: ${streak} days<br>
-🧠 Risk: ${risk}
-`
+`Avg: ${avg.toFixed(0)} kcal<br>Max: ${max} kcal`
 }
 
-// ================= MONTH =================
+/* ================= MONTH CONTROL ================= */
 function changeMonth(v){
 
 let m = +monthSelect.value
@@ -283,7 +177,7 @@ load()
 monthSelect.onchange = load
 yearSelect.onchange = load
 
-// ================= MODAL =================
+/* ================= MODAL ================= */
 function openModal(date,cal){
 document.getElementById("modal").style.display = "flex"
 document.getElementById("modalDate").innerText = date
@@ -294,11 +188,16 @@ function closeModal(){
 document.getElementById("modal").style.display = "none"
 }
 
-// ================= START =================
+/* ================= START SAFE ================= */
 init()
-load()
+setTimeout(load, 100)
 
 </script>
+
+<!-- STEP 2 (ONLY IF NOT ALREADY IN APP.JS) -->
+<script src="js/db.js"></script>
+<script src="js/profile.js"></script>
+<script src="js/ai-engine.js"></script>
 
 </body>
 </html>
