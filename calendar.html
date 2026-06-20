@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>AI Calendar v2.4</title>
+<title>AI Calendar v2.4 FIX</title>
 
 <link rel="stylesheet" href="style.css">
 
@@ -25,39 +25,44 @@
 <h2 class="center">📅 AI Health Calendar</h2>
 
 <!-- MONTH CONTROL -->
-<div class="card center">
+<div class="card">
 <div class="month-bar">
 
-<button class="arrow left" onclick="changeMonth(-1)">‹</button>
+<button class="arrow" onclick="changeMonth(-1)">‹</button>
 
 <div class="selectors">
 <select id="monthSelect"></select>
 <select id="yearSelect"></select>
 </div>
 
-<button class="arrow right" onclick="changeMonth(1)">›</button>
+<button class="arrow" onclick="changeMonth(1)">›</button>
 
 </div>
+</div>
 
-<!-- 🧠 MONTH SCORE UI -->
+<!-- MONTH SCORE -->
 <div class="card">
 <h3>🧠 Monthly Health Score</h3>
 <p id="monthlyScore">Loading...</p>
 </div>
 
+<!-- CALENDAR -->
 <div class="grid" id="grid"></div>
 
 <script>
 
-if(typeof setActive !== "undefined"){
-setActive("calendar")
-}
+setActive?.("calendar")
 
 const grid = document.getElementById("grid")
+const monthSelect = document.getElementById("monthSelect")
+const yearSelect = document.getElementById("yearSelect")
 
 let dateObj = new Date()
+let historyCalories = []
 
-const monthSelect = document.getElementById("monthSelect")
+// =====================
+// INIT DROPDOWNS (ONLY ONCE)
+// =====================
 function initDropdowns(){
 
 monthSelect.innerHTML = ""
@@ -66,7 +71,7 @@ yearSelect.innerHTML = ""
 for(let m=0;m<12;m++){
 const opt = document.createElement("option")
 opt.value = m
-opt.innerText = new Date(0,m).toLocaleString('default',{month:'long'})
+opt.textContent = new Date(0,m).toLocaleString('default',{month:'long'})
 monthSelect.appendChild(opt)
 }
 
@@ -75,93 +80,46 @@ const currentYear = new Date().getFullYear()
 for(let y=currentYear-3;y<=currentYear+3;y++){
 const opt = document.createElement("option")
 opt.value = y
-opt.innerText = y
+opt.textContent = y
 yearSelect.appendChild(opt)
 }
 
-monthSelect.value = new Date().getMonth()
-yearSelect.value = new Date().getFullYear()
+monthSelect.value = dateObj.getMonth()
+yearSelect.value = dateObj.getFullYear()
 }
-initDropdowns()
-loadCalendar()
-const yearSelect = document.getElementById("yearSelect")
 
-// AI MODEL STATE
-let historyCalories = []
-
+// =====================
+// UTIL
+// =====================
 function formatDate(y,m,d){
 return `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`
 }
 
-// 🧠 AI: binge prediction model (simple trend-based)
-function predictBingeRisk(history){
-
-if(history.length < 3) return "LOW"
-
-let last3 = history.slice(-3)
-
-let avg = last3.reduce((a,b)=>a+b,0)/3
-
-if(avg > 2800) return "HIGH"
-if(avg > 2400) return "MEDIUM"
-return "LOW"
-}
-
-// 📈 trend compare (month vs previous)
 function compareTrend(current, previous){
-
 if(previous === 0) return "NO DATA"
-
 let diff = current - previous
-
 if(diff > 300) return "🔴 WORSENING"
 if(diff < -300) return "🟢 IMPROVING"
 return "🟡 STABLE"
 }
 
-// 🧠 AI daily suggestion
-function getSuggestion(calories){
-
-if(calories > 3000){
-return "🔥 Reduce carbs + 30min walk"
+function predictBingeRisk(history){
+if(history.length < 3) return "LOW"
+let last3 = history.slice(-3)
+let avg = last3.reduce((a,b)=>a+b,0)/3
+if(avg > 2800) return "HIGH"
+if(avg > 2400) return "MEDIUM"
+return "LOW"
 }
 
-if(calories > 2500){
-return "⚠️ Light dinner recommended"
-}
-
-return "✅ Keep routine"
-}
-
-// 🔥 MAIN LOAD
+// =====================
+// MAIN CALENDAR
+// =====================
 async function loadCalendar(){
-
-try{
 
 grid.innerHTML = ""
 
-const year = parseInt(yearSelect.value)
-// INIT MONTH DROPDOWN
-for(let m=0;m<12;m++){
-const opt = document.createElement("option")
-opt.value = m
-opt.innerText = new Date(0,m).toLocaleString('default',{month:'long'})
-monthSelect.appendChild(opt)
-}
-
-// INIT YEAR DROPDOWN
-const currentYear = new Date().getFullYear()
-
-for(let y=currentYear-3;y<=currentYear+3;y++){
-const opt = document.createElement("option")
-opt.value = y
-opt.innerText = y
-yearSelect.appendChild(opt)
-}
-
-// default value
-monthSelect.value = dateObj.getMonth()
-yearSelect.value = dateObj.getFullYear()
+const year = parseInt(yearSelect.value || new Date().getFullYear())
 const month = parseInt(monthSelect.value || new Date().getMonth())
 
 const first = new Date(year,month,1).getDay()
@@ -169,6 +127,7 @@ const days = new Date(year,month+1,0).getDate()
 
 historyCalories = []
 
+// blank cells
 for(let i=0;i<first;i++){
 grid.innerHTML += "<div></div>"
 }
@@ -183,16 +142,8 @@ const date = formatDate(year,month,d)
 let calories = 0
 
 try{
-let foods = []
-
-try{
 if(typeof getFoodLogs !== "undefined"){
-foods = await getFoodLogs(date) || []
-}
-}catch(e){
-foods = []
-}
-
+const foods = await getFoodLogs(date) || []
 foods.forEach(f=>{
 calories += Number(f.calories || 0)
 })
@@ -205,34 +156,23 @@ total += calories
 
 if(calories > 2800) bingeDays++
 
-let score = 0
-
-try{
-score = calculateHealthScore(calories,0)
-}catch(e){
-score = 0
-}
-
-// 🧠 AI classification
 let label = "SAFE"
 let color = "green"
 
 if(calories > 3000){
 label = "DANGER"
 color = "red"
-}
-else if(calories > 2500){
+}else if(calories > 2500){
 label = "WARNING"
 color = "yellow"
 }
 
-// 📅 day cell
 const div = document.createElement("div")
 div.className = "day " + color
 
 div.innerHTML = `
 <b>${d}</b><br>
-${score}<br>
+${calories} kcal<br>
 <small>${label}</small>
 `
 
@@ -243,45 +183,18 @@ location.href = "day.html?date=" + date
 grid.appendChild(div)
 }
 
-// 📊 monthly stats
-let avg = total / days
+// monthly summary
+let avg = total / (days || 1)
+let lastMonthFake = avg - 200
 
-let lastMonthFake = avg - 200 // simulate previous month
-
-let trend = compareTrend(avg, lastMonthFake)
-
-// 🧠 binge prediction
-let risk = predictBingeRisk(historyCalories)
-
-// 🧾 inject AI summary card (auto create if not exists)
-let summary = document.getElementById("ai_month_summary")
-
-if(!summary){
-
-summary = document.createElement("div")
-summary.className = "card"
-summary.id = "ai_month_summary"
-
-document.body.insertBefore(summary, grid)
-}
-
-summary.innerHTML = `
-<h3>🧠 AI Monthly Analysis</h3>
-<p>Avg Calories: ${avg.toFixed(0)}</p>
-<p>Binge Days: ${bingeDays}</p>
-<p>Trend: ${trend}</p>
-<p>Risk Level: ${risk}</p>
-<p>Suggestion: ${getSuggestion(avg)}</p>
-`
-
-}catch(err){
-console.log(err)
-grid.innerHTML = "Calendar failed to load"
-}
+document.getElementById("monthlyScore").innerText =
+`Avg: ${avg.toFixed(0)} kcal | Risk: ${predictBingeRisk(historyCalories)}`
 
 }
 
-// month control
+// =====================
+// MONTH CONTROL
+// =====================
 function changeMonth(offset){
 
 let m = parseInt(monthSelect.value)
@@ -289,15 +202,8 @@ let y = parseInt(yearSelect.value)
 
 m += offset
 
-if(m < 0){
-m = 11
-y--
-}
-
-if(m > 11){
-m = 0
-y++
-}
+if(m < 0){ m = 11; y-- }
+if(m > 11){ m = 0; y++ }
 
 monthSelect.value = m
 yearSelect.value = y
@@ -308,6 +214,10 @@ loadCalendar()
 monthSelect.onchange = loadCalendar
 yearSelect.onchange = loadCalendar
 
+// =====================
+// START (IMPORTANT ORDER)
+// =====================
+initDropdowns()
 loadCalendar()
 
 </script>
