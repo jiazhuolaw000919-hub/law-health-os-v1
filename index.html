@@ -200,3 +200,38 @@ loadWeekly()
 <p id="behavior"></p>
 <p id="prediction"></p>
 </div>
+
+<script>
+
+async function loadFinalAI(){
+
+const today = new Date().toISOString().split("T")[0]
+
+const data = await getDailySummary(today)
+
+const calories = data.calories
+const burn = 250
+
+const score = calculateHealthScore(calories, burn)
+
+const risk = riskLevel(score)
+
+const behavior = behaviorAnalysis([
+{calories:1800},
+{calories:2500},
+{calories:2600},
+{calories:1700},
+{calories:2300}
+])
+
+const predicted = predictWeight(75, calories)
+
+document.getElementById("risk").innerText = "Risk: " + risk
+document.getElementById("behavior").innerText = behavior
+document.getElementById("prediction").innerText =
+"Predicted Weight: " + predicted + " kg"
+}
+
+loadFinalAI()
+
+</script>
