@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Day Detail</title>
+<title>Day Detail v11.3</title>
 
 <link rel="stylesheet" href="style.css">
 
@@ -23,16 +23,29 @@
 
 <h2 class="center">📅 Day Detail</h2>
 
+<div class="card center">
+
+<!-- 🔙 返回 Calendar -->
+<button onclick="goBack()">
+⬅ Back to Calendar
+</button>
+
+</div>
+
 <div class="card" id="box">Loading...</div>
 
 <script>
 
 setActive("calendar")
 
-const params = new URLSearchParams(window.location.search)
+const params = new URLSearchParams(location.search)
 const date = params.get("date")
 
 const box = document.getElementById("box")
+
+function goBack(){
+location.href = "calendar.html"
+}
 
 if(!date){
 box.innerHTML = "⚠️ No date selected"
