@@ -1,6 +1,5 @@
 const SUPABASE_URL = "https://jwcgamxkwzrjnepxrvzr.supabase.co"
-const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpxZXZjZnlobmx0dHpkaXlsZnJoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE4MjgzNTIsImV4cCI6MjA5NzQwNDM1Mn0.RNWddp1TuYwVAHZlWfdq4iGdgiqNU9DKgAi8pnC6ULs"
-
+const SUPABASE_KEY = "YOUR_ANON_KEY"
 
 /* =========================
 SAFE FETCH CORE
@@ -17,7 +16,7 @@ return null
 }
 
 /* =========================
-SAFE PROFILE ACCESS
+PROFILE CORE
 ========================= */
 function getActiveProfile(){
 try{
@@ -25,15 +24,16 @@ return JSON.parse(localStorage.getItem("activeProfile")) || {
 id:"guest",
 name:"Guest",
 height:170,
-weight:70
+weight:70,
+weightHistory:[]
 }
 }catch(e){
-return {id:"guest",name:"Guest",height:170,weight:70}
+return {id:"guest",name:"Guest",height:170,weight:70,weightHistory:[]}
 }
 }
 
 /* =========================
-FOOD LOGS (SAFE READ v11.5)
+FOOD LOG READ (SAFE)
 ========================= */
 async function getFoodLogs(date){
 
@@ -50,12 +50,11 @@ Authorization: "Bearer " + SUPABASE_KEY
 }
 })
 
-if(!Array.isArray(data)) return []
-return data
+return Array.isArray(data) ? data : []
 }
 
 /* =========================
-SAVE FOOD (SAFE WRITE v11.5)
+FOOD LOG WRITE (DEDUP READY)
 ========================= */
 async function saveFood(data){
 
@@ -68,7 +67,8 @@ calories: Number(data.calories || 0),
 protein: Number(data.protein || 0),
 carbs: Number(data.carbs || 0),
 fat: Number(data.fat || 0),
-date: data.date
+date: data.date,
+createdAt: new Date().toISOString() // 🔥 IMPORTANT for sync ordering
 }
 
 return await safeFetch(`${SUPABASE_URL}/rest/v1/food_logs`,{
@@ -96,22 +96,22 @@ Authorization: "Bearer " + SUPABASE_KEY
 }
 })
 
-if(!Array.isArray(data)) return []
-return data
+return Array.isArray(data) ? data : []
 }
 
 /* =========================
-SAVE PROFILE (UPSERT SAFE)
+SAFE PROFILE UPSERT
 ========================= */
 async function saveProfile(profile){
 
 const payload = {
 id: profile.id,
-name: profile.name || "User",
+name: profile.name,
 height: Number(profile.height || 170),
 weight: Number(profile.weight || 70),
-bmi: profile.bmi || 0,
-weightHistory: profile.weightHistory || []
+bmi: Number(profile.bmi || 0),
+weightHistory: profile.weightHistory || [],
+updatedAt: new Date().toISOString()
 }
 
 return await safeFetch(`${SUPABASE_URL}/rest/v1/profiles`,{
@@ -127,7 +127,7 @@ body: JSON.stringify(payload)
 }
 
 /* =========================
-SMART SYNC ENGINE v11.5
+SMART SYNC ENGINE v11.5 (FIXED)
 ========================= */
 async function syncProfiles(){
 
@@ -136,28 +136,40 @@ try{
 let cloud = await getProfilesCloud()
 let local = JSON.parse(localStorage.getItem("profiles")) || []
 
-/* merge safely (no overwrite loss) */
-if(cloud.length){
+/* 1️⃣ MERGE (NO DUPLICATE IDS) */
+let map = new Map()
 
-let merged = [...local]
-
-cloud.forEach(c=>{
-if(!merged.find(p=>p.id === c.id)){
-merged.push(c)
+;[...local, ...cloud].forEach(p=>{
+if(p && p.id){
+map.set(p.id, {
+...map.get(p.id),
+...p
+})
 }
 })
 
-localStorage.setItem("profiles", JSON.stringify(merged))
-}
+let merged = Array.from(map.values())
 
-/* active profile sync */
+localStorage.setItem("profiles", JSON.stringify(merged))
+
+/* 2️⃣ ACTIVE PROFILE CONFLICT RESOLUTION */
 let active = getActiveProfile()
 
 if(active && cloud.length){
-let match = cloud.find(p => p.id === active.id)
 
-if(match){
-localStorage.setItem("activeProfile", JSON.stringify(match))
+let server = cloud.find(p => p.id === active.id)
+
+if(server){
+
+/* choose latest update */
+if(server.updatedAt && active.updatedAt){
+if(new Date(server.updatedAt) > new Date(active.updatedAt)){
+localStorage.setItem("activeProfile", JSON.stringify(server))
+}
+}else{
+localStorage.setItem("activeProfile", JSON.stringify(server))
+}
+
 }
 }
 
@@ -167,18 +179,16 @@ console.log("sync error:", e)
 }
 
 /* =========================
-FUTURE EXTENSION HOOK
+FOOD SYNC HOOK (future AI expansion)
 ========================= */
 async function syncFood(date){
 return await getFoodLogs(date)
 }
 
 /* =========================
-AUTO SYNC LOOP (SAFE)
+AUTO SYNC LOOP
 ========================= */
-setInterval(()=>{
-syncProfiles()
-}, 10000)
+setInterval(syncProfiles, 10000)
 
 /* =========================
 INIT SYNC
