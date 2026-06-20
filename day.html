@@ -2,12 +2,44 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Day</title>
+<title>Day Analysis v11</title>
 
 <link rel="stylesheet" href="style.css">
 
 <script src="app.js"></script>
 <script src="supabase.js"></script>
+<script src="js/db.js"></script>
+<script src="js/profile.js"></script>
+<script src="js/ai-engine.js"></script>
+
+<style>
+.card{
+margin:10px;
+padding:12px;
+background:#fff;
+border-radius:10px;
+box-shadow:0 1px 4px rgba(0,0,0,.05);
+}
+
+.row{
+display:flex;
+gap:10px;
+flex-wrap:wrap;
+}
+
+.tag{
+padding:4px 8px;
+border-radius:8px;
+font-size:12px;
+display:inline-block;
+margin:2px;
+}
+
+.green{ background:#dcfce7; }
+.yellow{ background:#fef9c3; }
+.red{ background:#fecaca; }
+</style>
+
 </head>
 
 <body>
@@ -16,34 +48,79 @@
 <a href="index.html">Home</a>
 <a href="calendar.html">Calendar</a>
 <a href="food.html">Food</a>
-<a href="workout.html">Workout</a>
-<a href="shopping.html">Shop</a>
 <a href="report.html">Report</a>
+<a href="profile.html">Profile</a>
 </div>
 
-<div class="card center">
-<button onclick="location.href='calendar.html'">
-⬅ Back
-</button>
+<!-- BACK -->
+<div class="card">
+<button onclick="location.href='calendar.html'">⬅ Back to Calendar</button>
 </div>
 
-<div class="card" id="box">Loading...</div>
+<!-- HEADER -->
+<div class="card">
+<h2 id="title">Loading...</h2>
+<p id="profile">Loading profile...</p>
+</div>
+
+<!-- SUMMARY -->
+<div class="card">
+<h3>🔥 Total Calories</h3>
+<p id="total">0</p>
+<p id="risk"></p>
+</div>
+
+<!-- MEAL BREAKDOWN -->
+<div class="card">
+<h3>🍱 Meal Breakdown</h3>
+<div id="meals"></div>
+</div>
+
+<!-- AI ANALYSIS -->
+<div class="card">
+<h3>🧠 AI Analysis</h3>
+<p id="ai"></p>
+</div>
 
 <script>
-
-setActive("calendar")
 
 const params = new URLSearchParams(location.search)
 const date = params.get("date")
 
-const box = document.getElementById("box")
+function getProfile(){
+return JSON.parse(localStorage.getItem("activeProfile")) || {
+id:"guest",
+name:"Guest"
+}
+}
+
+function getRisk(total){
+
+if(total > 2500) return {text:"🔴 High Risk", cls:"red"}
+if(total > 2000) return {text:"🟡 Moderate Risk", cls:"yellow"}
+return {text:"🟢 Healthy", cls:"green"}
+}
+
+function mealType(food){
+
+food = food.toLowerCase()
+
+if(food.includes("breakfast")) return "Breakfast"
+if(food.includes("lunch")) return "Lunch"
+if(food.includes("dinner")) return "Dinner"
+
+return "Snack"
+}
 
 async function load(){
 
-if(!date){
-box.innerHTML="No date"
-return
-}
+const profile = getProfile()
+
+document.getElementById("profile").innerText =
+`👤 ${profile.name}`
+
+document.getElementById("title").innerText =
+`📅 ${date}`
 
 let foods = []
 
@@ -53,22 +130,73 @@ foods = await getFoodLogs(date)
 foods = []
 }
 
+foods = foods.filter(f =>
+!f.userId || f.userId === profile.id
+)
+
 if(!foods.length){
-box.innerHTML = `<h3>${date}</h3><p>No data</p>`
+document.getElementById("meals").innerHTML =
+"No food data"
+
+document.getElementById("ai").innerText =
+"No analysis available"
+
 return
 }
 
 let total = 0
-let html = `<h3>${date}</h3>`
+let grouped = {
+Breakfast:[],
+Lunch:[],
+Dinner:[],
+Snack:[]
+}
 
 foods.forEach(f=>{
-html += `<p>🍽 ${f.food} - ${f.calories}</p>`
-total += Number(f.calories||0)
+total += Number(f.calories || 0)
+
+let type = mealType(f.food)
+
+grouped[type].push(f)
 })
 
-html += `<hr><b>Total: ${total}</b>`
+// TOTAL
+document.getElementById("total").innerText =
+`${total} kcal`
 
-box.innerHTML = html
+// RISK
+let risk = getRisk(total)
+
+document.getElementById("risk").innerHTML =
+`<span class="tag ${risk.cls}">${risk.text}</span>`
+
+// BREAKDOWN
+let html = ""
+
+Object.keys(grouped).forEach(k=>{
+if(grouped[k].length === 0) return
+
+html += `<h4>${k}</h4>`
+
+grouped[k].forEach(f=>{
+html += `<p>🍽 ${f.food} - ${f.calories} kcal</p>`
+})
+})
+
+document.getElementById("meals").innerHTML = html
+
+// AI ANALYSIS
+let aiText = ""
+
+if(total > 2500){
+aiText = "High calorie intake detected. Consider reducing carbs and sugar."
+}else if(total > 2000){
+aiText = "Moderate intake. Keep balance and increase activity."
+}else{
+aiText = "Healthy intake. Good balance maintained."
+}
+
+document.getElementById("ai").innerText = aiText
 }
 
 load()
