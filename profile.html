@@ -5,6 +5,8 @@
 <title>Profile</title>
 
 <link rel="stylesheet" href="style.css">
+
+<script src="supabase.js"></script>
 </head>
 
 <body>
@@ -18,34 +20,48 @@
 <a href="report.html">Report</a>
 </div>
 
+<h2 class="center">👤 Profile</h2>
+
 <div class="card">
-<h2>👤 Profile Setup</h2>
 
 <input id="name" placeholder="Name">
-<input id="age" placeholder="Age">
+<select id="gender">
+<option>Male</option>
+<option>Female</option>
+</select>
+
+<input id="height" placeholder="Height (cm)">
 <input id="weight" placeholder="Weight (kg)">
-<input id="goal" placeholder="Goal (lose / gain / maintain)">
+<input id="job" placeholder="Job">
 
-<button onclick="saveProfile()">Save</button>
+<button onclick="saveProfile()">Save Profile</button>
 
-<p id="status"></p>
 </div>
 
 <script>
 
-function saveProfile(){
+function calcBMI(h,w){
+h = h/100
+return (w/(h*h)).toFixed(1)
+}
+
+async function saveProfile(){
+
+const name = document.getElementById("name").value
+const gender = document.getElementById("gender").value
+const height = Number(document.getElementById("height").value)
+const weight = Number(document.getElementById("weight").value)
+const job = document.getElementById("job").value
+
+const bmi = calcBMI(height,weight)
 
 const profile = {
-name: document.getElementById("name").value,
-age: document.getElementById("age").value,
-weight: document.getElementById("weight").value,
-goal: document.getElementById("goal").value
+name,gender,height,weight,job,bmi
 }
 
 localStorage.setItem("profile", JSON.stringify(profile))
 
-document.getElementById("status").innerText =
-"Saved ✔"
+alert("Saved!")
 }
 
 </script>
