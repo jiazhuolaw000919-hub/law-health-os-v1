@@ -2,9 +2,10 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Profile v10.6</title>
+<title>Profile v10.6 System</title>
 
 <link rel="stylesheet" href="style.css">
+
 <script src="app.js"></script>
 <script src="profile.js"></script>
 </head>
@@ -16,27 +17,168 @@
 <a href="calendar.html">Calendar</a>
 <a href="food.html">Food</a>
 <a href="report.html">Report</a>
+<a href="profile.html">Profile</a>
 </div>
 
 <h2 class="center">👤 Profile System v10.6</h2>
 
 <!-- CREATE PROFILE -->
 <div class="card">
+
 <h3>Create Profile</h3>
 
 <input id="name" placeholder="Name">
 
 <br><br>
 
-<button onclick="createNewProfile()">Create</button>
+<button onclick="createNewProfile()">➕ Create Profile</button>
 
-<a href="create-profile.html">
-<button>Go to Full Create Page</button>
-</a>
+<br><br>
+
+<button onclick="goCreatePage()">📄 Full Create Page</button>
+
 </div>
 
-<!-- LIST -->
+<!-- ACTIVE PROFILE -->
+<div class="card">
+<h3>Active Profile</h3>
+<p id="activeProfile">Loading...</p>
+</div>
+
+<!-- PROFILE LIST -->
+<div class="card">
+<h3>All Profiles</h3>
 <div id="profileList"></div>
+</div>
+
+<script>
+
+/* =========================
+SAFE CORE
+========================= */
+
+function getProfiles(){
+return JSON.parse(localStorage.getItem("profiles")) || []
+}
+
+function getActiveProfile(){
+return JSON.parse(localStorage.getItem("activeProfile")) || {id:"guest", name:"Guest"}
+}
+
+/* =========================
+CREATE PROFILE
+========================= */
+
+function createNewProfile(){
+
+const name = document.getElementById("name").value.trim()
+if(!name){
+alert("Enter name")
+return
+}
+
+let profiles = getProfiles()
+
+const newProfile = {
+id: Date.now().toString(),
+name:name
+}
+
+profiles.push(newProfile)
+
+localStorage.setItem("profiles", JSON.stringify(profiles))
+localStorage.setItem("activeProfile", JSON.stringify(newProfile))
+
+render()
+}
+
+/* =========================
+SWITCH PROFILE
+========================= */
+
+function switchProfile(id){
+
+const profile = getProfiles().find(p=>p.id===id)
+
+if(profile){
+localStorage.setItem("activeProfile", JSON.stringify(profile))
+render()
+}
+}
+
+/* =========================
+DELETE PROFILE
+========================= */
+
+function deleteProfile(id){
+
+let profiles = getProfiles()
+
+profiles = profiles.filter(p => p.id !== id)
+
+localStorage.setItem("profiles", JSON.stringify(profiles))
+
+const active = getActiveProfile()
+
+if(active.id === id){
+const fallback = profiles[0] || {id:"guest", name:"Guest"}
+localStorage.setItem("activeProfile", JSON.stringify(fallback))
+}
+
+render()
+}
+
+/* =========================
+FULL CREATE PAGE
+========================= */
+
+function goCreatePage(){
+window.location.href = "create-profile.html"
+}
+
+/* =========================
+RENDER UI
+========================= */
+
+function render(){
+
+// active
+const active = getActiveProfile()
+document.getElementById("activeProfile").innerText =
+`👤 Active: ${active.name}`
+
+// list
+const list = document.getElementById("profileList")
+list.innerHTML = ""
+
+getProfiles().forEach(p=>{
+
+const div = document.createElement("div")
+div.className = "card"
+
+div.innerHTML = `
+<b>${p.name}</b>
+
+<br><br>
+
+<button onclick="switchProfile('${p.id}')">Switch</button>
+<button onclick="deleteProfile('${p.id}')" style="background:red;color:white">
+Delete
+</button>
+`
+
+list.appendChild(div)
+
+})
+}
+
+/* =========================
+INIT
+========================= */
+
+render()
+
+</script>
 
 </body>
 </html>
