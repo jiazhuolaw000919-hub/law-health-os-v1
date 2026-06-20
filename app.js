@@ -1,52 +1,52 @@
-// =====================
-// v9 GLOBAL USER SYSTEM
-// =====================
+// ============================
+// APP.JS v10.6 CORE
+// ============================
 
-function getCurrentUser(){
-  return JSON.parse(localStorage.getItem("currentUser")) || null
-}
-
-function setCurrentUser(user){
-  localStorage.setItem("currentUser", JSON.stringify(user))
-}
-
-// 多用户列表
-function getAllUsers(){
-  return JSON.parse(localStorage.getItem("users")) || []
-}
-
-function saveAllUsers(users){
-  localStorage.setItem("users", JSON.stringify(users))
-}
-
-// 创建/切换 profile
-function saveProfile(profile){
-
-  let users = getAllUsers()
-
-  let existing = users.find(u => u.id === profile.id)
-
-  if(existing){
-    Object.assign(existing, profile)
-  }else{
-    users.push(profile)
-  }
-
-  saveAllUsers(users)
-  setCurrentUser(profile)
-}
-
-// 获取当前 profile
-function getProfile(){
-  return getCurrentUser()
-}
-
-// 计算 BMI
-function calculateBMI(height, weight){
-  if(!height || !weight) return 0
-  return (weight / ((height/100) ** 2)).toFixed(1)
+// ---------- PROFILE CORE ----------
+function getProfiles(){
+  return JSON.parse(localStorage.getItem("profiles")) || []
 }
 
 function getActiveProfile(){
-return JSON.parse(localStorage.getItem("activeProfile")) || {id:"guest", name:"Guest"}
+  return JSON.parse(localStorage.getItem("activeProfile")) || null
+}
+
+function setActiveProfile(profile){
+  localStorage.setItem("activeProfile", JSON.stringify(profile))
+}
+
+// ---------- SAFE SAVE ----------
+function saveProfiles(profiles){
+  localStorage.setItem("profiles", JSON.stringify(profiles))
+}
+
+// ---------- FOOD STORAGE WRAPPER ----------
+async function saveFood(data){
+  let foods = JSON.parse(localStorage.getItem("foods")) || []
+  foods.push(data)
+  localStorage.setItem("foods", JSON.stringify(foods))
+}
+
+// ---------- GET FOOD LOGS (MULTI PROFILE SAFE) ----------
+async function getFoodLogs(date){
+
+  let foods = JSON.parse(localStorage.getItem("foods")) || []
+
+  const profile = getActiveProfile()
+
+  return foods.filter(f =>
+    f.date === date &&
+    (!f.userId || !profile || f.userId === profile.id)
+  )
+}
+
+// ---------- HEALTH SCORE ----------
+function calculateHealthScore(calories, target=2000){
+  let diff = target - calories
+  return Math.max(0, Math.min(100, 50 + diff/20))
+}
+
+// ---------- NAV ACTIVE ----------
+function setActive(page){
+  localStorage.setItem("activePage", page)
 }
