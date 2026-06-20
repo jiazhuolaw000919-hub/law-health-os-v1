@@ -25,9 +25,8 @@ gap:10px;
 flex-wrap:wrap;
 }
 
-.box{
-flex:1;
-min-width:150px;
+canvas{
+max-width:100%;
 }
 </style>
 
@@ -62,23 +61,25 @@ min-width:150px;
 <div class="card">
 <h3>⚖ BMI Status</h3>
 <p id="bmi">Loading...</p>
+<p id="bmiTag"></p>
 </div>
 
 <!-- TODAY -->
 <div class="card">
 <h3>🔥 Today Summary</h3>
 <p id="today">Loading...</p>
+<p id="aiTag"></p>
 </div>
 
-<!-- BMI SIMPLE CHART -->
+<!-- BMI CHART -->
 <div class="card">
-<h3>📊 BMI Snapshot Chart</h3>
+<h3>📊 BMI Snapshot</h3>
 <canvas id="bmiChart" width="300" height="120"></canvas>
 </div>
 
 <script>
 
-// ================= TIME SYSTEM =================
+/* ================= TIME ================= */
 function updateTime(){
 const now = new Date()
 
@@ -88,11 +89,10 @@ now.toLocaleDateString()
 document.getElementById("time").innerText =
 now.toLocaleTimeString()
 }
-
 setInterval(updateTime,1000)
 updateTime()
 
-// ================= SAFE PROFILE =================
+/* ================= SAFE PROFILE ================= */
 function safeProfile(){
 if(typeof getActiveProfile !== "undefined"){
 return getActiveProfile()
@@ -100,14 +100,23 @@ return getActiveProfile()
 return { name:"Guest", id:"guest", height:170, weight:70 }
 }
 
-// ================= BMI CALC =================
+/* ================= BMI ================= */
 function calcBMI(h,w){
 h = Number(h || 170)
 w = Number(w || 70)
 return (w / ((h/100)*(h/100))).toFixed(1)
 }
 
-// ================= SAFE SCORE =================
+function getBmiTag(bmi){
+bmi = Number(bmi)
+
+if(bmi < 18.5) return "🟡 Underweight"
+if(bmi < 25) return "🟢 Normal"
+if(bmi < 30) return "🟠 Overweight"
+return "🔴 Obese"
+}
+
+/* ================= SCORE ================= */
 function safeScore(cal){
 if(typeof calculateHealthScore !== "undefined"){
 return calculateHealthScore(cal)
@@ -115,7 +124,15 @@ return calculateHealthScore(cal)
 return Math.max(0, 100 - cal/50)
 }
 
-// ================= SIMPLE BMI CHART =================
+/* ================= AI TAG (NEW v10.7) ================= */
+function getAITag(cal, bmi){
+if(cal > 2500 && bmi > 25) return "⚠ High risk day"
+if(cal > 2200) return "📊 High intake"
+if(bmi > 25) return "⚖ Weight management needed"
+return "✅ Healthy balance"
+}
+
+/* ================= CHART ================= */
 function drawBMI(bmi){
 
 const canvas = document.getElementById("bmiChart")
@@ -123,19 +140,19 @@ const ctx = canvas.getContext("2d")
 
 ctx.clearRect(0,0,300,120)
 
-ctx.fillStyle = "#eee"
+ctx.fillStyle = "#f3f4f6"
 ctx.fillRect(0,0,300,120)
 
-let value = Math.min(40, bmi) * 5
+let bar = Math.min(40, bmi) * 6
 
-ctx.fillStyle = "#4ade80"
-ctx.fillRect(20, 80, value, 20)
+ctx.fillStyle = "#22c55e"
+ctx.fillRect(20, 70, bar, 20)
 
 ctx.fillStyle = "#111"
-ctx.fillText("BMI: " + bmi, 20, 50)
+ctx.fillText("BMI: " + bmi, 20, 40)
 }
 
-// ================= LOAD DASHBOARD =================
+/* ================= LOAD ================= */
 async function loadDashboard(){
 
 const profile = safeProfile()
@@ -143,16 +160,18 @@ const profile = safeProfile()
 document.getElementById("profile").innerText =
 `👤 ${profile.name} (${profile.id})`
 
-// BMI
+/* BMI */
 let bmi = calcBMI(profile.height, profile.weight)
 
 document.getElementById("bmi").innerText =
 `⚖ BMI: ${bmi}`
 
-// draw chart
+document.getElementById("bmiTag").innerText =
+getBmiTag(bmi)
+
 drawBMI(bmi)
 
-// TODAY CALORIES
+/* TODAY CALORIES */
 let today = new Date().toISOString().split("T")[0]
 
 let calories = 0
@@ -173,8 +192,14 @@ if(calories === 0){
 calories = 1800
 }
 
+/* SCORE + AI TAG */
+let score = safeScore(calories)
+
 document.getElementById("today").innerText =
-`🔥 Calories: ${calories} kcal | 🧠 Score: ${safeScore(calories)}`
+`🔥 Calories: ${calories} kcal | 🧠 Score: ${score}`
+
+document.getElementById("aiTag").innerText =
+getAITag(calories, bmi)
 }
 
 loadDashboard()
