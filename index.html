@@ -2,11 +2,12 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Dashboard</title>
+<title>Calendar</title>
 
 <link rel="stylesheet" href="style.css">
-<script src="app.js"></script>
+<script src="supabase.js"></script>
 <script src="ai.js"></script>
+<script src="app.js"></script>
 </head>
 
 <body>
@@ -20,11 +21,7 @@
 <a href="report.html" id="nav-report">Report</a>
 </div>
 
-<div class="card">
-<h2>Dashboard</h2>
-<p>Weight: 80kg</p>
-<p>BMI: 25</p>
-</div>
+<div class="grid" id="grid"></div>
 
 <div class="bottom-nav">
 <a href="index.html">🏠</a>
@@ -35,7 +32,49 @@
 <a href="report.html">📄</a>
 </div>
 
-<script>setActive("home")</script>
+<script>
+setActive("cal")
+
+let year=new Date().getFullYear()
+let month=new Date().getMonth()
+
+function dateStr(d){
+return `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`
+}
+
+async function render(){
+
+const grid=document.getElementById("grid")
+grid.innerHTML=""
+
+const first=new Date(year,month,1).getDay()
+const days=new Date(year,month+1,0).getDate()
+
+for(let i=0;i<first;i++) grid.innerHTML+="<div></div>"
+
+for(let d=1; d<=days; d++){
+
+const date=dateStr(d)
+const foods=await getFood(date)
+
+let cal=0
+foods.forEach(f=>cal+=f.calories||0)
+
+let score=calcScore(cal,0)
+
+let div=document.createElement("div")
+div.className="day"
+
+div.innerHTML = d + "<br>" + Math.round(score)
+
+div.onclick=()=>location.href="day.html?date="+date
+
+grid.appendChild(div)
+}
+}
+
+render()
+</script>
 
 </body>
 </html>
