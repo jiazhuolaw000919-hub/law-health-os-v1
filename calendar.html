@@ -28,16 +28,42 @@
 
 const grid = document.getElementById("grid")
 
-const year = new Date().getFullYear()
-const month = new Date().getMonth()
+const monthSelect = document.getElementById("monthSelect")
+const yearSelect = document.getElementById("yearSelect")
 
-function format(d){
-return `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`
+let currentDate = new Date()
+
+// 初始化月份
+for(let m=0;m<12;m++){
+const opt = document.createElement("option")
+opt.value = m
+opt.text = m+1
+monthSelect.appendChild(opt)
 }
 
-async function load(){
+// 初始化年份
+const currentYear = new Date().getFullYear()
+
+for(let y=currentYear-3;y<=currentYear+3;y++){
+const opt = document.createElement("option")
+opt.value = y
+opt.text = y
+yearSelect.appendChild(opt)
+}
+
+monthSelect.value = currentDate.getMonth()
+yearSelect.value = currentDate.getFullYear()
+
+function formatDate(y,m,d){
+return `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`
+}
+
+async function loadCalendar(){
 
 grid.innerHTML = ""
+
+const year = parseInt(yearSelect.value)
+const month = parseInt(monthSelect.value)
 
 const first = new Date(year,month,1).getDay()
 const days = new Date(year,month+1,0).getDate()
@@ -48,30 +74,35 @@ grid.innerHTML += "<div></div>"
 
 for(let d=1; d<=days; d++){
 
-const date = format(d)
-
-const foods = await safeAsync(
-()=>getFoodLogs(date),
-[]
-)
+const date = formatDate(year,month,d)
 
 let calories = 0
+let foods = []
+
+try{
+if(typeof getFoodLogs !== "undefined"){
+foods = await getFoodLogs(date)
+}
+}catch(e){
+foods = []
+}
 
 foods.forEach(f=>{
-calories += Number(f.calories || 0)
+calories += Number(f.calories||0)
 })
 
-const score = safe(
-()=>calculateHealthScore(calories,0),
-0
-)
+let score = 0
+try{
+score = calculateHealthScore(calories,0)
+}catch(e){
+score = 0
+}
 
 let color = "red"
 
-if(calories > 2800) color="red"
-else if(score >= 80) color="green"
-else if(score >= 50) color="yellow"
-else color="red"
+if(calories > 2800) color = "red"
+else if(score >= 80) color = "green"
+else if(score >= 50) color = "yellow"
 
 const div = document.createElement("div")
 div.className = "day " + color
@@ -84,9 +115,37 @@ location.href = "day.html?date=" + date
 
 grid.appendChild(div)
 }
+
 }
 
-load()
+// 月份控制
+function changeMonth(offset){
+
+let m = parseInt(monthSelect.value)
+let y = parseInt(yearSelect.value)
+
+m += offset
+
+if(m < 0){
+m = 11
+y--
+}
+
+if(m > 11){
+m = 0
+y++
+}
+
+monthSelect.value = m
+yearSelect.value = y
+
+loadCalendar()
+}
+
+monthSelect.onchange = loadCalendar
+yearSelect.onchange = loadCalendar
+
+loadCalendar()
 
 if(typeof setActive !== "undefined"){
 setActive("calendar")
