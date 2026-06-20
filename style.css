@@ -1,32 +1,68 @@
+*{
+box-sizing:border-box;
+}
+
 body{
 margin:0;
-font-family:Arial;
-background:#f6f7fb;
+font-family:Arial,Helvetica,sans-serif;
+background:#f5f7fb;
 color:#111827;
+padding-bottom:80px;
 }
 
 .nav{
 display:flex;
 justify-content:space-around;
-background:#fff;
-padding:10px;
+align-items:center;
+background:#ffffff;
+padding:12px;
 border-bottom:1px solid #e5e7eb;
 position:sticky;
 top:0;
+z-index:100;
 }
 
 .nav a{
 text-decoration:none;
 color:#111827;
 font-size:14px;
+font-weight:600;
 }
 
 .card{
-background:#fff;
-margin:10px;
-padding:15px;
-border-radius:12px;
-box-shadow:0 2px 8px rgba(0,0,0,0.05);
+background:#ffffff;
+margin:12px;
+padding:16px;
+border-radius:14px;
+box-shadow:0 2px 8px rgba(0,0,0,.06);
+}
+
+h1,h2,h3{
+margin-top:0;
+}
+
+input,
+select,
+textarea{
+width:100%;
+padding:10px;
+margin-top:6px;
+margin-bottom:10px;
+border:1px solid #d1d5db;
+border-radius:10px;
+}
+
+button{
+padding:10px 14px;
+border:none;
+border-radius:10px;
+background:#111827;
+color:white;
+cursor:pointer;
+}
+
+button:hover{
+opacity:.9;
 }
 
 .bottom-nav{
@@ -34,39 +70,57 @@ position:fixed;
 bottom:0;
 left:0;
 right:0;
-background:#fff;
+background:white;
 display:flex;
 justify-content:space-around;
 padding:10px 0;
-border-top:1px solid #eee;
+border-top:1px solid #e5e7eb;
+z-index:999;
 }
 
 .bottom-nav a{
-font-size:12px;
 text-decoration:none;
-color:#666;
+font-size:12px;
+color:#6b7280;
+text-align:center;
+flex:1;
 }
 
 .bottom-nav a.active{
-color:#000;
+color:#111827;
 font-weight:bold;
 }
 
 .grid{
 display:grid;
 grid-template-columns:repeat(7,1fr);
-gap:5px;
+gap:6px;
 padding:10px;
 }
 
 .day{
-background:#fff;
+background:white;
+border-radius:10px;
 padding:10px;
 text-align:center;
-border-radius:8px;
+cursor:pointer;
 font-size:12px;
+min-height:70px;
+box-shadow:0 1px 4px rgba(0,0,0,.05);
 }
 
-.green{background:#dcfce7}
-.yellow{background:#fef9c3}
-.red{background:#fee2e2}
+.green{
+background:#dcfce7;
+}
+
+.yellow{
+background:#fef9c3;
+}
+
+.red{
+background:#fee2e2;
+}
+
+.center{
+text-align:center;
+}
