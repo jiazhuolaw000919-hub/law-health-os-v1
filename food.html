@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Food AI v10.7 System (Stable)</title>
+<title>Food AI v10.8 System (Confirmed Save)</title>
 
 <link rel="stylesheet" href="style.css">
 
@@ -24,7 +24,7 @@
 <a href="profile.html">Profile</a>
 </div>
 
-<h2 style="text-align:center">🍽 Food AI v10.7 System</h2>
+<h2 style="text-align:center">🍽 Food AI v10.8 System</h2>
 
 <!-- ACTIVE PROFILE -->
 <div class="card">
@@ -33,7 +33,6 @@
 
 <!-- PROFILE SWITCHER -->
 <div class="card">
-
 <select id="profileSwitcher" onchange="switchProfileUI()"></select>
 
 <br><br>
@@ -43,31 +42,44 @@
 <button onclick="deleteActiveProfile()" style="background:red;color:white">
 🗑 Delete Active Profile
 </button>
-
 </div>
 
 <!-- FOOD INPUT -->
 <div class="card">
 <input id="foodInput" placeholder="e.g. chicken rice">
 <br><br>
+
 <button onclick="addFoodManual()">Add Food</button>
+
 <div id="log"></div>
 </div>
 
 <!-- AI SCANNER -->
 <div class="card">
-<h3>📸 AI Scanner (v10.7)</h3>
+<h3>📸 AI Scanner (v10.8)</h3>
 
 <input type="file" id="foodImage">
 <br><br>
 
 <button onclick="scanFood()">Analyze Image</button>
+
 <p id="aiResult">Waiting...</p>
+
+<!-- ✅ CONFIRM BOX (NEW) -->
+<div id="confirmBox" style="display:none; margin-top:10px;">
+  <button onclick="confirmSaveFood()">✅ Confirm Save</button>
+  <button onclick="cancelSaveFood()" style="background:red;color:white;">
+    ❌ Cancel
+  </button>
+</div>
+
 </div>
 
 <script>
 
 setActive?.("food")
+
+let pendingFood = null
 
 /* ================= PROFILE CORE ================= */
 
@@ -89,6 +101,7 @@ totalFoods:0
 }
 
 /* ================= INIT ================= */
+
 function ensureProfile(){
 
 let profiles = getProfiles()
@@ -126,8 +139,6 @@ document.getElementById("activeProfile").innerText =
 function renderSwitcher(){
 
 const select = document.getElementById("profileSwitcher")
-if(!select) return
-
 select.innerHTML = ""
 
 getProfiles().forEach(p=>{
@@ -141,9 +152,7 @@ const active = getActiveProfile()
 if(active) select.value = active.id
 }
 
-/* ================= SWITCH PROFILE ================= */
 function switchProfileUI(){
-
 const id = document.getElementById("profileSwitcher").value
 const profile = getProfiles().find(p=>p.id===id)
 
@@ -153,18 +162,14 @@ renderProfile()
 }
 }
 
-/* ================= NAV ================= */
 function goCreateProfile(){
 window.location.href = "profile.html?mode=create"
 }
 
-/* ================= DELETE SAFE ================= */
 function deleteActiveProfile(){
 
 let profiles = getProfiles()
 let active = getActiveProfile()
-
-if(!active || active.id === "guest") return
 
 profiles = profiles.filter(p => p.id !== active.id)
 
@@ -187,7 +192,7 @@ renderProfile()
 renderSwitcher()
 }
 
-/* ================= AI LEARNING HOOK (STEP 2 FIX) ================= */
+/* ================= LEARNING ================= */
 
 function updateLearning(profile, food){
 
@@ -210,6 +215,7 @@ localStorage.setItem("activeProfile", JSON.stringify(profile))
 }
 
 /* ================= INIT ================= */
+
 ensureProfile()
 renderProfile()
 renderSwitcher()
@@ -231,7 +237,7 @@ if(score >= 50) return "OK"
 return "BAD"
 }
 
-/* ================= ADD FOOD ================= */
+/* ================= ADD FOOD MANUAL ================= */
 
 async function addFoodManual(){
 
@@ -265,7 +271,7 @@ date: today
 }
 }
 
-/* ================= AI SCAN ================= */
+/* ================= AI SCAN (NOW PREVIEW ONLY) ================= */
 
 async function scanFood(){
 
@@ -313,15 +319,16 @@ food.healthTag = getHealthTag(food.score)
 
 updateLearning(profile, food)
 
+/* ❌ DO NOT SAVE YET */
 const today = new Date().toISOString().split("T")[0]
 
-if(typeof saveFood !== "undefined"){
-await saveFood({
+pendingFood = {
 ...food,
 userId: profile.id,
 date: today
-})
 }
+
+document.getElementById("confirmBox").style.display = "block"
 
 document.getElementById("aiResult").innerHTML =
 `👤 ${profile.name}
@@ -344,6 +351,41 @@ document.getElementById("aiResult").innerText =
 }
 
 reader.readAsDataURL(file)
+}
+
+/* ================= CONFIRM SAVE ================= */
+
+async function confirmSaveFood(){
+
+if(!pendingFood) return
+
+try{
+
+if(typeof saveFood !== "undefined"){
+await saveFood(pendingFood)
+}
+
+document.getElementById("log").innerHTML +=
+`<p>✅ Saved: ${pendingFood.food} - ${pendingFood.calories} kcal</p>`
+
+pendingFood = null
+document.getElementById("confirmBox").style.display = "none"
+
+}catch(e){
+console.log(e)
+alert("Save failed")
+}
+}
+
+/* ================= CANCEL ================= */
+
+function cancelSaveFood(){
+
+pendingFood = null
+document.getElementById("confirmBox").style.display = "none"
+
+document.getElementById("aiResult").innerText =
+"Cancelled"
 }
 
 </script>
