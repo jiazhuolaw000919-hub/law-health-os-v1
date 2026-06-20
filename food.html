@@ -113,12 +113,41 @@ reader.onload = async function(){
 
 const base64 = reader.result
 
+try{
+
+if(typeof saveFood !== "undefined"){
+
+await saveFood({
+food: parsed.food || "unknown",
+calories: parsed.calories || 0,
+protein: parsed.protein || 0,
+carbs: parsed.carbs || 0,
+fat: parsed.fat || 0,
+date: new Date().toISOString().split("T")[0]
+})
+
+}
+
+}catch(e){
+console.log("save failed", e)
+}
 document.getElementById("aiResult").innerText =
 "Analyzing..."
 
 try{
 
-const result = await analyzeFoodImage(base64)
+const raw = await analyzeFoodImage(base64)
+
+let parsed
+
+try{
+parsed = typeof raw === "string" ? JSON.parse(raw) : raw
+}catch(e){
+parsed = {
+food:"unknown",
+calories:0
+}
+}
 
 let parsed = result
 
