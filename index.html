@@ -127,7 +127,7 @@ weekData.push(0)
 // =====================
 // PROFILE
 // =====================
-let profile = {}
+let profile = getActiveProfile?.() || {}
 
 try{
 if(typeof getProfile !== "undefined"){
