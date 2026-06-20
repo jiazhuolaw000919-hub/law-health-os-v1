@@ -9,7 +9,6 @@
 <script src="app.js"></script>
 <script src="ai.js"></script>
 <script src="supabase.js"></script>
-
 <script src="js/db.js"></script>
 <script src="js/profile.js"></script>
 <script src="js/ai-engine.js"></script>
@@ -70,7 +69,7 @@ margin-top:5px;
 <p id="bmi"></p>
 </div>
 
-<!-- AI SUMMARY (UPGRADED) -->
+<!-- AI SUMMARY -->
 <div class="card">
 <h3>🧠 AI Weekly Intelligence</h3>
 <p id="summary">Loading...</p>
@@ -123,7 +122,10 @@ let dateObj = new Date()
 /* ================= PROFILE ================= */
 function getActiveProfile(){
 return JSON.parse(localStorage.getItem("activeProfile")) || {
-id:"guest",name:"Guest",height:170,weight:70
+id:"guest",
+name:"Guest",
+height:170,
+weight:70
 }
 }
 
@@ -152,7 +154,7 @@ const foods = await safeFoodLogs(date)
 return foods.reduce((s,f)=>s+Number(f.calories||0),0)
 }
 
-/* ================= AI SUMMARY (POLISHED) ================= */
+/* ================= WEEKLY AI SUMMARY ================= */
 async function buildWeeklySummary(){
 
 let total=0,max=0,days=7
@@ -171,19 +173,28 @@ let avg=total/days
 let p=getActiveProfile()
 let bmi=calcBMI(p.height,p.weight)
 
-let trend=avg>2500?"⬆ High intake trend":
-avg>2200?"➡ Moderate trend":"⬇ Stable intake"
+let risk =
+(bmi>28 || avg>2500) ? "HIGH"
+: avg>2200 ? "MEDIUM"
+: "LOW"
+
+let color =
+risk==="HIGH"?"red"
+:risk==="MEDIUM"?"yellow"
+:"green"
 
 document.getElementById("summary").innerText =
 `Avg ${avg.toFixed(0)} kcal | Max ${max} kcal`
 
 document.getElementById("riskSummary").innerHTML =
-`<span class="badge ${
-bmi>28||avg>2500?"red":avg>2200?"yellow":"green"
-}">
-${bmi>28||avg>2500?"HIGH RISK":avg>2200?"MEDIUM":"LOW"}
+`<span class="badge ${color}">
+${risk} RISK
 </span>
-<p>${trend}</p>`
+<p>${
+risk==="HIGH"?"Increase activity + reduce carbs"
+:risk==="MEDIUM"?"Balance meals + monitor intake"
+:"Stable healthy pattern"
+}</p>`
 }
 
 /* ================= MEAL AI ================= */
@@ -191,15 +202,15 @@ function mealAI(foods){
 
 let total=foods.reduce((s,f)=>s+Number(f.calories||0),0)
 
-let protein=foods.filter(f=>f.food?.includes("chicken")||f.food?.includes("egg")).length
-let carb=foods.filter(f=>f.food?.includes("rice")||f.food?.includes("bread")).length
+let protein=foods.filter(f=>/chicken|egg|beef|fish/.test((f.food||"").toLowerCase())).length
+let carb=foods.filter(f=>/rice|bread|noodle/.test((f.food||"").toLowerCase())).length
 
 let score=100
-
 if(total>2500)score-=30
 if(carb>protein)score-=20
 
-let label=score>80?"🟢 Good Meal"
+let label =
+score>80?"🟢 Good Meal"
 :score>60?"🟡 Balanced"
 :"🔴 Poor Balance"
 
@@ -233,7 +244,7 @@ grid.appendChild(div)
 }
 }
 
-/* ================= MODAL (POLISHED AI) ================= */
+/* ================= MODAL ================= */
 async function openModal(date,cal){
 
 document.getElementById("modal").style.display="flex"
@@ -257,11 +268,9 @@ box.innerHTML=
 <p>${ai.label}</p>
 <p>Total: ${ai.total} kcal</p>`
 
-mini.innerHTML=
-ai.score>80
-?"🟢 Excellent day"
-:ai.score>60
-?"🟡 Needs balance"
+mini.innerHTML =
+ai.score>80?"🟢 Excellent day"
+:ai.score>60?"🟡 Needs balance"
 :"🔴 Poor nutrition"
 }
 
@@ -291,10 +300,8 @@ window.location.href=`day.html?date=${date}`
 }
 
 /* ================= INIT ================= */
-monthSelect.onchange=load
-yearSelect.onchange=load
-
 function init(){
+
 monthSelect.innerHTML=""
 yearSelect.innerHTML=""
 
