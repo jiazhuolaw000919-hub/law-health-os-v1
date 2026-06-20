@@ -1,6 +1,9 @@
 const SUPABASE_URL = "https://jwcgamxkwzrjnepxrvzr.supabase.co"
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9"
 
+// 🔥 DELETE GUARD（防复活核心）
+const DELETE_GUARD_KEY = "deleted_items_v1"
+
 //////////////////////////////
 // SAFE FETCH CORE
 //////////////////////////////
@@ -41,6 +44,22 @@ updatedAt: new Date().toISOString()
 }
 
 //////////////////////////////
+// 🧠 DELETE GUARD (防“删除复活”核心机制)
+//////////////////////////////
+function markDeleted(id){
+let list = JSON.parse(localStorage.getItem(DELETE_GUARD_KEY)) || []
+if(!list.includes(id)){
+list.push(id)
+localStorage.setItem(DELETE_GUARD_KEY, JSON.stringify(list))
+}
+}
+
+function isDeleted(id){
+let list = JSON.parse(localStorage.getItem(DELETE_GUARD_KEY)) || []
+return list.includes(id)
+}
+
+//////////////////////////////
 // FOOD LOG READ
 //////////////////////////////
 async function getFoodLogs(date){
@@ -58,7 +77,12 @@ Authorization: "Bearer " + SUPABASE_KEY
 }
 })
 
-return Array.isArray(data) ? data : []
+let safe = Array.isArray(data) ? data : []
+
+// 🔥 FILTER deleted items (防复活关键)
+safe = safe.filter(d => !isDeleted(d.id))
+
+return safe
 }
 
 //////////////////////////////
@@ -92,7 +116,7 @@ body: JSON.stringify(payload)
 }
 
 //////////////////////////////
-// ❌ SAFE DELETE FOOD (NEW CORE)
+// ❌ SAFE DELETE FOOD (ANTI-REVIVE CORE)
 //////////////////////////////
 async function deleteFood(foodId){
 
@@ -103,17 +127,25 @@ console.log("deleteFood blocked: missing id")
 return null
 }
 
-/* 🔒 SECURITY CHECK (must belong to user) */
+/* 🔒 STEP 1: mark as deleted locally (CRITICAL) */
+markDeleted(foodId)
+
+/* 🔒 STEP 2: server delete */
 const url =
 `${SUPABASE_URL}/rest/v1/food_logs?id=eq.${foodId}&userId=eq.${profile.id}`
 
-return await safeFetch(url,{
+const res = await safeFetch(url,{
 method:"DELETE",
 headers:{
 apikey: SUPABASE_KEY,
 Authorization: "Bearer " + SUPABASE_KEY
 }
 })
+
+/* 🔒 STEP 3: force sync clean */
+setTimeout(syncProfiles, 300)
+
+return res
 }
 
 //////////////////////////////
@@ -160,7 +192,7 @@ body: JSON.stringify(payload)
 }
 
 //////////////////////////////
-// SMART SYNC ENGINE (MERGE SAFE)
+// SMART SYNC ENGINE
 //////////////////////////////
 async function syncProfiles(){
 
@@ -168,6 +200,10 @@ try{
 
 let cloud = await getProfilesCloud()
 let local = JSON.parse(localStorage.getItem("profiles")) || []
+
+// 🔥 REMOVE deleted items before merge
+cloud = cloud.filter(p => !isDeleted(p.id))
+local = local.filter(p => !isDeleted(p.id))
 
 let map = new Map()
 
@@ -212,7 +248,7 @@ console.log("sync error:", e)
 }
 
 //////////////////////////////
-// REALTIME ENGINE (v11.6)
+// REALTIME ENGINE v11.6
 //////////////////////////////
 
 let realtimeChannel = null
