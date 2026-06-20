@@ -137,3 +137,22 @@ return fn()
 return fallback
 }
 }
+
+function getHealthScore(cal){
+if(cal<2000) return 90
+if(cal<2500) return 75
+if(cal<3000) return 60
+return 40
+}
+
+function healthRisk(avg){
+if(avg>3000) return "HIGH"
+if(avg>2500) return "MED"
+return "LOW"
+}
+
+function suggestion(avg){
+if(avg>3000) return "Reduce carbs + sugar"
+if(avg>2500) return "Light dinner"
+return "Good routine"
+}
