@@ -2,10 +2,12 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Day</title>
+<title>Day Detail</title>
 
 <link rel="stylesheet" href="style.css">
+
 <script src="supabase.js"></script>
+<script src="app.js"></script>
 </head>
 
 <body>
@@ -19,26 +21,50 @@
 <a href="report.html">Report</a>
 </div>
 
-<div class="card" id="content"></div>
+<h2 class="center">📅 Day Detail</h2>
+
+<div class="card" id="box">Loading...</div>
 
 <script>
 
-const date=new URLSearchParams(location.search).get("date")
+setActive("calendar")
+
+const params = new URLSearchParams(window.location.search)
+const date = params.get("date")
+
+const box = document.getElementById("box")
+
+if(!date){
+box.innerHTML = "⚠️ No date selected"
+throw new Error("no date")
+}
 
 async function load(){
 
-const foods=await getFood(date)
+let foods = []
 
-let html=""
-let total=0
+try{
+foods = await getFoodLogs(date)
+}catch(e){
+foods = []
+}
+
+if(!foods.length){
+box.innerHTML = `<h3>${date}</h3><p>No data</p>`
+return
+}
+
+let total = 0
+let html = `<h3>${date}</h3>`
 
 foods.forEach(f=>{
-html+=`<p>${f.food} - ${f.calories}</p>`
-total+=f.calories||0
+html += `<p>🍽 ${f.food} - ${f.calories} kcal</p>`
+total += Number(f.calories || 0)
 })
 
-document.getElementById("content").innerHTML =
-html + "<hr>Total: " + total
+html += `<hr><b>Total: ${total} kcal</b>`
+
+box.innerHTML = html
 }
 
 load()
