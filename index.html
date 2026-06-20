@@ -85,3 +85,26 @@ if("serviceWorker" in navigator){
 navigator.serviceWorker.register("sw.js")
 }
 </script>
+
+<div class="card">
+<h3>📈 Real Weight Trend</h3>
+<canvas id="weightChart"></canvas>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+
+new Chart(document.getElementById("weightChart"),{
+type:"line",
+data:{
+labels:["Mon","Tue","Wed","Thu","Fri"],
+datasets:[{
+label:"Weight",
+data:[75,74.8,74.6,74.4,74.2],
+borderColor:"#111827"
+}]
+}
+})
+
+</script>
