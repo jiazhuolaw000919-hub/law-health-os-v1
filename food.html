@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Food AI v3 Stable</title>
+<title>Food AI v7.0</title>
 
 <link rel="stylesheet" href="style.css">
 
@@ -24,24 +24,27 @@
 <a href="profile.html">Profile</a>
 </div>
 
-<h2 style="text-align:center">🍽 Food AI System (Stable)</h2>
+<h2 style="text-align:center">🍽 Food AI System v7.0</h2>
 
+<!-- FOOD INPUT -->
 <div class="card">
+
 <input id="foodInput" placeholder="e.g. chicken rice"
 style="padding:10px;width:90%">
 
 <br><br>
 
-<button onclick="addFoodManual()"
-style="padding:10px 15px;background:#111827;color:white;border:none;border-radius:10px">
+<button onclick="addFoodManual()">
 Add Food
 </button>
 
 <div id="log"></div>
+
 </div>
 
+<!-- AI SCANNER -->
 <div class="card">
-<h3>📸 Food AI Scanner</h3>
+<h3>📸 AI Food Scanner (v7)</h3>
 
 <input type="file" id="foodImage">
 
@@ -56,9 +59,32 @@ Add Food
 
 setActive("food")
 
-// =====================
-// 🍽 MANUAL INPUT
-// =====================
+// =============================
+// SAFE FETCH WRAPPER (v7 CORE)
+// =============================
+async function safeFetch(url, options){
+
+try{
+const res = await fetch(url, options)
+
+const data = await res.json().catch(()=>null)
+
+if(!res.ok){
+throw new Error(data?.error || "API Error")
+}
+
+return data
+
+}catch(err){
+console.log("safeFetch error:", err)
+return { error: String(err) }
+}
+
+}
+
+// =============================
+// 🍽 MANUAL FOOD INPUT
+// =============================
 async function addFoodManual(){
 
 const input = document.getElementById("foodInput")
@@ -81,7 +107,12 @@ input.value = ""
 
 try{
 if(typeof saveFood !== "undefined"){
-await saveFood({ food, calories: cal, date: today })
+await saveFood({
+food,
+calories: cal,
+date: today,
+source: "manual"
+})
 }
 }catch(e){
 console.log(e)
@@ -89,9 +120,9 @@ console.log(e)
 
 }
 
-// =====================
-// 📸 SCAN FOOD
-// =====================
+// =============================
+// 📸 AI SCAN (v7 ENGINE)
+// =============================
 async function scanFood(){
 
 const file = document.getElementById("foodImage").files[0]
@@ -111,16 +142,25 @@ try{
 
 const base64 = reader.result
 
-const raw = await analyzeFoodImage(base64)
+// 1. CALL AI API (SAFE)
+const res = await safeFetch("/api/ai", {
+method: "POST",
+headers: {"Content-Type":"application/json"},
+body: JSON.stringify({ image: base64 })
+})
+
+// 2. NORMALIZE RESPONSE
+let raw = res?.result || res?.data || res
 
 if(!raw){
-document.getElementById("aiResult").innerText = "⚠️ Empty AI response"
+document.getElementById("aiResult").innerText =
+"⚠️ Empty AI response"
 return
 }
 
+// 3. SAFE PARSE
 let parsed = raw
 
-// safe parse
 if(typeof parsed === "string"){
 try{
 parsed = JSON.parse(parsed)
@@ -129,7 +169,16 @@ parsed = { food:"unknown", calories:0 }
 }
 }
 
-// dedup
+// 4. FINAL SANITIZE
+parsed = {
+food: parsed.food || "unknown",
+calories: parsed.calories || 0,
+protein: parsed.protein || 0,
+carbs: parsed.carbs || 0,
+fat: parsed.fat || 0
+}
+
+// 5. DUPLICATE CHECK
 const today = new Date().toISOString().split("T")[0]
 
 if(typeof getFoodLogs !== "undefined"){
@@ -143,73 +192,40 @@ f.source === "ai"
 
 if(exists){
 document.getElementById("aiResult").innerText =
-"⚠️ Duplicate AI food ignored"
+"⚠️ Duplicate detected (ignored)"
 return
 }
 }
 
-// save
+// 6. SAVE
 if(typeof saveFood !== "undefined"){
 await saveFood({
-food: parsed.food || "unknown",
-calories: parsed.calories || 0,
-protein: parsed.protein || 0,
-carbs: parsed.carbs || 0,
-fat: parsed.fat || 0,
+...parsed,
 source: "ai",
 date: today
 })
 }
 
-// UI
+// 7. UI OUTPUT
 document.getElementById("aiResult").innerText =
-`🍽 Food: ${parsed.food || "Unknown"}
-🔥 Calories: ${parsed.calories || "-"}
-💪 Protein: ${parsed.protein || "-"}
-🍞 Carbs: ${parsed.carbs || "-"}
-🥑 Fat: ${parsed.fat || "-"}`
+`🍽 Food: ${parsed.food}
+🔥 Calories: ${parsed.calories}
+💪 Protein: ${parsed.protein}
+🍞 Carbs: ${parsed.carbs}
+🥑 Fat: ${parsed.fat}`
 
-}catch(e){
+}catch(err){
 
-console.log(e)
+console.log(err)
+
 document.getElementById("aiResult").innerText =
-"AI failed or API not set"
+"AI system error (v7 safe mode)"
 
 }
 
 }
 
 reader.readAsDataURL(file)
-}
-
-// =====================
-// AI API
-// =====================
-async function analyzeFoodImage(imageBase64){
-
-const res = await fetch("/api/ai", {
-  method: "POST",
-  headers: {
-    "Content-Type": "application/json"
-  },
-  body: JSON.stringify({
-    image: imageBase64
-  })
-})
-
-const data = await res.json()
-
-if (!data) {
-  throw new Error("No response from AI API")
-}
-
-if (data.result) return data.result
-if (data.error) throw new Error(data.error)
-
-return {
-  food: "unknown",
-  calories: 0
-}
 }
 
 </script>
