@@ -1,5 +1,5 @@
 const SUPABASE_URL = "https://jwcgamxkwzrjnepxrvzr.supabase.co"
-const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpxZXZjZnlobmx0dHpkaXlsZnJoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE4MjgzNTIsImV4cCI6MjA5NzQwNDM1Mn0.RNWddp1TuYwVAHZlWfdq4iGdgiqNU9DKgAi8pnC6ULs"
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9"
 
 //////////////////////////////
 // SAFE FETCH CORE
@@ -92,6 +92,31 @@ body: JSON.stringify(payload)
 }
 
 //////////////////////////////
+// ❌ SAFE DELETE FOOD (NEW CORE)
+//////////////////////////////
+async function deleteFood(foodId){
+
+const profile = getActiveProfile()
+
+if(!foodId){
+console.log("deleteFood blocked: missing id")
+return null
+}
+
+/* 🔒 SECURITY CHECK (must belong to user) */
+const url =
+`${SUPABASE_URL}/rest/v1/food_logs?id=eq.${foodId}&userId=eq.${profile.id}`
+
+return await safeFetch(url,{
+method:"DELETE",
+headers:{
+apikey: SUPABASE_KEY,
+Authorization: "Bearer " + SUPABASE_KEY
+}
+})
+}
+
+//////////////////////////////
 // CLOUD PROFILES
 //////////////////////////////
 async function getProfilesCloud(){
@@ -144,7 +169,6 @@ try{
 let cloud = await getProfilesCloud()
 let local = JSON.parse(localStorage.getItem("profiles")) || []
 
-// MERGE (dedupe by id)
 let map = new Map()
 
 ;[...local, ...cloud].forEach(p=>{
@@ -160,7 +184,6 @@ let merged = Array.from(map.values())
 
 localStorage.setItem("profiles", JSON.stringify(merged))
 
-// ACTIVE PROFILE CONFLICT RESOLUTION
 let active = getActiveProfile()
 
 if(active && cloud.length){
@@ -189,7 +212,7 @@ console.log("sync error:", e)
 }
 
 //////////////////////////////
-// REALTIME ENGINE (🔥 NEW CORE)
+// REALTIME ENGINE (v11.6)
 //////////////////////////////
 
 let realtimeChannel = null
@@ -197,7 +220,7 @@ let realtimeChannel = null
 function initRealtime(){
 
 if(typeof supabase === "undefined"){
-console.log("Supabase client not loaded")
+console.log("Supabase client missing")
 return
 }
 
@@ -210,10 +233,9 @@ realtimeChannel = supabase
     table:'food_logs'
   },(payload)=>{
 
-    console.log("🔥 FOOD REALTIME UPDATE:", payload)
+    console.log("🔥 FOOD UPDATE:", payload)
 
     syncProfiles()
-
     window.dispatchEvent(new Event("foodSyncUpdate"))
   })
 
@@ -223,10 +245,9 @@ realtimeChannel = supabase
     table:'profiles'
   },(payload)=>{
 
-    console.log("🔥 PROFILE REALTIME UPDATE:", payload)
+    console.log("🔥 PROFILE UPDATE:", payload)
 
     syncProfiles()
-
     window.dispatchEvent(new Event("profileSyncUpdate"))
   })
 
@@ -237,7 +258,7 @@ realtimeChannel = supabase
 initRealtime()
 
 //////////////////////////////
-// SAFE SYNC WRAPPER (DEBOUNCE READY)
+// SAFE SYNC WRAPPER
 //////////////////////////////
 let syncLock = false
 
@@ -251,20 +272,15 @@ syncLock = false
 }
 
 //////////////////////////////
-// AUTO SYNC LOOP (fallback)
+// AUTO SYNC LOOP
 //////////////////////////////
 setInterval(safeSync, 10000)
 
 //////////////////////////////
-// OFFLINE-FIRST SUPPORT
+// ONLINE / FOCUS SYNC
 //////////////////////////////
-window.addEventListener("online", ()=>{
-safeSync()
-})
-
-window.addEventListener("focus", ()=>{
-safeSync()
-})
+window.addEventListener("online", safeSync)
+window.addEventListener("focus", safeSync)
 
 //////////////////////////////
 // INIT
