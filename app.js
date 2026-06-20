@@ -14,6 +14,6 @@ const el = document.getElementById(id)
 if(el) el.classList.remove("active")
 })
 
-const current = document.getElementById(map[page])
-if(current) current.classList.add("active")
+const active = document.getElementById(map[page])
+if(active) active.classList.add("active")
 }
