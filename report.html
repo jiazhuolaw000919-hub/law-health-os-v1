@@ -30,42 +30,35 @@
 
 <h2 class="center">📊 AI Health Report v10.7</h2>
 
-<!-- PROFILE -->
 <div class="card">
 <p id="activeProfile">Loading profile...</p>
 </div>
 
-<!-- CALORIES -->
 <div class="card">
 <h3>🔥 Today Calories</h3>
 <p id="dailyCalories">Loading...</p>
 </div>
 
-<!-- SUMMARY -->
 <div class="card">
 <h3>🧠 AI Weekly Summary</h3>
 <p id="summary">Loading...</p>
 </div>
 
-<!-- RISK -->
 <div class="card">
 <h3>⚠ Risk Analysis</h3>
 <p id="risk">Loading...</p>
 </div>
 
-<!-- PROFILE COMPARE -->
 <div class="card">
 <h3>👤 Profile Comparison</h3>
 <p id="compare">Loading...</p>
 </div>
 
-<!-- CHART -->
 <div class="card">
 <h3>📊 Chart Preview</h3>
 <canvas id="chart" width="300" height="120"></canvas>
 </div>
 
-<!-- EXPORT -->
 <div class="card">
 <h3>📄 Export AI PDF 2.0</h3>
 <button onclick="exportPDF()">Generate PDF</button>
@@ -94,7 +87,7 @@ return []
 }
 }
 
-/* ================= WEEK CALC ================= */
+/* ================= WEEK AVG ================= */
 async function getWeeklyCalories(){
 
 let total = 0
@@ -141,11 +134,11 @@ ctx.clearRect(0,0,300,120)
 ctx.fillStyle = "#f3f4f6"
 ctx.fillRect(0,0,300,120)
 
-// calories bar
+// calories
 ctx.fillStyle = "#60a5fa"
-ctx.fillRect(20,70, calories/10, 20)
+ctx.fillRect(20,70, Math.min(250, calories/10), 20)
 
-// bmi bar
+// bmi
 ctx.fillStyle = "#34d399"
 ctx.fillRect(20,40, bmi*5, 15)
 
@@ -162,7 +155,6 @@ const profile = getActiveProfile()
 document.getElementById("activeProfile").innerText =
 `👤 ${profile.name}`
 
-/* TODAY */
 let today = new Date().toISOString().split("T")[0]
 
 let foods = await safeGetLogs(today)
@@ -177,7 +169,7 @@ s + Number(f.calories || 0), 0)
 /* BMI */
 let bmi = (profile.weight / ((profile.height/100)*(profile.height/100))).toFixed(1)
 
-/* WEEK AVG */
+/* WEEK */
 let weekly = await getWeeklyCalories()
 
 /* SUMMARY */
@@ -200,7 +192,7 @@ document.getElementById("compare").innerText =
 drawChart(calories,bmi)
 }
 
-/* ================= PDF EXPORT 2.0 ================= */
+/* ================= PDF EXPORT ================= */
 function exportPDF(){
 
 const { jsPDF } = window.jspdf
