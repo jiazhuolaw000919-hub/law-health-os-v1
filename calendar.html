@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>AI Calendar v3 FIXED</title>
+<title>AI Calendar v3.5</title>
 
 <link rel="stylesheet" href="style.css">
 
@@ -29,12 +29,16 @@ box-shadow:0 1px 3px rgba(0,0,0,.05);
 transition:0.2s;
 }
 
-.day:hover{ transform:scale(1.05); }
+.day:hover{
+transform:scale(1.05);
+}
 
-.low{ background:#dcfce7; }
-.mid{ background:#fef9c3; }
-.high{ background:#fee2e2; }
-.veryhigh{ background:#fecaca; }
+/* ===== v3.5 GRADIENT HEAT ===== */
+.l1{ background:#dcfce7; }
+.l2{ background:#bbf7d0; }
+.l3{ background:#fef9c3; }
+.l4{ background:#fde68a; }
+.l5{ background:#fecaca; }
 
 .month-bar{
 display:flex;
@@ -62,6 +66,15 @@ padding:6px;
 border-radius:8px;
 border:1px solid #ddd;
 }
+
+.card{
+margin:10px;
+padding:12px;
+background:#fff;
+border-radius:10px;
+box-shadow:0 1px 4px rgba(0,0,0,.05);
+}
+
 </style>
 
 </head>
@@ -78,9 +91,8 @@ border:1px solid #ddd;
 <a href="profile.html">Profile</a>
 </div>
 
-<h2 class="center">📅 AI Calendar v3 FIXED</h2>
+<h2 class="center">📅 AI Calendar v3.5</h2>
 
-<!-- MONTH CONTROL -->
 <div class="card">
 <div class="month-bar">
 
@@ -96,9 +108,8 @@ border:1px solid #ddd;
 </div>
 </div>
 
-<!-- SUMMARY -->
 <div class="card">
-<h3>🧠 Monthly AI Summary</h3>
+<h3>🧠 AI Summary</h3>
 <p id="summary">Loading...</p>
 </div>
 
@@ -124,8 +135,8 @@ const yearSelect = document.getElementById("yearSelect")
 
 let dateObj = new Date()
 
-// ================= INIT DROPDOWNS (FIXED ONCE ONLY) =================
-function initDropdowns(){
+// ================= INIT =================
+function init(){
 
 monthSelect.innerHTML = ""
 yearSelect.innerHTML = ""
@@ -149,43 +160,66 @@ monthSelect.value = dateObj.getMonth()
 yearSelect.value = dateObj.getFullYear()
 }
 
-// ================= SAFE CALORIE =================
-async function getCalories(date){
-
-let cal = 0
-
+// ================= SAFE DATA =================
+async function safeCalories(date){
 try{
-if(typeof getFoodLogs !== "undefined"){
-const foods = await getFoodLogs(date) || []
-foods.forEach(f => cal += Number(f.calories || 0))
+if(typeof getFoodLogs === "undefined") return 0
+const logs = await getFoodLogs(date) || []
+return logs.reduce((sum,f)=> sum + Number(f.calories||0), 0)
+}catch(e){
+return 0
 }
-}catch(e){}
-
-return cal
-}
-
-// ================= COLOR =================
-function getHeatClass(cal){
-if(cal > 3000) return "veryhigh"
-if(cal > 2500) return "high"
-if(cal > 2000) return "mid"
-return "low"
 }
 
-// ================= LOAD CALENDAR (FIXED) =================
+// ================= HEAT MAP (v3.5) =================
+function getLevel(cal){
+
+if(cal < 1500) return "l1"
+if(cal < 2200) return "l2"
+if(cal < 2700) return "l3"
+if(cal < 3200) return "l4"
+return "l5"
+}
+
+// ================= STREAK LOGIC =================
+function calcStreak(dailyData){
+
+let streak = 0
+
+for(let i=dailyData.length-1;i>=0;i--){
+if(dailyData[i] > 0) streak++
+else break
+}
+
+return streak
+}
+
+// ================= AI RISK SCORE =================
+function getRisk(avg, max){
+
+let score = (avg + max) / 2
+
+if(score > 3000) return "HIGH RISK"
+if(score > 2500) return "MEDIUM"
+return "LOW"
+}
+
+// ================= LOAD =================
 async function load(){
 
 grid.innerHTML = ""
 
-let year = parseInt(yearSelect.value)
-let month = parseInt(monthSelect.value)
+let year = +yearSelect.value
+let month = +monthSelect.value
 
-if(isNaN(year) || isNaN(month)) return
+if(!year || month === undefined) return
 
 let first = new Date(year,month,1).getDay()
 let days = new Date(year,month+1,0).getDate()
 
 let total = 0
+let max = 0
+let arr = []
 
 for(let i=0;i<first;i++){
 grid.innerHTML += "<div></div>"
@@ -195,34 +229,45 @@ for(let d=1; d<=days; d++){
 
 let date = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`
 
-let cal = await getCalories(date)
+let cal = await safeCalories(date)
+
+arr.push(cal)
 
 total += cal
+if(cal > max) max = cal
 
 let div = document.createElement("div")
-div.className = "day " + getHeatClass(cal)
+div.className = "day " + getLevel(cal)
 
 div.innerHTML = `
 <b>${d}</b><br>
 ${cal} kcal
 `
 
-div.onclick = ()=> openModal(date,cal)
+div.onclick = ()=>openModal(date,cal)
 
 grid.appendChild(div)
 }
 
 let avg = total / days || 0
 
-document.getElementById("summary").innerText =
-`Avg: ${avg.toFixed(0)} kcal | Days: ${days}`
+let streak = calcStreak(arr)
+let risk = getRisk(avg,max)
+
+document.getElementById("summary").innerHTML =
+`
+Avg: ${avg.toFixed(0)} kcal<br>
+Max: ${max} kcal<br>
+🔥 Streak: ${streak} days<br>
+🧠 Risk: ${risk}
+`
 }
 
-// ================= MONTH CONTROL =================
+// ================= MONTH =================
 function changeMonth(v){
 
-let m = parseInt(monthSelect.value)
-let y = parseInt(yearSelect.value)
+let m = +monthSelect.value
+let y = +yearSelect.value
 
 m += v
 
@@ -249,8 +294,8 @@ function closeModal(){
 document.getElementById("modal").style.display = "none"
 }
 
-// ================= START (ORDER FIXED) =================
-initDropdowns()
+// ================= START =================
+init()
 load()
 
 </script>
