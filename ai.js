@@ -129,3 +129,11 @@ let change = diff * 0.0002
 
 return (currentWeight + change).toFixed(2)
 }
+
+function safeAI(fn, fallback){
+try{
+return fn()
+}catch(e){
+return fallback
+}
+}
