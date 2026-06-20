@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>AI Calendar v10.6</title>
+<title>AI Calendar v10.7</title>
 
 <link rel="stylesheet" href="style.css">
 
@@ -10,7 +10,6 @@
 <script src="ai.js"></script>
 <script src="supabase.js"></script>
 
-<!-- CORE SYSTEM -->
 <script src="js/db.js"></script>
 <script src="js/profile.js"></script>
 <script src="js/ai-engine.js"></script>
@@ -87,7 +86,20 @@ box-shadow:0 1px 4px rgba(0,0,0,.05);
 <a href="profile.html">Profile</a>
 </div>
 
-<h2 class="center">📅 AI Calendar v10.6</h2>
+<h2 class="center">📅 AI Calendar v10.7</h2>
+
+<!-- 🕒 TIME + PROFILE -->
+<div class="card">
+<p id="time">Loading time...</p>
+<p id="profile">Loading profile...</p>
+<p id="bmi">BMI: --</p>
+</div>
+
+<!-- SUMMARY -->
+<div class="card">
+<h3>🧠 AI Summary</h3>
+<p id="summary">Loading...</p>
+</div>
 
 <div class="card">
 <div class="month-bar">
@@ -102,19 +114,20 @@ box-shadow:0 1px 4px rgba(0,0,0,.05);
 </div>
 </div>
 
-<div class="card">
-<h3>🧠 AI Summary</h3>
-<p id="summary">Loading...</p>
-</div>
-
 <div class="grid" id="grid"></div>
 
-<!-- MODAL -->
+<!-- MODAL (ENHANCED FOOD LIST) -->
 <div id="modal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;
 background:rgba(0,0,0,0.5);align-items:center;justify-content:center;">
-<div style="background:white;padding:20px;border-radius:12px;width:300px;">
+
+<div style="background:white;padding:20px;border-radius:12px;width:320px;max-height:70vh;overflow:auto;">
+
 <h3 id="modalDate"></h3>
 <p id="modalCalories"></p>
+
+<div id="foodList"></div>
+
+<br>
 <button onclick="closeModal()">Close</button>
 </div>
 </div>
@@ -127,13 +140,28 @@ const yearSelect = document.getElementById("yearSelect")
 
 let dateObj = new Date()
 
-/* ================= PROFILE SAFE CORE ================= */
+/* ================= TIME SYSTEM ================= */
+function updateTime(){
+const now = new Date()
+
+document.getElementById("time").innerText =
+"🕒 " + now.toLocaleString()
+}
+
+/* ================= PROFILE ================= */
 function getActiveProfile(){
 try{
-return JSON.parse(localStorage.getItem("activeProfile")) || {id:"guest", name:"Guest"}
+return JSON.parse(localStorage.getItem("activeProfile")) || {id:"guest",name:"Guest"}
 }catch(e){
-return {id:"guest", name:"Guest"}
+return {id:"guest",name:"Guest"}
 }
+}
+
+/* ================= BMI ================= */
+function calcBMI(h,w){
+h = Number(h || 170)
+w = Number(w || 70)
+return (w / ((h/100)*(h/100))).toFixed(1)
 }
 
 /* ================= INIT ================= */
@@ -159,41 +187,36 @@ yearSelect.appendChild(opt)
 
 monthSelect.value = dateObj.getMonth()
 yearSelect.value = dateObj.getFullYear()
+
+const profile = getActiveProfile()
+
+document.getElementById("profile").innerText =
+`👤 ${profile.name} (${profile.id})`
+
+document.getElementById("bmi").innerText =
+`⚖ BMI: ${calcBMI(profile.height, profile.weight)}`
 }
 
-/* ================= SAFE CALORIES (v10.6 MULTI PROFILE FIX) ================= */
+/* ================= SAFE CALORIES ================= */
 async function safeCalories(date){
 
 try{
 if(typeof getFoodLogs === "undefined") return 0
 
 const profile = getActiveProfile()
-if(!profile) return 0
-
 const logs = await getFoodLogs(date) || []
 
 return logs
 .filter(f => !f.userId || f.userId === profile.id)
-.reduce((s,f)=>s + Number(f.calories || 0), 0)
+.reduce((s,f)=>s + Number(f.calories||0),0)
 
 }catch(e){
 return 0
 }
 }
 
-/* ================= HEAT LEVEL ================= */
-function getLevel(cal){
-if(cal < 1500) return "l1"
-if(cal < 2200) return "l2"
-if(cal < 2700) return "l3"
-if(cal < 3200) return "l4"
-return "l5"
-}
-
-/* ================= LOAD ================= */
+/* ================= LOAD GRID ================= */
 async function load(){
-
-if(!monthSelect.value || !yearSelect.value) return
 
 grid.innerHTML = ""
 
@@ -220,7 +243,7 @@ total += cal
 if(cal > max) max = cal
 
 let div = document.createElement("div")
-div.className = "day " + getLevel(cal)
+div.className = "day"
 
 div.innerHTML = `<b>${d}</b><br>${cal} kcal`
 div.onclick = ()=>openModal(date,cal)
@@ -232,6 +255,44 @@ let avg = total / days || 0
 
 document.getElementById("summary").innerHTML =
 `Avg: ${avg.toFixed(0)} kcal<br>Max: ${max} kcal`
+}
+
+/* ================= CLICK DAY → FOOD LIST ================= */
+async function openModal(date,cal){
+
+document.getElementById("modal").style.display = "flex"
+document.getElementById("modalDate").innerText = date
+document.getElementById("modalCalories").innerText = cal + " kcal"
+
+const list = document.getElementById("foodList")
+list.innerHTML = "Loading..."
+
+try{
+
+if(typeof getFoodLogs === "undefined"){
+list.innerHTML = "No data"
+return
+}
+
+const profile = getActiveProfile()
+const logs = await getFoodLogs(date) || []
+
+const filtered = logs.filter(f =>
+!f.userId || f.userId === profile.id
+)
+
+if(filtered.length === 0){
+list.innerHTML = "<p>No food logged</p>"
+return
+}
+
+list.innerHTML = filtered.map(f =>
+`<p>🍽 ${f.food} - ${f.calories} kcal</p>`
+).join("")
+
+}catch(e){
+list.innerHTML = "Error loading food"
+}
 }
 
 /* ================= CONTROL ================= */
@@ -254,21 +315,17 @@ load()
 monthSelect.onchange = load
 yearSelect.onchange = load
 
-/* ================= MODAL ================= */
-function openModal(date,cal){
-document.getElementById("modal").style.display = "flex"
-document.getElementById("modalDate").innerText = date
-document.getElementById("modalCalories").innerText = cal + " kcal"
-}
-
 function closeModal(){
 document.getElementById("modal").style.display = "none"
 }
 
-/* ================= BOOT SAFE ================= */
+/* ================= BOOT ================= */
+setInterval(updateTime,1000)
+updateTime()
+
 document.addEventListener("DOMContentLoaded",()=>{
 init()
-setTimeout(load, 150)
+setTimeout(load, 200)
 })
 
 </script>
