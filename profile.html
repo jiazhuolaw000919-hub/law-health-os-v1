@@ -1,93 +1,62 @@
-<!DOCTYPE html>
+<!DOCTYPE<!DOCTYPE html>
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Profile v5</title>
-
+<title>Profile v6</title>
 <link rel="stylesheet" href="style.css">
+<script src="app.js"></script>
 </head>
 
 <body>
 
-<div class="nav">
-<a href="dashboard.html">Dashboard</a>
-<a href="calendar.html">Calendar</a>
-<a href="food.html">Food</a>
-<a href="profile.html">Profile</a>
-</div>
-
-<h2 class="center">👤 Profile v5</h2>
+<h2 class="center">👤 User Profile</h2>
 
 <div class="card">
 
 <input id="name" placeholder="Name">
-<input id="age" placeholder="Age">
 <select id="gender">
-<option>Male</option>
-<option>Female</option>
+  <option>Male</option>
+  <option>Female</option>
 </select>
 
 <input id="height" placeholder="Height (cm)">
 <input id="weight" placeholder="Weight (kg)">
-<input id="goal" placeholder="Goal weight">
+<input id="age" placeholder="Age">
+<input id="job" placeholder="Job">
 
-<select id="activity">
-<option>Low</option>
-<option>Medium</option>
-<option>High</option>
-</select>
+<button onclick="saveProfile()">Save Profile</button>
 
-<button onclick="save()">Save</button>
+</div>
 
-<p id="bmi"></p>
-
+<div class="card" id="result">
+Loading...
 </div>
 
 <script>
 
-function calcBMI(w,h){
-return w / ((h/100)**2)
+async function saveProfile(){
+
+const profile = {
+  name: document.getElementById("name").value,
+  gender: document.getElementById("gender").value,
+  height: +document.getElementById("height").value,
+  weight: +document.getElementById("weight").value,
+  age: +document.getElementById("age").value,
+  job: document.getElementById("job").value
 }
 
-function save(){
+const res = await fetch("/api/profile", {
+  method: "POST",
+  headers: {"Content-Type":"application/json"},
+  body: JSON.stringify(profile)
+})
 
-let p = {
-name:name.value,
-age:age.value,
-gender:gender.value,
-height:+height.value,
-weight:+weight.value,
-goal:+goal.value,
-activity:activity.value,
-bmi:calcBMI(weight.value,height.value).toFixed(1)
+const data = await res.json()
+
+document.getElementById("result").innerText =
+JSON.stringify(data.profile, null, 2)
+
 }
-
-localStorage.setItem("profile",JSON.stringify(p))
-
-document.getElementById("bmi").innerText =
-"BMI: " + p.bmi
-
-alert("Saved")
-}
-
-function load(){
-
-let p = JSON.parse(localStorage.getItem("profile")||"{}")
-
-name.value = p.name||""
-age.value = p.age||""
-gender.value = p.gender||"Male"
-height.value = p.height||""
-weight.value = p.weight||""
-goal.value = p.goal||""
-activity.value = p.activity||"Low"
-
-if(p.bmi){
-document.getElementById("bmi").innerText = "BMI: " + p.bmi
-}
-}
-
-load()
 
 </script>
 
