@@ -2,14 +2,35 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>AI Dashboard v4.1 (Fixed Sync)</title>
+<title>AI Dashboard v10.7</title>
 
 <link rel="stylesheet" href="style.css">
 
-<!-- ✅ FIX: remove "/" -->
 <script src="js/db.js"></script>
 <script src="js/profile.js"></script>
 <script src="js/ai-engine.js"></script>
+
+<style>
+.card{
+margin:10px;
+padding:12px;
+background:#fff;
+border-radius:10px;
+box-shadow:0 1px 4px rgba(0,0,0,.05);
+}
+
+.row{
+display:flex;
+gap:10px;
+flex-wrap:wrap;
+}
+
+.box{
+flex:1;
+min-width:150px;
+}
+</style>
+
 </head>
 
 <body>
@@ -22,7 +43,14 @@
 <a href="profile.html">Profile</a>
 </div>
 
-<h2 class="center">📊 AI Dashboard v4.1</h2>
+<h2 class="center">📊 AI Dashboard v10.7</h2>
+
+<!-- 🕒 TIME -->
+<div class="card">
+<h3>🕒 Now</h3>
+<p id="date">--</p>
+<p id="time">--</p>
+</div>
 
 <!-- PROFILE -->
 <div class="card">
@@ -30,20 +58,53 @@
 <p id="profile">Loading...</p>
 </div>
 
-<!-- TODAY SUMMARY -->
+<!-- BMI -->
+<div class="card">
+<h3>⚖ BMI Status</h3>
+<p id="bmi">Loading...</p>
+</div>
+
+<!-- TODAY -->
 <div class="card">
 <h3>🔥 Today Summary</h3>
 <p id="today">Loading...</p>
 </div>
 
+<!-- BMI SIMPLE CHART -->
+<div class="card">
+<h3>📊 BMI Snapshot Chart</h3>
+<canvas id="bmiChart" width="300" height="120"></canvas>
+</div>
+
 <script>
+
+// ================= TIME SYSTEM =================
+function updateTime(){
+const now = new Date()
+
+document.getElementById("date").innerText =
+now.toLocaleDateString()
+
+document.getElementById("time").innerText =
+now.toLocaleTimeString()
+}
+
+setInterval(updateTime,1000)
+updateTime()
 
 // ================= SAFE PROFILE =================
 function safeProfile(){
 if(typeof getActiveProfile !== "undefined"){
 return getActiveProfile()
 }
-return { name:"Guest", id:"guest" }
+return { name:"Guest", id:"guest", height:170, weight:70 }
+}
+
+// ================= BMI CALC =================
+function calcBMI(h,w){
+h = Number(h || 170)
+w = Number(w || 70)
+return (w / ((h/100)*(h/100))).toFixed(1)
 }
 
 // ================= SAFE SCORE =================
@@ -54,7 +115,27 @@ return calculateHealthScore(cal)
 return Math.max(0, 100 - cal/50)
 }
 
-// ================= LOAD DATA =================
+// ================= SIMPLE BMI CHART =================
+function drawBMI(bmi){
+
+const canvas = document.getElementById("bmiChart")
+const ctx = canvas.getContext("2d")
+
+ctx.clearRect(0,0,300,120)
+
+ctx.fillStyle = "#eee"
+ctx.fillRect(0,0,300,120)
+
+let value = Math.min(40, bmi) * 5
+
+ctx.fillStyle = "#4ade80"
+ctx.fillRect(20, 80, value, 20)
+
+ctx.fillStyle = "#111"
+ctx.fillText("BMI: " + bmi, 20, 50)
+}
+
+// ================= LOAD DASHBOARD =================
 async function loadDashboard(){
 
 const profile = safeProfile()
@@ -62,11 +143,20 @@ const profile = safeProfile()
 document.getElementById("profile").innerText =
 `👤 ${profile.name} (${profile.id})`
 
+// BMI
+let bmi = calcBMI(profile.height, profile.weight)
+
+document.getElementById("bmi").innerText =
+`⚖ BMI: ${bmi}`
+
+// draw chart
+drawBMI(bmi)
+
+// TODAY CALORIES
 let today = new Date().toISOString().split("T")[0]
 
 let calories = 0
 
-// try get real food logs
 if(typeof getFoodLogs !== "undefined"){
 try{
 const foods = await getFoodLogs(today) || []
@@ -76,12 +166,9 @@ if(!f.userId || f.userId === profile.id){
 calories += Number(f.calories || 0)
 }
 })
-}catch(e){
-console.log(e)
-}
+}catch(e){}
 }
 
-// fallback if empty
 if(calories === 0){
 calories = 1800
 }
