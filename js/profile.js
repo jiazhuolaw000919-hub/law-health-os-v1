@@ -1,68 +1,57 @@
-// ============================
-// PROFILE.JS v10.6
-// ============================
+/* =========================
+   PROFILE PAGE v10.6
+========================= */
 
-// -------- CREATE PROFILE --------
-function createProfile(name, gender, age, height, weight){
+function renderProfiles(){
 
-  let profiles = getProfiles()
+  const list = document.getElementById("profileList")
+  if(!list) return
 
-  const newProfile = {
-    id: Date.now().toString(),
-    name,
-    gender,
-    age,
-    height,
-    weight,
-    createdAt: new Date().toISOString()
-  }
+  list.innerHTML = ""
 
-  profiles.push(newProfile)
-  saveProfiles(profiles)
-  setActiveProfile(newProfile)
+  getProfiles().forEach(p => {
 
-  return newProfile
+    const div = document.createElement("div")
+    div.className = "card"
+
+    div.innerHTML = `
+      <b>${p.name}</b>
+      <p>ID: ${p.id}</p>
+
+      <button onclick="setActiveProfileById('${p.id}')">Select</button>
+      <button onclick="removeProfile('${p.id}')">Delete</button>
+    `
+
+    list.appendChild(div)
+  })
 }
 
-// -------- DELETE PROFILE --------
-function deleteProfile(id){
-
-  let profiles = getProfiles()
-
-  profiles = profiles.filter(p => p.id !== id)
-
-  saveProfiles(profiles)
-
-  let active = getActiveProfile()
-
-  if(active && active.id === id){
-
-    if(profiles.length > 0){
-      setActiveProfile(profiles[0])
-    }else{
-      setActiveProfile(null)
-    }
-  }
+/* ---------- SELECT ---------- */
+function setActiveProfileById(id){
+  switchProfile(id)
+  renderProfiles()
+  alert("Switched profile")
 }
 
-// -------- SWITCH PROFILE --------
-function switchProfile(id){
-
-  let profiles = getProfiles()
-  let profile = profiles.find(p => p.id === id)
-
-  if(profile){
-    setActiveProfile(profile)
-  }
+/* ---------- DELETE ---------- */
+function removeProfile(id){
+  deleteProfile(id)
+  renderProfiles()
 }
 
-// -------- CALCULATE BMI --------
-function calculateBMI(height, weight){
+/* ---------- CREATE ---------- */
+function createNewProfile(){
 
-  height = Number(height) / 100
-  weight = Number(weight)
+  const name = document.getElementById("name").value
 
-  if(!height || !weight) return 0
+  if(!name) return alert("Enter name")
 
-  return (weight / (height * height)).toFixed(1)
+  createProfile({
+    name
+  })
+
+  renderProfiles()
 }
+
+/* ---------- INIT ---------- */
+renderProfiles()
