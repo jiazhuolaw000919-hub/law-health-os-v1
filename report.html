@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Report v10.1 Stable FIXED</title>
+<title>Report v10.6 Stable</title>
 
 <link rel="stylesheet" href="style.css">
 
@@ -11,6 +11,11 @@
 <script src="supabase.js"></script>
 
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+
+<!-- CORE SYSTEM -->
+<script src="js/db.js"></script>
+<script src="js/profile.js"></script>
+<script src="js/ai-engine.js"></script>
 </head>
 
 <body>
@@ -25,7 +30,7 @@
 <a href="profile.html">Profile</a>
 </div>
 
-<h2 class="center">📊 AI Health Report v10.1 FIXED</h2>
+<h2 class="center">📊 AI Health Report v10.6</h2>
 
 <!-- PROFILE -->
 <div class="card">
@@ -58,11 +63,18 @@
 
 <script>
 
-// ================= PROFILE SAFE =================
+/* =========================
+PROFILE SAFE CORE
+========================= */
+
 function getActiveProfile(){
+try{
 return JSON.parse(localStorage.getItem("activeProfile")) || {
 id:"guest",
 name:"Guest"
+}
+}catch(e){
+return {id:"guest", name:"Guest"}
 }
 }
 
@@ -74,13 +86,17 @@ document.getElementById("activeProfile").innerText =
 
 renderProfile()
 
-// ================= SAFE LOGS =================
+/* =========================
+SAFE FOOD LOGS
+========================= */
+
 async function safeGetLogs(date){
 
 try{
 if(typeof getFoodLogs === "undefined") return []
 
 const logs = await getFoodLogs(date)
+
 return Array.isArray(logs) ? logs : []
 
 }catch(e){
@@ -88,7 +104,10 @@ return []
 }
 }
 
-// ================= LOAD REPORT =================
+/* =========================
+LOAD REPORT (v10.6 FIXED)
+========================= */
+
 async function loadReport(){
 
 const profile = getActiveProfile()
@@ -96,11 +115,12 @@ const today = new Date().toISOString().split("T")[0]
 
 let foods = await safeGetLogs(today)
 
-// ✅ MULTI PROFILE FILTER SAFE
+// 🔥 STRICT MULTI PROFILE FILTER (IMPORTANT FIX)
 foods = foods.filter(f =>
 !f.userId || f.userId === profile.id
 )
 
+// CALCULATE
 let totalCalories = foods.reduce((sum,f)=>
 sum + Number(f.calories || 0), 0
 )
@@ -109,8 +129,11 @@ sum + Number(f.calories || 0), 0
 document.getElementById("dailyCalories").innerText =
 `${totalCalories} kcal`
 
-// ================= SCORE ENGINE =================
-let score
+// =========================
+// SCORE ENGINE SAFE
+// =========================
+
+let score = 0
 
 if(typeof calculateHealthScore === "function"){
 score = calculateHealthScore(totalCalories, 300)
@@ -118,7 +141,10 @@ score = calculateHealthScore(totalCalories, 300)
 score = Math.max(0, 100 - totalCalories / 50)
 }
 
-// ================= ADVICE ENGINE =================
+// =========================
+// ADVICE ENGINE SAFE
+// =========================
+
 let advice = "No suggestion available"
 
 if(typeof workoutSuggestion === "function"){
@@ -138,7 +164,10 @@ document.getElementById("advice").innerText = advice
 
 loadReport()
 
-// ================= PDF EXPORT SAFE =================
+/* =========================
+PDF EXPORT (SAFE v10.6)
+========================= */
+
 function exportPDF(){
 
 const { jsPDF } = window.jspdf
@@ -155,7 +184,7 @@ doc.text(String(text).substring(0, 90), 10, y)
 }
 
 doc.setFontSize(16)
-doc.text("AI Health Report", 10, 10)
+doc.text("AI Health Report v10.6", 10, 10)
 
 doc.setFontSize(12)
 safeText(`Profile: ${profile.name}`, 25)
