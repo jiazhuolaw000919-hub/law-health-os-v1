@@ -138,25 +138,30 @@ try{
 
 const raw = await analyzeFoodImage(base64)
 
-let parsed
+const raw = await analyzeFoodImage(base64)
 
+let parsed = raw
+
+if(typeof parsed === "string"){
 try{
-parsed = typeof raw === "string" ? JSON.parse(raw) : raw
+parsed = JSON.parse(parsed)
 }catch(e){
 parsed = {
 food:"unknown",
 calories:0
 }
 }
-
-let parsed = result
-
-if(typeof result === "string"){
-try{
-parsed = JSON.parse(result)
-}catch(e){
-parsed = result
 }
+
+if(typeof saveFood !== "undefined"){
+await saveFood({
+food: parsed.food || "unknown",
+calories: parsed.calories || 0,
+protein: parsed.protein || 0,
+carbs: parsed.carbs || 0,
+fat: parsed.fat || 0,
+date: new Date().toISOString().split("T")[0]
+})
 }
 
 if(typeof parsed === "object"){
