@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Calendar v11.4</title>
+<title>Calendar AI v2.3</title>
 
 <link rel="stylesheet" href="style.css">
 
@@ -22,53 +22,62 @@
 <a href="report.html">Report</a>
 </div>
 
-<h2 class="center">📅 Calendar</h2>
-<div class="card center">
+<h2 class="center">📅 AI Calendar</h2>
 
+<!-- MONTH CONTROL -->
+<div class="card center">
 <button onclick="changeMonth(-1)">⬅</button>
 
 <select id="monthSelect"></select>
 <select id="yearSelect"></select>
 
 <button onclick="changeMonth(1)">➡</button>
-
 </div>
 
 <div class="grid" id="grid"></div>
 
+<script>
+
+if(typeof setActive !== "undefined"){
+setActive("calendar")
+}
+
 const grid = document.getElementById("grid")
+
+let dateObj = new Date()
 
 const monthSelect = document.getElementById("monthSelect")
 const yearSelect = document.getElementById("yearSelect")
 
-let currentDate = new Date()
-
-// 初始化月份
+// init months
 for(let m=0;m<12;m++){
-const opt = document.createElement("option")
+let opt = document.createElement("option")
 opt.value = m
 opt.text = m+1
 monthSelect.appendChild(opt)
 }
 
-// 初始化年份
-const currentYear = new Date().getFullYear()
+// init years
+let y = new Date().getFullYear()
 
-for(let y=currentYear-3;y<=currentYear+3;y++){
-const opt = document.createElement("option")
-opt.value = y
-opt.text = y
+for(let i=y-3;i<=y+3;i++){
+let opt = document.createElement("option")
+opt.value = i
+opt.text = i
 yearSelect.appendChild(opt)
 }
 
-monthSelect.value = currentDate.getMonth()
-yearSelect.value = currentDate.getFullYear()
+monthSelect.value = dateObj.getMonth()
+yearSelect.value = dateObj.getFullYear()
 
 function formatDate(y,m,d){
 return `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`
 }
 
+// 🔥 SAFE LOAD
 async function loadCalendar(){
+
+try{
 
 grid.innerHTML = ""
 
@@ -82,37 +91,42 @@ for(let i=0;i<first;i++){
 grid.innerHTML += "<div></div>"
 }
 
+let monthlyCalories = 0
+let validDays = 0
+
 for(let d=1; d<=days; d++){
 
 const date = formatDate(year,month,d)
 
 let calories = 0
-let foods = []
 
 try{
 if(typeof getFoodLogs !== "undefined"){
-foods = await getFoodLogs(date)
-}
-}catch(e){
-foods = []
-}
-
+const foods = await getFoodLogs(date)
 foods.forEach(f=>{
-calories += Number(f.calories||0)
+calories += Number(f.calories || 0)
 })
+}
+}catch(e){}
+
+monthlyCalories += calories
+validDays++
 
 let score = 0
+
 try{
 score = calculateHealthScore(calories,0)
 }catch(e){
 score = 0
 }
 
+// 🔥 AI heatmap
 let color = "red"
 
 if(calories > 2800) color = "red"
 else if(score >= 80) color = "green"
 else if(score >= 50) color = "yellow"
+else color = "red"
 
 const div = document.createElement("div")
 div.className = "day " + color
@@ -126,9 +140,23 @@ location.href = "day.html?date=" + date
 grid.appendChild(div)
 }
 
+// 🧠 monthly AI score
+let monthlyScore = 0
+
+if(validDays > 0){
+monthlyScore = Math.round((monthlyCalories / validDays) / 25)
 }
 
-// 月份控制
+console.log("Monthly AI Score:", monthlyScore)
+
+}catch(err){
+console.log("calendar error:",err)
+grid.innerHTML = "Calendar failed to load"
+}
+
+}
+
+// month switch
 function changeMonth(offset){
 
 let m = parseInt(monthSelect.value)
@@ -157,83 +185,7 @@ yearSelect.onchange = loadCalendar
 
 loadCalendar()
 
-if(typeof setActive !== "undefined"){
-setActive("calendar")
-}
-
-const grid = document.getElementById("grid")
-
-const year = new Date().getFullYear()
-const month = new Date().getMonth()
-
-function format(d){
-return `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`
-}
-
-async function load(){
-
-try{
-
-grid.innerHTML = ""
-
-const first = new Date(year,month,1).getDay()
-const days = new Date(year,month+1,0).getDate()
-
-for(let i=0;i<first;i++){
-grid.innerHTML += "<div></div>"
-}
-
-for(let d=1; d<=days; d++){
-
-const date = format(d)
-
-let calories = 0
-let foods = []
-
-try{
-if(typeof getFoodLogs !== "undefined"){
-foods = await getFoodLogs(date)
-}
-}catch(e){
-foods = []
-}
-
-foods.forEach(f=>{
-calories += Number(f.calories || 0)
-})
-
-let score = calculateHealthScore(calories,0)
-
-let color = ""
-
-if(calories > 2800) color="red"
-else if(score >= 80) color="green"
-else if(score >= 50) color="yellow"
-else color="red"
-
-const div = document.createElement("div")
-div.className = "day " + color
-
-div.innerHTML = `<b>${d}</b><br>${score}`
-
-div.onclick = ()=>{
-location.href = "day.html?date=" + date
-}
-
-grid.appendChild(div)
-}
-
-}catch(err){
-console.log("calendar error:",err)
-grid.innerHTML = "Calendar failed to load"
-}
-
-}
-
-load()
-
 </script>
 
 </body>
-</html>
 </html>
