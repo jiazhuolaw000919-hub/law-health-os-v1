@@ -15,12 +15,3 @@ document.getElementById(id)?.classList.remove("active")
 
 document.getElementById(map[page])?.classList.add("active")
 }
-
-function safe(fn){
-try{
-return fn()
-}catch(e){
-console.log("safe error",e)
-return null
-}
-}
