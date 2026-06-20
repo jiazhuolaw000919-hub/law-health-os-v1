@@ -46,3 +46,7 @@ function calculateBMI(height, weight){
   if(!height || !weight) return 0
   return (weight / ((height/100) ** 2)).toFixed(1)
 }
+
+function getActiveProfile(){
+return JSON.parse(localStorage.getItem("activeProfile")) || {id:"guest", name:"Guest"}
+}
