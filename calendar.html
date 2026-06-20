@@ -28,7 +28,9 @@
 
 <script>
 
+if(typeof setActive !== "undefined"){
 setActive("calendar")
+}
 
 const grid = document.getElementById("grid")
 
@@ -39,7 +41,62 @@ function format(d){
 return `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`
 }
 
-async function load(){
+async function async function load(){
+
+try{
+
+grid.innerHTML = ""
+
+const first = new Date(year,month,1).getDay()
+const days = new Date(year,month+1,0).getDate()
+
+for(let i=0;i<first;i++){
+grid.innerHTML += "<div></div>"
+}
+
+for(let d=1; d<=days; d++){
+
+const date = format(d)
+
+let calories = 0
+
+let foods = []
+
+if(typeof getFoodLogs !== "undefined"){
+foods = await getFoodLogs(date)
+}
+
+foods.forEach(f=>{
+calories += Number(f.calories||0)
+})
+
+let score = calculateHealthScore(calories,0)
+
+let color = ""
+
+if(calories > 2800) color="red"
+else if(score >= 80) color="green"
+else if(score >= 50) color="yellow"
+else color="red"
+
+const div = document.createElement("div")
+div.className = "day "+color
+
+div.innerHTML = `<b>${d}</b><br>${score}`
+
+div.onclick = ()=>{
+location.href="day.html?date="+date
+}
+
+grid.appendChild(div)
+}
+
+}catch(err){
+console.log("calendar error:",err)
+grid.innerHTML = "Calendar failed to load"
+}
+
+}{
 
 grid.innerHTML = ""
 
@@ -57,7 +114,15 @@ const date = format(d)
 let calories = 0
 
 try{
-const foods = await getFoodLogs(date)
+let foods = []
+
+try{
+if(typeof getFoodLogs !== "undefined"){
+foods = await getFoodLogs(date)
+}
+}catch(e){
+foods = []
+}
 foods.forEach(f=>{
 calories += Number(f.calories||0)
 })
