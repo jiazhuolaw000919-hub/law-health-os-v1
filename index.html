@@ -5,25 +5,37 @@
 <title>Dashboard</title>
 
 <link rel="stylesheet" href="style.css">
+
 <script src="app.js"></script>
 <script src="ai.js"></script>
+<script src="supabase.js"></script>
 </head>
 
 <body>
 
 <div class="nav">
 <a href="index.html" id="nav-home">Home</a>
-<a href="calendar.html" id="nav-cal">Calendar</a>
+<a href="calendar.html" id="nav-calendar">Calendar</a>
 <a href="food.html" id="nav-food">Food</a>
 <a href="workout.html" id="nav-workout">Workout</a>
-<a href="shopping.html" id="nav-shop">Shop</a>
+<a href="shopping.html" id="nav-shopping">Shop</a>
 <a href="report.html" id="nav-report">Report</a>
 </div>
 
 <div class="card">
-<h2>Dashboard</h2>
-<p>Weight: 80kg</p>
-<p>BMI: 25</p>
+<h2>🧠 Law Health OS Dashboard</h2>
+
+<p>📊 Weight: 80kg</p>
+<p>📉 BMI: 24.9</p>
+<p>🔥 System: Active</p>
+<p>⚡ Status: Running Stable</p>
+</div>
+
+<div class="card">
+<h3>Today Summary</h3>
+<p>Calories: --</p>
+<p>Burn: --</p>
+<p>AI Score: --</p>
 </div>
 
 <div class="bottom-nav">
@@ -35,7 +47,9 @@
 <a href="report.html">📄</a>
 </div>
 
-<script>setActive("home")</script>
+<script>
+setActive("home")
+</script>
 
 </body>
 </html>
