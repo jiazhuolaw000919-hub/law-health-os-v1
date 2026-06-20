@@ -2,13 +2,77 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>AI Calendar v3.5 FIXED</title>
+<title>AI Calendar v3.5 FIXED FINAL</title>
 
 <link rel="stylesheet" href="style.css">
 
 <script src="app.js"></script>
 <script src="ai.js"></script>
 <script src="supabase.js"></script>
+
+<!-- STEP 2 CORE SYSTEM -->
+<script src="js/db.js"></script>
+<script src="js/profile.js"></script>
+<script src="js/ai-engine.js"></script>
+
+<style>
+.grid{
+display:grid;
+grid-template-columns:repeat(7,1fr);
+gap:6px;
+padding:14px;
+}
+
+.day{
+background:#fff;
+border-radius:10px;
+padding:10px;
+min-height:70px;
+font-size:12px;
+cursor:pointer;
+box-shadow:0 1px 3px rgba(0,0,0,.05);
+transition:0.2s;
+}
+
+.day:hover{ transform:scale(1.05); }
+
+.l1{ background:#dcfce7; }
+.l2{ background:#bbf7d0; }
+.l3{ background:#fef9c3; }
+.l4{ background:#fde68a; }
+.l5{ background:#fecaca; }
+
+.month-bar{
+display:flex;
+justify-content:space-between;
+align-items:center;
+padding:10px 14px;
+}
+
+.arrow{
+background:#111827;
+color:white;
+border:none;
+border-radius:8px;
+padding:6px 10px;
+cursor:pointer;
+}
+
+select{
+padding:6px;
+border-radius:8px;
+border:1px solid #ddd;
+}
+
+.card{
+margin:10px;
+padding:12px;
+background:#fff;
+border-radius:10px;
+box-shadow:0 1px 4px rgba(0,0,0,.05);
+}
+</style>
+
 </head>
 
 <body>
@@ -23,13 +87,13 @@
 <a href="profile.html">Profile</a>
 </div>
 
-<h2 class="center">📅 AI Calendar v3.5 FIXED</h2>
+<h2 class="center">📅 AI Calendar v3.5 FIXED FINAL</h2>
 
 <div class="card">
 <div class="month-bar">
 <button class="arrow" onclick="changeMonth(-1)">‹</button>
 
-<div class="selectors">
+<div>
 <select id="monthSelect"></select>
 <select id="yearSelect"></select>
 </div>
@@ -57,18 +121,23 @@ background:rgba(0,0,0,0.5);align-items:center;justify-content:center;">
 
 <script>
 
-setActive?.("calendar")
-
 const grid = document.getElementById("grid")
 const monthSelect = document.getElementById("monthSelect")
 const yearSelect = document.getElementById("yearSelect")
 
 let dateObj = new Date()
 
-/* ================= INIT SAFE ================= */
-function init(){
+/* ================= PROFILE SAFE ================= */
+function getActiveProfile(){
+try{
+return JSON.parse(localStorage.getItem("activeProfile")) || null
+}catch(e){
+return null
+}
+}
 
-if(!monthSelect || !yearSelect) return
+/* ================= INIT ================= */
+function init(){
 
 monthSelect.innerHTML = ""
 yearSelect.innerHTML = ""
@@ -92,18 +161,27 @@ monthSelect.value = dateObj.getMonth()
 yearSelect.value = dateObj.getFullYear()
 }
 
-/* ================= SAFE CALORIES ================= */
+/* ================= SAFE CALORIES (MULTI PROFILE FIX) ================= */
 async function safeCalories(date){
+
 try{
 if(typeof getFoodLogs === "undefined") return 0
+
+const profile = getActiveProfile()
 const logs = await getFoodLogs(date) || []
-return logs.reduce((s,f)=>s+Number(f.calories||0),0)
+
+if(!profile) return 0
+
+return logs
+.filter(f => !f.userId || f.userId === profile.id)
+.reduce((s,f)=>s+Number(f.calories||0),0)
+
 }catch(e){
 return 0
 }
 }
 
-/* ================= HEAT LEVEL ================= */
+/* ================= HEAT ================= */
 function getLevel(cal){
 if(cal < 1500) return "l1"
 if(cal < 2200) return "l2"
@@ -127,7 +205,6 @@ let days = new Date(year,month+1,0).getDate()
 
 let total = 0
 let max = 0
-let arr = []
 
 for(let i=0;i<first;i++){
 grid.innerHTML += "<div></div>"
@@ -136,9 +213,9 @@ grid.innerHTML += "<div></div>"
 for(let d=1; d<=days; d++){
 
 let date = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`
+
 let cal = await safeCalories(date)
 
-arr.push(cal)
 total += cal
 if(cal > max) max = cal
 
@@ -157,7 +234,7 @@ document.getElementById("summary").innerHTML =
 `Avg: ${avg.toFixed(0)} kcal<br>Max: ${max} kcal`
 }
 
-/* ================= MONTH CONTROL ================= */
+/* ================= CONTROL ================= */
 function changeMonth(v){
 
 let m = +monthSelect.value
@@ -188,16 +265,13 @@ function closeModal(){
 document.getElementById("modal").style.display = "none"
 }
 
-/* ================= START SAFE ================= */
+/* ================= START (SAFE BOOT) ================= */
+document.addEventListener("DOMContentLoaded",()=>{
 init()
-setTimeout(load, 100)
+setTimeout(load, 200)
+})
 
 </script>
-
-<!-- STEP 2 (ONLY IF NOT ALREADY IN APP.JS) -->
-<script src="js/db.js"></script>
-<script src="js/profile.js"></script>
-<script src="js/ai-engine.js"></script>
 
 </body>
 </html>
