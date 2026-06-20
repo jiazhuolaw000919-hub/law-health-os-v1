@@ -5,7 +5,9 @@
 <title>Report</title>
 
 <link rel="stylesheet" href="style.css">
+
 <script src="ai.js"></script>
+<script src="supabase.js"></script>
 </head>
 
 <body>
@@ -19,18 +21,67 @@
 <a href="report.html">Report</a>
 </div>
 
+<h2 class="center">📊 AI Health Report</h2>
+
 <div class="card">
 
 <script>
 
-let score = calcScore(2000,300)
+let calories = 2100
+let burn = 300
 
-document.write("Score: " + score + "<br>")
-document.write(status(score))
+// 🧠 防 crash
+let score = 0
+let label = "Loading..."
 
+if(typeof calculateHealthScore === "function"){
+score = calculateHealthScore(calories, burn)
+}
+
+if(typeof healthLabel === "function"){
+label = healthLabel(score)
+}
+
+document.write(`
+<p>🔥 Calories: ${calories}</p>
+<p>🏃 Burn: ${burn}</p>
+<p>📊 AI Score: ${score}</p>
+<p>🧠 Status: ${label}</p>
+`)
 </script>
 
 </div>
+
+<div class="card">
+<h3>Weekly Insight</h3>
+
+<script>
+
+let advice = "No data"
+
+if(typeof workoutSuggestion === "function"){
+advice = workoutSuggestion(calories)
+}
+
+document.write(`
+<p>💡 Advice: ${advice}</p>
+`)
+</script>
+
+</div>
+
+<div class="bottom-nav">
+<a href="index.html">🏠</a>
+<a href="calendar.html">📅</a>
+<a href="food.html">🍽</a>
+<a href="workout.html">🏋️</a>
+<a href="shopping.html">🛒</a>
+<a href="report.html">📄</a>
+</div>
+
+<script>
+setActive("report")
+</script>
 
 </body>
 </html>
