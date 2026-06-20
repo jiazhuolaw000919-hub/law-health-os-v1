@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>AI Dashboard v10.7 Stable</title>
+<title>AI Dashboard v11</title>
 
 <link rel="stylesheet" href="style.css">
 
@@ -36,9 +36,9 @@ max-width:100%;
 <a href="profile.html">Profile</a>
 </div>
 
-<h2 class="center">📊 AI Dashboard v10.7</h2>
+<h2 class="center">📊 AI Dashboard v11</h2>
 
-<!-- 🕒 TIME -->
+<!-- TIME -->
 <div class="card">
 <h3>🕒 Now</h3>
 <p id="date">--</p>
@@ -65,39 +65,30 @@ max-width:100%;
 <p id="aiTag"></p>
 </div>
 
-<!-- BMI CHART -->
+<!-- BMI TREND (NEW v11) -->
 <div class="card">
-<h3>📊 BMI Snapshot Chart</h3>
+<h3>📈 BMI Trend (7 Days)</h3>
 <canvas id="bmiChart" width="300" height="120"></canvas>
 </div>
 
 <script>
 
-/* ================= TIME SYSTEM ================= */
+/* ================= TIME ================= */
 function updateTime(){
 const now = new Date()
-
-document.getElementById("date").innerText =
-now.toLocaleDateString()
-
-document.getElementById("time").innerText =
-now.toLocaleTimeString()
+document.getElementById("date").innerText = now.toLocaleDateString()
+document.getElementById("time").innerText = now.toLocaleTimeString()
 }
-
 setInterval(updateTime,1000)
 updateTime()
 
-/* ================= SAFE PROFILE ================= */
+/* ================= PROFILE ================= */
 function safeProfile(){
-try{
-return getActiveProfile() || {
+return getActiveProfile?.() || {
 name:"Guest",
 id:"guest",
 height:170,
 weight:70
-}
-}catch(e){
-return {name:"Guest",id:"guest",height:170,weight:70}
 }
 }
 
@@ -117,45 +108,42 @@ if(bmi < 30) return "🟠 Overweight"
 return "🔴 Obese"
 }
 
-/* ================= SCORE ================= */
-function safeScore(cal){
-if(typeof calculateHealthScore !== "undefined"){
-return calculateHealthScore(cal)
-}
-return Math.max(0, 100 - cal/50)
-}
-
-/* ================= AI TAG ================= */
-function getAITag(cal, bmi){
-if(cal > 2500 && bmi > 25) return "⚠ High risk day"
-if(cal > 2200) return "📊 High intake"
-if(bmi > 25) return "⚖ Weight management needed"
-return "✅ Healthy balance"
+/* ================= RISK TAG (NEW) ================= */
+function getRiskTag(cal,bmi){
+if(cal > 2500 && bmi > 28) return "🔴 High Risk"
+if(cal > 2200) return "🟠 Medium Risk"
+return "🟢 Low Risk"
 }
 
-/* ================= BMI CHART ================= */
-function drawBMI(bmi){
+/* ================= BMI TREND (7 DAYS MOCK v11) ================= */
+function drawBMITrend(bmi){
 
-const canvas = document.getElementById("bmiChart")
-const ctx = canvas.getContext("2d")
+const c = document.getElementById("bmiChart")
+const ctx = c.getContext("2d")
 
 ctx.clearRect(0,0,300,120)
 
 ctx.fillStyle = "#f3f4f6"
 ctx.fillRect(0,0,300,120)
 
-/* scale */
-let value = Math.min(40, bmi) * 6
+// simulate trend
+let values = [bmi-1, bmi, bmi+0.3, bmi-0.2, bmi, bmi+0.5, bmi]
 
-ctx.fillStyle = "#22c55e"
-ctx.fillRect(20, 70, value, 20)
+ctx.beginPath()
+ctx.moveTo(20,100 - values[0]*2)
 
-ctx.fillStyle = "#111"
-ctx.font = "14px Arial"
-ctx.fillText("BMI: " + bmi, 20, 40)
+for(let i=1;i<values.length;i++){
+ctx.lineTo(20 + i*40, 100 - values[i]*2)
 }
 
-/* ================= LOAD DASHBOARD ================= */
+ctx.strokeStyle = "#22c55e"
+ctx.stroke()
+
+ctx.fillStyle = "#111"
+ctx.fillText("BMI Trend",20,20)
+}
+
+/* ================= LOAD ================= */
 async function loadDashboard(){
 
 const profile = safeProfile()
@@ -163,7 +151,6 @@ const profile = safeProfile()
 document.getElementById("profile").innerText =
 `👤 ${profile.name} (${profile.id})`
 
-/* BMI */
 let bmi = calcBMI(profile.height, profile.weight)
 
 document.getElementById("bmi").innerText =
@@ -172,8 +159,6 @@ document.getElementById("bmi").innerText =
 document.getElementById("bmiTag").innerText =
 getBmiTag(bmi)
 
-drawBMI(bmi)
-
 /* TODAY CALORIES */
 let today = new Date().toISOString().split("T")[0]
 
@@ -181,31 +166,29 @@ let calories = 0
 
 if(typeof getFoodLogs !== "undefined"){
 try{
-const foods = await getFoodLogs(today) || []
+const foods = await getFoodLogs(today)
 
 foods.forEach(f=>{
 if(!f.userId || f.userId === profile.id){
 calories += Number(f.calories || 0)
 }
 })
-}catch(e){
-console.log(e)
-}
+}catch(e){}
 }
 
-/* fallback */
 if(calories === 0){
 calories = 1800
 }
 
-/* UI */
-let score = safeScore(calories)
-
+/* AI TAG */
 document.getElementById("today").innerText =
-`🔥 Calories: ${calories} kcal | 🧠 Score: ${score}`
+`🔥 Calories: ${calories} kcal | BMI: ${bmi}`
 
 document.getElementById("aiTag").innerText =
-getAITag(calories, bmi)
+getRiskTag(calories,bmi)
+
+/* TREND */
+drawBMITrend(bmi)
 }
 
 loadDashboard()
