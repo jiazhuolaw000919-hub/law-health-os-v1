@@ -92,3 +92,16 @@ return "🟡 Slightly high"
 
 return "🔴 Overeating risk"
 }
+
+let bingeStreak = 0
+
+function updateStreak(calories){
+
+if(calories > 2800){
+bingeStreak++
+} else {
+bingeStreak = 0
+}
+
+return bingeStreak
+}
