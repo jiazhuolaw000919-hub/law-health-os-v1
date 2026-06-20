@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Food AI v9 System (Full Sync Multi-Profile)</title>
+<title>Food AI v9 System (FIXED STABLE)</title>
 
 <link rel="stylesheet" href="style.css">
 
@@ -24,11 +24,11 @@
 <a href="profile.html">Profile</a>
 </div>
 
-<h2 style="text-align:center">🍽 Food AI v9 System (Global Sync)</h2>
+<h2 style="text-align:center">🍽 Food AI v9 System (Stable FIXED)</h2>
 
 <!-- ACTIVE PROFILE -->
 <div class="card">
-<p id="activeProfile">No profile selected</p>
+<p id="activeProfile">Loading profile...</p>
 </div>
 
 <!-- PROFILE SWITCHER -->
@@ -46,7 +46,7 @@
 
 <!-- AI SCANNER -->
 <div class="card">
-<h3>📸 AI Scanner (v9 Multi-Profile Sync)</h3>
+<h3>📸 AI Scanner (FIXED)</h3>
 
 <input type="file" id="foodImage">
 <br><br>
@@ -57,10 +57,11 @@
 
 <script>
 
-setActive("food")
+setActive?.("food")
 
-/* ================= PROFILE SYSTEM ================= */
-
+/* =========================
+SAFE INIT (CRITICAL FIX)
+========================= */
 function getProfiles(){
 return JSON.parse(localStorage.getItem("profiles")) || []
 }
@@ -73,9 +74,12 @@ function ensureProfile(){
 let profiles = getProfiles()
 
 if(profiles.length === 0){
-const defaultProfile = { id:"guest", name:"Guest" }
-profiles.push(defaultProfile)
+const defaultProfile = {
+id:"guest",
+name:"Guest"
+}
 
+profiles.push(defaultProfile)
 localStorage.setItem("profiles", JSON.stringify(profiles))
 localStorage.setItem("activeProfile", JSON.stringify(defaultProfile))
 }
@@ -86,7 +90,7 @@ localStorage.setItem("activeProfile", JSON.stringify(getProfiles()[0]))
 }
 
 function renderProfile(){
-const p = getActiveProfile()
+const p = getActiveProfile() || {name:"Guest"}
 document.getElementById("activeProfile").innerText =
 `👤 Active: ${p.name}`
 }
@@ -116,18 +120,25 @@ renderProfile()
 }
 }
 
+/* =========================
+INIT SAFE
+========================= */
 ensureProfile()
 renderProfile()
 renderSwitcher()
 
-/* ================= AI + SCORING ================= */
-
+/* =========================
+MEAL SCORE
+========================= */
 function calculateMealScore(food){
+
 let score = 50
+
 if(food.protein > 20) score += 20
 if(food.carbs > 80) score -= 10
 if(food.fat > 30) score -= 15
 if(food.calories > 800) score -= 20
+
 return Math.max(0, Math.min(100, score))
 }
 
@@ -137,6 +148,9 @@ if(score >= 50) return "OK"
 return "BAD"
 }
 
+/* =========================
+MOCK AI SAFE
+========================= */
 function mockAI(){
 return {
 food:"unknown meal",
@@ -148,6 +162,9 @@ confidence:0.4
 }
 }
 
+/* =========================
+SAFE FETCH
+========================= */
 async function safeFetch(url, options){
 try{
 const res = await fetch(url, options)
@@ -158,12 +175,16 @@ return { result: mockAI() }
 }
 }
 
-/* ================= ADD FOOD ================= */
-
+/* =========================
+ADD FOOD (FIXED)
+========================= */
 async function addFoodManual(){
 
-const profile = getActiveProfile()
-const food = document.getElementById("foodInput").value.trim()
+const profile = getActiveProfile() || {id:"guest", name:"Guest"}
+
+const input = document.getElementById("foodInput")
+const food = input?.value?.trim()
+
 if(!food) return
 
 let cal = 300
@@ -186,11 +207,13 @@ date: today
 }
 }
 
-/* ================= AI SCAN ================= */
-
+/* =========================
+AI SCAN (FIXED)
+========================= */
 async function scanFood(){
 
-const profile = getActiveProfile()
+const profile = getActiveProfile() || {id:"guest", name:"Guest"}
+
 const file = document.getElementById("foodImage").files[0]
 
 if(!file){
@@ -266,7 +289,7 @@ reader.readAsDataURL(file)
 
 </script>
 
-<!-- ✅ STEP 2 FIXED: ALL JS FILES MUST BE HERE -->
+<!-- STEP 2 SAFE LOAD -->
 <script src="js/db.js"></script>
 <script src="js/profile.js"></script>
 <script src="js/ai-engine.js"></script>
