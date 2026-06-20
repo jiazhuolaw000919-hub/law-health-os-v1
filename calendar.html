@@ -2,13 +2,13 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Calendar v11.3</title>
+<title>Calendar v11.4</title>
 
 <link rel="stylesheet" href="style.css">
 
-<script src="supabase.js"></script>
-<script src="ai.js"></script>
 <script src="app.js"></script>
+<script src="ai.js"></script>
+<script src="supabase.js"></script>
 </head>
 
 <body>
@@ -24,19 +24,6 @@
 
 <h2 class="center">📅 Calendar</h2>
 
-<!-- 🧠 控制栏 -->
-<div class="card center">
-
-<button onclick="changeMonth(-1)">⬅</button>
-
-<select id="monthSelect" onchange="changeFromSelect()"></select>
-
-<select id="yearSelect" onchange="changeFromSelect()"></select>
-
-<button onclick="changeMonth(1)">➡</button>
-
-</div>
-
 <div class="grid" id="grid"></div>
 
 <script>
@@ -45,83 +32,34 @@ setActive("calendar")
 
 const grid = document.getElementById("grid")
 
-let date = new Date()
+const year = new Date().getFullYear()
+const month = new Date().getMonth()
 
-let year = date.getFullYear()
-let month = date.getMonth()
-
-// 初始化 dropdown
-const monthSelect = document.getElementById("monthSelect")
-const yearSelect = document.getElementById("yearSelect")
-
-const monthNames = [
-"Jan","Feb","Mar","Apr","May","Jun",
-"Jul","Aug","Sep","Oct","Nov","Dec"
-]
-
-// fill month
-monthNames.forEach((m,i)=>{
-monthSelect.innerHTML += `<option value="${i}">${m}</option>`
-})
-
-// fill year
-for(let y=2020;y<=2035;y++){
-yearSelect.innerHTML += `<option value="${y}">${y}</option>`
-}
-
-monthSelect.value = month
-yearSelect.value = year
-
-function changeMonth(step){
-month += step
-
-if(month < 0){
-month = 11
-year--
-}
-
-if(month > 11){
-month = 0
-year++
-}
-
-monthSelect.value = month
-yearSelect.value = year
-
-render()
-}
-
-function changeFromSelect(){
-month = Number(monthSelect.value)
-year = Number(yearSelect.value)
-render()
-}
-
-function formatDate(d){
+function format(d){
 return `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`
 }
 
-async function render(){
+async function load(){
 
 grid.innerHTML = ""
 
-const firstDay = new Date(year,month,1).getDay()
+const first = new Date(year,month,1).getDay()
 const days = new Date(year,month+1,0).getDate()
 
-for(let i=0;i<firstDay;i++){
+for(let i=0;i<first;i++){
 grid.innerHTML += "<div></div>"
 }
 
 for(let d=1; d<=days; d++){
 
-const dateStr = formatDate(d)
+const date = format(d)
 
 let calories = 0
 
 try{
-const foods = await getFoodLogs(dateStr)
+const foods = await getFoodLogs(date)
 foods.forEach(f=>{
-calories += Number(f.calories || 0)
+calories += Number(f.calories||0)
 })
 }catch(e){
 calories = 0
@@ -129,24 +67,11 @@ calories = 0
 
 let score = calculateHealthScore(calories,0)
 
-let score = calculateHealthScore(calories,0)
-
 let color = ""
 
-if(calories > 2800){
-color = "red"
-}
-else if(score >= 80){
-color = "green"
-}
-else if(score >= 50){
-color = "yellow"
-}
-else{
-color = "red"
-}
-if(score>=80) color="green"
-else if(score>=50) color="yellow"
+if(calories > 2800) color="red"
+else if(score >= 80) color="green"
+else if(score >= 50) color="yellow"
 else color="red"
 
 const div = document.createElement("div")
@@ -155,7 +80,7 @@ div.className = "day "+color
 div.innerHTML = `<b>${d}</b><br>${score}`
 
 div.onclick = ()=>{
-location.href = "day.html?date="+dateStr
+location.href="day.html?date="+date
 }
 
 grid.appendChild(div)
@@ -163,7 +88,7 @@ grid.appendChild(div)
 
 }
 
-render()
+load()
 
 </script>
 
