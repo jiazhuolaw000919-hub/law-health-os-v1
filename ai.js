@@ -50,3 +50,16 @@ return ["Salad","Lean Protein","Low sugar drinks"]
 
 return ["Balanced diet","Fruit","Rice"]
 }
+
+function aiCoach(calories, burn, score){
+
+if(score >= 80){
+return "🟢 Good job! Keep your routine."
+}
+
+if(score >= 50){
+return "🟡 Try more protein + light exercise today."
+}
+
+return "🔴 High risk day. Reduce carbs + go for a walk."
+}
