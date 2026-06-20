@@ -16,7 +16,19 @@ if(score < 0) score = 0
 return Math.round(score)
 }
 
-function bingeDetect(calories){
+function bingeDetect(calories, streak){
+
+let risk = 0
+
+if(calories > 2500) risk += 40
+if(calories > 3000) risk += 30
+if(streak >= 2) risk += 20
+if(streak >= 3) risk += 30
+
+if(risk >= 70) return "🔴 HIGH BINGE RISK"
+if(risk >= 40) return "🟡 MODERATE RISK"
+return "🟢 LOW RISK"
+}
 
 if(calories > 2800) return "🔴 Binge Risk"
 if(calories > 2400) return "🟡 High Intake"
