@@ -6,34 +6,29 @@
 
 <link rel="stylesheet" href="style.css">
 <script src="app.js"></script>
+<script src="profile.js"></script>
 </head>
 
 <body>
 
 <div class="nav">
 <a href="index.html">Home</a>
-<a href="food.html">Food</a>
 <a href="calendar.html">Calendar</a>
-<a href="report.html">Report</a>
+<a href="food.html">Food</a>
 <a href="profile.html">Profile</a>
 </div>
 
-<h2 class="center">👤 Profile System v10.6</h2>
+<h2 class="center">👤 Profiles v10.6</h2>
+
+<div class="card">
 
 <!-- CREATE BUTTON -->
-<div class="card">
-<button onclick="goCreateProfile()">
+<button onclick="location.href='profile-create.html'">
 ➕ Create New Profile
 </button>
+
 </div>
 
-<!-- ACTIVE PROFILE -->
-<div class="card">
-<h3>Active Profile</h3>
-<p id="activeBox"></p>
-</div>
-
-<!-- PROFILE LIST -->
 <div class="card">
 <h3>All Profiles</h3>
 <div id="list"></div>
@@ -41,94 +36,31 @@
 
 <script>
 
-/* =====================
-PROFILE CORE
-===================== */
-
-function getProfiles(){
-return JSON.parse(localStorage.getItem("profiles")) || []
-}
-
-function getActiveProfile(){
-return JSON.parse(localStorage.getItem("activeProfile")) || null
-}
-
-/* =====================
-NAV TO CREATE PAGE
-===================== */
-function goCreateProfile(){
-window.location.href = "profile-create.html"
-}
-
-/* =====================
-SWITCH PROFILE
-===================== */
-function switchProfile(id){
-
-const profiles = getProfiles()
-const p = profiles.find(x => x.id === id)
-
-if(p){
-localStorage.setItem("activeProfile", JSON.stringify(p))
-render()
-}
-}
-
-/* =====================
-DELETE PROFILE (NEW)
-===================== */
-function deleteProfile(id){
-
-let profiles = getProfiles()
-
-profiles = profiles.filter(p => p.id !== id)
-
-localStorage.setItem("profiles", JSON.stringify(profiles))
-
-// 如果删掉的是当前用户 → 自动切换第一个
-const active = getActiveProfile()
-
-if(active && active.id === id){
-localStorage.setItem("activeProfile", JSON.stringify(profiles[0] || null))
-}
-
-render()
-}
-
-/* =====================
-RENDER UI
-===================== */
 function render(){
 
-const active = getActiveProfile()
-document.getElementById("activeBox").innerText =
-active ? active.name : "No active profile"
+  let list = document.getElementById("list")
+  let profiles = getProfiles()
+  let active = getActiveProfile()
 
-const list = document.getElementById("list")
-list.innerHTML = ""
+  list.innerHTML = ""
 
-getProfiles().forEach(p => {
+  profiles.forEach(p => {
 
-const div = document.createElement("div")
-div.className = "card"
+    let div = document.createElement("div")
 
-div.innerHTML = `
-<p><b>${p.name}</b></p>
-<p>ID: ${p.id}</p>
+    div.innerHTML = `
+      <p>
+      👤 ${p.name}
+      ${active && active.id === p.id ? " (Active)" : ""}
+      </p>
 
-<button onclick="switchProfile('${p.id}')">
-Switch
-</button>
+      <button onclick="switchProfile('${p.id}')">Switch</button>
+      <button onclick="deleteProfile('${p.id}')" style="background:red;color:white">Delete</button>
+      <hr>
+    `
 
-<button onclick="deleteProfile('${p.id}')"
-style="background:red;color:white;margin-left:10px">
-Delete
-</button>
-`
-
-list.appendChild(div)
-})
-
+    list.appendChild(div)
+  })
 }
 
 render()
@@ -136,234 +68,4 @@ render()
 </script>
 
 </body>
-</html>}
-
-function calculateBMI(height, weight){
-
-height = Number(height) / 100
-
-if(!height || !weight){
-return 0
-}
-
-return (
-weight / (height * height)
-).toFixed(1)
-
-}
-
-function getBMITag(bmi){
-
-bmi = Number(bmi)
-
-if(bmi < 18.5)
-return "Underweight"
-
-if(bmi < 25)
-return "Healthy"
-
-if(bmi < 30)
-return "Overweight"
-
-return "Obese"
-
-}
-
-function renderDropdown(){
-
-const select =
-document.getElementById(
-"profileSelect"
-)
-
-select.innerHTML = ""
-
-getProfiles().forEach(profile=>{
-
-const opt =
-document.createElement("option")
-
-opt.value = profile.id
-opt.textContent = profile.name
-
-select.appendChild(opt)
-
-})
-
-const active =
-getActiveProfile()
-
-if(active){
-
-select.value = active.id
-
-}
-
-}
-
-function updateAdvice(profile){
-
-if(!profile){
-return
-}
-
-const bmi =
-Number(profile.bmi)
-
-let advice = ""
-
-if(bmi < 18.5){
-
-advice =
-"Increase calories and protein."
-
-}
-else if(bmi < 25){
-
-advice =
-"Maintain current lifestyle."
-
-}
-else if(bmi < 30){
-
-advice =
-"Reduce calories and add exercise."
-
-}
-else{
-
-advice =
-"Focus on weight reduction."
-
-}
-
-document.getElementById(
-"aiAdvice"
-).innerText =
-advice
-
-}
-
-function renderProfile(){
-
-const profile =
-getActiveProfile()
-
-if(!profile){
-
-document.getElementById(
-"activeProfile"
-).innerText =
-"No Active Profile"
-
-return
-
-}
-
-document.getElementById(
-"activeProfile"
-).innerHTML =
-
-`
-👤 ${profile.name}<br>
-Gender: ${profile.gender}<br>
-Age: ${profile.age}<br>
-Height: ${profile.height} cm<br>
-Weight: ${profile.weight} kg<br>
-Goal Weight: ${profile.goalWeight || "-"} kg
-`
-
-document.getElementById(
-"bmiBox"
-).innerHTML =
-
-`
-BMI: ${profile.bmi}<br>
-${getBMITag(profile.bmi)}
-`
-
-updateAdvice(profile)
-
-}
-
-function saveProfileData(){
-
-const profile = {
-
-id: Date.now().toString(),
-
-name:
-document.getElementById("name").value,
-
-gender:
-document.getElementById("gender").value,
-
-age:
-document.getElementById("age").value,
-
-height:
-document.getElementById("height").value,
-
-weight:
-document.getElementById("weight").value,
-
-goalWeight:
-document.getElementById("goalWeight").value
-
-}
-
-profile.bmi =
-calculateBMI(
-profile.height,
-profile.weight
-)
-
-let profiles =
-getProfiles()
-
-profiles.push(profile)
-
-localStorage.setItem(
-"profiles",
-JSON.stringify(profiles)
-)
-
-setActiveProfile(profile)
-
-renderDropdown()
-renderProfile()
-
-alert("Profile Saved")
-
-}
-
-function switchProfile(){
-
-const id =
-document.getElementById(
-"profileSelect"
-).value
-
-const profile =
-getProfiles().find(
-p => p.id === id
-)
-
-if(profile){
-
-setActiveProfile(profile)
-
-renderProfile()
-
-}
-
-}
-
-renderDropdown()
-renderProfile()
-
-</script>
-
-</body>
-</html>
 </html>
