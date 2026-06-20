@@ -1,11 +1,11 @@
 const SUPABASE_URL = "https://jwcgamxkwzrjnepxrvzr.supabase.co"
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpxZXZjZnlobmx0dHpkaXlsZnJoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE4MjgzNTIsImV4cCI6MjA5NzQwNDM1Mn0.RNWddp1TuYwVAHZlWfdq4iGdgiqNU9DKgAi8pnC6ULs"
 
+
 /* =========================
-SAFE FETCH
+SAFE FETCH CORE
 ========================= */
 async function safeFetch(url, options){
-
 try{
 const res = await fetch(url, options)
 if(!res.ok) throw new Error("Network error")
@@ -14,21 +14,26 @@ return await res.json()
 console.log("Supabase error:", e)
 return null
 }
-
 }
 
 /* =========================
-GET PROFILE SAFE
+SAFE PROFILE ACCESS
 ========================= */
 function getActiveProfile(){
+try{
 return JSON.parse(localStorage.getItem("activeProfile")) || {
 id:"guest",
-name:"Guest"
+name:"Guest",
+height:170,
+weight:70
+}
+}catch(e){
+return {id:"guest",name:"Guest",height:170,weight:70}
 }
 }
 
 /* =========================
-FOOD LOGS (READ SAFE v11)
+FOOD LOGS (SAFE READ v11.5)
 ========================= */
 async function getFoodLogs(date){
 
@@ -45,11 +50,12 @@ Authorization: "Bearer " + SUPABASE_KEY
 }
 })
 
-return Array.isArray(data) ? data : []
+if(!Array.isArray(data)) return []
+return data
 }
 
 /* =========================
-SAVE FOOD (v11 SAFE)
+SAVE FOOD (SAFE WRITE v11.5)
 ========================= */
 async function saveFood(data){
 
@@ -57,11 +63,11 @@ const profile = getActiveProfile()
 
 const payload = {
 userId: profile.id,
-food: data.food,
-calories: data.calories,
-protein: data.protein || 0,
-carbs: data.carbs || 0,
-fat: data.fat || 0,
+food: data.food || "unknown",
+calories: Number(data.calories || 0),
+protein: Number(data.protein || 0),
+carbs: Number(data.carbs || 0),
+fat: Number(data.fat || 0),
 date: data.date
 }
 
@@ -78,7 +84,7 @@ body: JSON.stringify(payload)
 }
 
 /* =========================
-PROFILE CLOUD SYNC (READ)
+GET CLOUD PROFILES
 ========================= */
 async function getProfilesCloud(){
 
@@ -90,19 +96,20 @@ Authorization: "Bearer " + SUPABASE_KEY
 }
 })
 
-return Array.isArray(data) ? data : []
+if(!Array.isArray(data)) return []
+return data
 }
 
 /* =========================
-SAVE PROFILE (UPSERT SAFE v11)
+SAVE PROFILE (UPSERT SAFE)
 ========================= */
 async function saveProfile(profile){
 
 const payload = {
 id: profile.id,
-name: profile.name,
-height: profile.height || 170,
-weight: profile.weight || 70,
+name: profile.name || "User",
+height: Number(profile.height || 170),
+weight: Number(profile.weight || 70),
 bmi: profile.bmi || 0,
 weightHistory: profile.weightHistory || []
 }
@@ -120,7 +127,7 @@ body: JSON.stringify(payload)
 }
 
 /* =========================
-SMART SYNC ENGINE v11 (BIDIRECTIONAL SAFE)
+SMART SYNC ENGINE v11.5
 ========================= */
 async function syncProfiles(){
 
@@ -129,54 +136,45 @@ try{
 let cloud = await getProfilesCloud()
 let local = JSON.parse(localStorage.getItem("profiles")) || []
 
-// 1️⃣ merge strategy (avoid overwrite loss)
-if(cloud.length && local.length){
+/* merge safely (no overwrite loss) */
+if(cloud.length){
 
 let merged = [...local]
 
-cloud.forEach(cp=>{
-let exist = merged.find(p=>p.id === cp.id)
-
-if(!exist){
-merged.push(cp)
+cloud.forEach(c=>{
+if(!merged.find(p=>p.id === c.id)){
+merged.push(c)
 }
 })
 
 localStorage.setItem("profiles", JSON.stringify(merged))
-
 }
 
-/* 2️⃣ update active profile safely */
+/* active profile sync */
 let active = getActiveProfile()
 
 if(active && cloud.length){
-
 let match = cloud.find(p => p.id === active.id)
 
 if(match){
 localStorage.setItem("activeProfile", JSON.stringify(match))
 }
-
 }
 
 }catch(e){
-console.log("sync error", e)
+console.log("sync error:", e)
 }
-
 }
 
 /* =========================
-FOOD SYNC HELPERS (future AI)
+FUTURE EXTENSION HOOK
 ========================= */
 async function syncFood(date){
-
-// placeholder for future bi-directional sync
 return await getFoodLogs(date)
-
 }
 
 /* =========================
-AUTO SYNC LOOP (v11)
+AUTO SYNC LOOP (SAFE)
 ========================= */
 setInterval(()=>{
 syncProfiles()
