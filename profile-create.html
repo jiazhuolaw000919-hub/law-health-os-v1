@@ -2,11 +2,36 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Create Profile</title>
+<title>Create Profile v2 (AI Ready)</title>
 
 <link rel="stylesheet" href="style.css">
 <script src="app.js"></script>
 <script src="profile.js"></script>
+
+<style>
+.card{
+margin:10px;
+padding:12px;
+background:#fff;
+border-radius:10px;
+box-shadow:0 1px 4px rgba(0,0,0,.05);
+}
+
+input, select{
+width:100%;
+margin:5px 0;
+padding:8px;
+}
+
+.row{
+display:flex;
+gap:10px;
+}
+
+.small{
+width:48%;
+}
+</style>
 </head>
 
 <body>
@@ -15,40 +40,118 @@
 <a href="profile.html">← Back</a>
 </div>
 
-<h2 class="center">➕ Create Profile</h2>
+<h2 class="center">➕ Create Profile (AI v2 Full Identity)</h2>
 
 <div class="card">
 
-<input id="name" placeholder="Name"><br><br>
+<!-- ================= IDENTITY ================= -->
+<h3>1️⃣ Identity</h3>
 
-<select id="gender">
-<option>Male</option>
-<option>Female</option>
+<input id="name" placeholder="Name / Nickname">
+
+<input id="email" placeholder="Email (optional)">
+<input id="phone" placeholder="Phone (optional)">
+
+<div class="row">
+<select id="gender" class="small">
+<option value="male">Male</option>
+<option value="female">Female</option>
+<option value="other">Other</option>
 </select>
 
-<input id="age" placeholder="Age"><br>
-<input id="height" placeholder="Height cm"><br>
-<input id="weight" placeholder="Weight kg"><br><br>
+<input id="age" class="small" placeholder="Age">
+</div>
 
-<button onclick="save()">Create</button>
+<input id="country" placeholder="Country">
+<input id="language" placeholder="Language">
+<input id="occupation" placeholder="Occupation">
+
+<hr>
+
+<!-- ================= BODY ================= -->
+<h3>2️⃣ Body Metrics</h3>
+
+<input id="height" placeholder="Height (cm)">
+<input id="weight" placeholder="Weight (kg)">
+<input id="target_weight" placeholder="Target Weight (kg)">
+
+<input id="body_fat" placeholder="Body Fat % (optional)">
+<input id="muscle_mass" placeholder="Muscle Mass (optional)">
+
+<select id="goal">
+<option value="fat_loss">Fat Loss</option>
+<option value="muscle_gain">Muscle Gain</option>
+<option value="maintenance">Maintenance</option>
+<option value="health_improvement">Health Improvement</option>
+<option value="rehab">Rehab</option>
+</select>
+
+<br><br>
+
+<button onclick="saveProfile()">Create Profile</button>
 
 </div>
 
 <script>
 
-function save(){
+/* ================= BMI ================= */
+function calcBMI(h,w){
+h = Number(h || 170)
+w = Number(w || 70)
+return (w / ((h/100)*(h/100))).toFixed(1)
+}
 
-  let name = document.getElementById("name").value
-  let gender = document.getElementById("gender").value
-  let age = document.getElementById("age").value
-  let height = document.getElementById("height").value
-  let weight = document.getElementById("weight").value
+/* ================= SAVE ================= */
+function saveProfile(){
 
-  let profile = createProfile(name, gender, age, height, weight)
+let name = document.getElementById("name").value
 
-  alert("Profile created: " + profile.name)
+if(!name){
+alert("Name required")
+return
+}
 
-  location.href = "profile.html"
+let profile = {
+
+user_id: Date.now().toString(),
+
+/* identity */
+name,
+email: document.getElementById("email").value || "",
+phone: document.getElementById("phone").value || "",
+gender: document.getElementById("gender").value,
+age: Number(document.getElementById("age").value || 0),
+country: document.getElementById("country").value || "",
+language: document.getElementById("language").value || "",
+occupation: document.getElementById("occupation").value || "",
+
+/* body */
+height: Number(document.getElementById("height").value || 170),
+weight: Number(document.getElementById("weight").value || 70),
+target_weight: Number(document.getElementById("target_weight").value || 70),
+
+body_fat_percentage: Number(document.getElementById("body_fat").value || 0),
+muscle_mass: Number(document.getElementById("muscle_mass").value || 0),
+
+primary_goal: document.getElementById("goal").value,
+
+/* AI derived */
+bmi: 0,
+created_at: new Date().toISOString()
+}
+
+profile.bmi = calcBMI(profile.height, profile.weight)
+
+/* SAVE LOCAL */
+localStorage.setItem("activeProfile", JSON.stringify(profile))
+
+let all = JSON.parse(localStorage.getItem("profiles") || "[]")
+all.push(profile)
+localStorage.setItem("profiles", JSON.stringify(all))
+
+alert("Profile created successfully!")
+
+location.href = "profile.html"
 }
 
 </script>
