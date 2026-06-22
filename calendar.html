@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>AI Calendar v11.3</title>
+<title>AI Calendar v11.5 (Phase 6 Sync FIXED)</title>
 
 <link rel="stylesheet" href="style.css">
 
@@ -60,7 +60,7 @@ margin-top:5px;
 <a href="profile.html">Profile</a>
 </div>
 
-<h2 class="center">📅 AI Calendar v11.3</h2>
+<h2 class="center">📅 AI Calendar v11.5 (PHASE 6 GLOBAL SYNC)</h2>
 
 <!-- PROFILE -->
 <div class="card">
@@ -97,7 +97,11 @@ background:rgba(0,0,0,0.5);align-items:center;justify-content:center;">
 <div style="background:white;padding:20px;border-radius:12px;width:360px;">
 
 <h3 id="modalDate"></h3>
+
 <p id="modalCalories"></p>
+<p id="modalProtein"></p>
+<p id="modalCarbs"></p>
+<p id="modalFat"></p>
 
 <div id="mealBreakdown"></div>
 
@@ -117,8 +121,6 @@ const grid = document.getElementById("grid")
 const monthSelect = document.getElementById("monthSelect")
 const yearSelect = document.getElementById("yearSelect")
 
-let dateObj = new Date()
-
 /* ================= PROFILE ================= */
 function getActiveProfile(){
 return JSON.parse(localStorage.getItem("activeProfile")) || {
@@ -129,17 +131,6 @@ weight:70
 }
 }
 
-/* ================= BMI ================= */
-function calcBMI(h,w){
-return (w / ((h/100)*(h/100))).toFixed(1)
-}
-
-/* ================= TIME ================= */
-function updateTime(){
-document.getElementById("time").innerText =
-"🕒 " + new Date().toLocaleString()
-}
-
 /* ================= SAFE LOGS ================= */
 async function safeFoodLogs(date){
 if(typeof getFoodLogs === "undefined") return []
@@ -148,30 +139,63 @@ const logs = await getFoodLogs(date) || []
 return logs.filter(f => !f.userId || f.userId === p.id)
 }
 
-/* ================= CALORIES ================= */
-async function getCalories(date){
+/* ================= DAILY GLOBAL SYNC ================= */
+async function getDailyMacro(date){
+
 const foods = await safeFoodLogs(date)
-return foods.reduce((s,f)=>s+Number(f.calories||0),0)
+
+let calories = 0
+let protein = 0
+let carbs = 0
+let fat = 0
+
+foods.forEach(f=>{
+calories += Number(f.calories||0)
+protein += Number(f.protein||0)
+carbs += Number(f.carbs||0)
+fat += Number(f.fat||0)
+})
+
+let ai = (typeof getAIInsight !== "undefined")
+? getAIInsight(calories, 22)
+: {score:0, risk:{level:"🟢"}}
+
+return {
+calories,
+protein,
+carbs,
+fat,
+score: ai.score,
+risk: ai.risk.level
+}
 }
 
-/* ================= WEEKLY AI SUMMARY ================= */
+/* ================= WEEK SUMMARY (FIXED) ================= */
 async function buildWeeklySummary(){
 
 let total=0,max=0,days=7
+let macroP=0, macroC=0, macroF=0
 
 for(let i=0;i<7;i++){
+
 let d=new Date()
 d.setDate(d.getDate()-i)
 let date=d.toISOString().split("T")[0]
-let cal=await getCalories(date)
 
-total+=cal
-if(cal>max)max=cal
+let data = await getDailyMacro(date)
+
+total += data.calories
+macroP += data.protein
+macroC += data.carbs
+macroF += data.fat
+
+if(data.calories>max) max=data.calories
 }
 
-let avg=total/days
-let p=getActiveProfile()
-let bmi=calcBMI(p.height,p.weight)
+let avg = total/days
+
+let p = getActiveProfile()
+let bmi = (p.weight / ((p.height/100)*(p.height/100))).toFixed(1)
 
 let risk =
 (bmi>28 || avg>2500) ? "HIGH"
@@ -190,6 +214,7 @@ document.getElementById("riskSummary").innerHTML =
 `<span class="badge ${color}">
 ${risk} RISK
 </span>
+<p>Protein: ${macroP}g | Carbs: ${macroC}g | Fat: ${macroF}g</p>
 <p>${
 risk==="HIGH"?"Increase activity + reduce carbs"
 :risk==="MEDIUM"?"Balance meals + monitor intake"
@@ -197,27 +222,13 @@ risk==="HIGH"?"Increase activity + reduce carbs"
 }</p>`
 }
 
-/* ================= MEAL AI ================= */
-function mealAI(foods){
-
-let total=foods.reduce((s,f)=>s+Number(f.calories||0),0)
-
-let protein=foods.filter(f=>/chicken|egg|beef|fish/.test((f.food||"").toLowerCase())).length
-let carb=foods.filter(f=>/rice|bread|noodle/.test((f.food||"").toLowerCase())).length
-
-let score=100
-if(total>2500)score-=30
-if(carb>protein)score-=20
-
-let label =
-score>80?"🟢 Good Meal"
-:score>60?"🟡 Balanced"
-:"🔴 Poor Balance"
-
-return {score,label,total}
+/* ================= CALORIES ================= */
+async function getCalories(date){
+let data = await getDailyMacro(date)
+return data.calories
 }
 
-/* ================= LOAD GRID ================= */
+/* ================= GRID ================= */
 async function load(){
 
 grid.innerHTML=""
@@ -233,70 +244,52 @@ for(let i=0;i<first;i++)grid.innerHTML+="<div></div>"
 for(let d=1;d<=days;d++){
 
 let date=`${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`
-let cal=await getCalories(date)
+
+let data = await getDailyMacro(date)
 
 let div=document.createElement("div")
 div.className="day"
-div.innerHTML=`<b>${d}</b><br>${cal} kcal`
-div.onclick=()=>openModal(date,cal)
+
+div.innerHTML=`
+<b>${d}</b><br>
+${data.calories} kcal<br>
+<span class="badge ${data.risk==="HIGH"?"red":data.risk==="MEDIUM"?"yellow":"green"}">
+${data.risk}
+</span>
+`
+
+div.onclick=()=>openModal(date,data)
 
 grid.appendChild(div)
 }
 }
 
-/* ================= MODAL ================= */
-async function openModal(date,cal){
+/* ================= MODAL (FIXED MACRO DISPLAY) ================= */
+async function openModal(date,data){
 
 document.getElementById("modal").style.display="flex"
 document.getElementById("modalDate").innerText=date
-document.getElementById("modalCalories").innerText=cal+" kcal"
 
-const foods=await safeFoodLogs(date)
-const box=document.getElementById("mealBreakdown")
-const mini=document.getElementById("miniAI")
+document.getElementById("modalCalories").innerText =
+`Calories: ${data.calories} kcal`
 
-if(!foods.length){
-box.innerHTML="<p>No data</p>"
-mini.innerHTML=""
-return
-}
+document.getElementById("modalProtein").innerText =
+`Protein: ${data.protein} g`
 
-let ai=mealAI(foods)
+document.getElementById("modalCarbs").innerText =
+`Carbs: ${data.carbs} g`
 
-box.innerHTML=
-`<p>🍳 Meal Score: ${ai.score}</p>
-<p>${ai.label}</p>
-<p>Total: ${ai.total} kcal</p>`
+document.getElementById("modalFat").innerText =
+`Fat: ${data.fat} g`
 
-mini.innerHTML =
-ai.score>80?"🟢 Excellent day"
-:ai.score>60?"🟡 Needs balance"
-:"🔴 Poor nutrition"
-}
+document.getElementById("mealBreakdown").innerHTML =
+`<p>AI Score: ${data.score}/100</p>
+<p>Risk: ${data.risk}</p>`
 
-/* ================= NAV ================= */
-function changeMonth(v){
-
-let m=+monthSelect.value
-let y=+yearSelect.value
-
-m+=v
-if(m<0){m=11;y--}
-if(m>11){m=0;y++}
-
-monthSelect.value=m
-yearSelect.value=y
-
-load()
-}
-
-function closeModal(){
-document.getElementById("modal").style.display="none"
-}
-
-function openDayPage(){
-let date=document.getElementById("modalDate").innerText
-window.location.href=`day.html?date=${date}`
+document.getElementById("miniAI").innerText =
+data.score>80?"🟢 Excellent day"
+:data.score>60?"🟡 Balanced day"
+:"🔴 Needs improvement"
 }
 
 /* ================= INIT ================= */
@@ -316,7 +309,12 @@ monthSelect.value=new Date().getMonth()
 yearSelect.value=new Date().getFullYear()
 }
 
-/* ================= BOOT ================= */
+/* ================= TIME ================= */
+function updateTime(){
+document.getElementById("time").innerText =
+"🕒 " + new Date().toLocaleString()
+}
+
 setInterval(updateTime,1000)
 updateTime()
 
