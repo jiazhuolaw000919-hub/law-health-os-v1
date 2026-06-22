@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Profile v12 System (Phase 1–4 AI READY)</title>
+<title>Profile Lite v12.1 (Stable Upgrade)</title>
 
 <link rel="stylesheet" href="style.css">
 
@@ -18,7 +18,36 @@ background:#fff;
 border-radius:10px;
 box-shadow:0 1px 4px rgba(0,0,0,.05);
 }
-button{margin:4px}
+
+button{
+margin:4px;
+padding:6px 10px;
+border-radius:6px;
+cursor:pointer;
+}
+
+.small{
+font-size:13px;
+opacity:0.75;
+}
+
+.row{
+display:flex;
+gap:10px;
+flex-wrap:wrap;
+}
+
+.badge{
+display:inline-block;
+padding:4px 8px;
+border-radius:6px;
+font-size:12px;
+margin-top:5px;
+}
+
+.green{background:#dcfce7;color:#166534}
+.yellow{background:#fef9c3;color:#854d0e}
+.red{background:#fee2e2;color:#991b1b}
 </style>
 </head>
 
@@ -32,60 +61,50 @@ button{margin:4px}
 <a href="profile.html">Profile</a>
 </div>
 
-<h2 class="center">👤 Profile System v12 (AI READY PHASE 1–4)</h2>
-
-<!-- CREATE / UPDATE -->
-<div class="card">
-<h3>➕ Create / Update Profile</h3>
-
-<input id="name" placeholder="Name">
-<input id="height" placeholder="Height (cm)">
-<input id="weight" placeholder="Weight (kg)">
-<input id="goal" placeholder="Goal (cut / bulk / maintain)">
-
-<br><br>
-
-<button onclick="createOrUpdateProfile()">Save Profile</button>
-</div>
+<h2 class="center">👤 Profile Lite (Stable v12.1)</h2>
 
 <!-- ACTIVE PROFILE -->
 <div class="card">
 <h3>🔥 Active Profile</h3>
-<p id="activeProfile">Loading...</p>
-<p id="aiProfile"></p>
+
+<p id="name">Loading...</p>
+<p id="heightWeight">--</p>
+<p id="bmi">--</p>
+<p id="bmiStatus"></p>
+
+<div class="row">
+<button onclick="goDetail()">View Full Profile →</button>
+<button onclick="deleteProfile()" style="background:red;color:white">
+Delete Profile
+</button>
 </div>
 
-<!-- HISTORY -->
-<div class="card">
-<h3>📊 Weight History (AI Memory)</h3>
-<div id="history"></div>
+<p class="small">Lite mode: fast access only</p>
 </div>
 
-<!-- ALL PROFILES -->
+<!-- SWITCH -->
 <div class="card">
-<h3>👥 All Profiles</h3>
-<div id="profileList"></div>
+<h3>👥 Profiles</h3>
+<div id="list"></div>
 </div>
 
 <script>
 
-/* ================= STORAGE ================= */
-function getProfiles(){
-return JSON.parse(localStorage.getItem("profiles")) || []
-}
-
+/* ================= SAFE PROFILE ================= */
 function getActiveProfile(){
 return JSON.parse(localStorage.getItem("activeProfile")) || {
 id:"guest",
 name:"Guest",
 height:170,
-weight:70,
-goal:"maintain",
-weightHistory:[]
+weight:70
 }
 }
 
-/* ================= SAFE NUMBER ================= */
+function getProfiles(){
+return JSON.parse(localStorage.getItem("profiles")) || []
+}
+
+/* ================= SAFE NUM ================= */
 function num(v){
 return isNaN(v) ? 0 : Number(v)
 }
@@ -97,83 +116,46 @@ w = num(w || 70)
 return (w / ((h/100)*(h/100))).toFixed(1)
 }
 
-/* ================= AI CLASSIFICATION (PHASE 4) ================= */
-function classifyHealth(bmi){
+/* ================= BMI STATUS ================= */
+function bmiStatus(bmi){
 
-if(bmi < 18.5) return {state:"UNDER", color:"yellow"}
-if(bmi < 25) return {state:"NORMAL", color:"green"}
-if(bmi < 30) return {state:"OVER", color:"orange"}
-return {state:"OBESE", color:"red"}
+bmi = Number(bmi)
+
+if(bmi < 18.5){
+return {text:"Underweight", color:"yellow"}
 }
-
-/* ================= WEIGHT HISTORY ================= */
-function updateHistory(profile){
-
-let history = profile.weightHistory || []
-
-history.push({
-date: new Date().toISOString().split("T")[0],
-weight: num(profile.weight)
-})
-
-profile.weightHistory = history.slice(-30)
-
-return profile
+if(bmi < 25){
+return {text:"Normal", color:"green"}
+}
+if(bmi < 30){
+return {text:"Overweight", color:"yellow"}
+}
+return {text:"Obese", color:"red"}
 }
 
 /* ================= SAVE ================= */
-function saveProfile(profile){
-
-let list = getProfiles()
-
-let idx = list.findIndex(p => p.id === profile.id)
-
-if(idx >= 0){
-list[idx] = profile
-}else{
-list.push(profile)
-}
-
+function saveProfiles(list){
 localStorage.setItem("profiles", JSON.stringify(list))
-localStorage.setItem("activeProfile", JSON.stringify(profile))
-
-window.dispatchEvent(new Event("profileUpdated"))
 }
 
-/* ================= CREATE / UPDATE ================= */
-function createOrUpdateProfile(){
-
-let name = document.getElementById("name").value.trim()
-let height = num(document.getElementById("height").value)
-let weight = num(document.getElementById("weight").value)
-let goal = document.getElementById("goal").value.trim()
-
-if(!name){
-alert("Name required")
-return
-}
+/* ================= DELETE SAFE ================= */
+function deleteProfile(){
 
 let p = getActiveProfile()
+if(p.id === "guest") return
 
-if(p.id === "guest"){
-p.id = Date.now().toString()
+let list = getProfiles().filter(x => x.id !== p.id)
+
+saveProfiles(list)
+
+let fallback = list[0] || {
+id:"guest",
+name:"Guest",
+height:170,
+weight:70
 }
 
-p.name = name
-p.height = height || 170
-p.weight = weight || 70
-p.goal = goal || "maintain"
-
-p.bmi = calcBMI(p.height, p.weight)
-p.updatedAt = new Date().toISOString()
-
-if(!p.createdAt){
-p.createdAt = p.updatedAt
-}
-
-p = updateHistory(p)
-
-saveProfile(p)
+localStorage.setItem("activeProfile", JSON.stringify(fallback))
 
 render()
 }
@@ -182,79 +164,19 @@ render()
 function switchProfile(id){
 
 let p = getProfiles().find(x => x.id === id)
+if(!p) return
 
-if(p){
 localStorage.setItem("activeProfile", JSON.stringify(p))
 render()
 }
-}
 
-/* ================= DELETE SAFE ================= */
-function deleteProfile(id){
-
-if(id === "guest") return
-
-let list = getProfiles().filter(p => p.id !== id)
-
-localStorage.setItem("profiles", JSON.stringify(list))
-
-let active = getActiveProfile()
-
-if(active.id === id){
-
-let fallback = list[0] || {
-id:"guest",
-name:"Guest",
-height:170,
-weight:70,
-goal:"maintain",
-weightHistory:[]
-}
-
-localStorage.setItem("activeProfile", JSON.stringify(fallback))
-}
-
-render()
-}
-
-/* ================= AI PROFILE ENGINE (PHASE 4 CORE) ================= */
-function generateAIProfile(p){
-
-let bmi = calcBMI(p.height, p.weight)
-let health = classifyHealth(bmi)
-
-let trend = "stable"
-
-if(p.weightHistory?.length > 3){
-let last = p.weightHistory.slice(-3)
-let diff = last[2].weight - last[0].weight
-trend = diff > 1 ? "gaining"
-: diff < -1 ? "losing"
-: "stable"
-}
-
-return {
-bmi,
-state: health.state,
-trend,
-goal: p.goal
-}
-}
-
-/* ================= RENDER HISTORY ================= */
-function renderHistory(){
+/* ================= DETAIL PAGE ================= */
+function goDetail(){
 
 let p = getActiveProfile()
-let box = document.getElementById("history")
 
-if(!p.weightHistory?.length){
-box.innerHTML = "<p>No history</p>"
-return
-}
-
-box.innerHTML = p.weightHistory.map(h =>
-`📅 ${h.date} — ${h.weight} kg`
-).join("<br>")
+// optional future AI usage
+location.href = `profile-detail.html?id=${p.id}`
 }
 
 /* ================= RENDER ================= */
@@ -263,51 +185,53 @@ function render(){
 let p = getActiveProfile()
 
 let bmi = calcBMI(p.height, p.weight)
-let health = classifyHealth(bmi)
-let ai = generateAIProfile(p)
+let status = bmiStatus(bmi)
 
-document.getElementById("activeProfile").innerHTML =
-`👤 <b>${p.name}</b><br>
-Height: ${p.height} cm<br>
-Weight: ${p.weight} kg<br>
-BMI: ${bmi}<br>
-Status: <b>${health.state}</b><br>
-Goal: ${p.goal}`
+document.getElementById("name").innerText =
+`👤 ${p.name}`
 
-document.getElementById("aiProfile").innerHTML =
-`🧠 AI Insight: ${ai.trend} trend detected`
+document.getElementById("heightWeight").innerText =
+`Height: ${p.height} cm | Weight: ${p.weight} kg`
 
-let list = document.getElementById("profileList")
+document.getElementById("bmi").innerText =
+`BMI: ${bmi}`
+
+document.getElementById("bmiStatus").innerHTML =
+`<span class="badge ${status.color}">
+${status.text}
+</span>`
+
+let list = document.getElementById("list")
 list.innerHTML = ""
 
 getProfiles().forEach(x=>{
 
 let bmiVal = calcBMI(x.height, x.weight)
+let status = bmiStatus(bmiVal)
 
 let div = document.createElement("div")
-div.className="card"
+div.className = "card"
 
 div.innerHTML = `
 <b>${x.name}</b><br>
-BMI: ${bmiVal}<br>
-Goal: ${x.goal || "none"}<br><br>
+BMI: ${bmiVal} 
+<span class="badge ${status.color}">
+${status.text}
+</span>
+<br><br>
 
 <button onclick="switchProfile('${x.id}')">Switch</button>
-<button onclick="deleteProfile('${x.id}')" style="background:red;color:white">
+<button onclick="deleteProfile()" style="background:red;color:white">
 Delete
 </button>
 `
 
 list.appendChild(div)
 })
-
-renderHistory()
 }
 
 /* ================= INIT ================= */
 render()
-
-window.addEventListener("profileUpdated", render)
 
 </script>
 
