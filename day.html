@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Day Analysis v11.1</title>
+<title>Day Analysis v11.5 (Phase 6 Sync FIXED)</title>
 
 <link rel="stylesheet" href="style.css">
 
@@ -61,10 +61,16 @@ border-top:1px solid #eee;
 <p id="profile">Loading profile...</p>
 </div>
 
-<!-- SUMMARY -->
+<!-- SUMMARY (PHASE 6 GLOBAL SYNC) -->
 <div class="card">
-<h3>🔥 Daily Summary</h3>
-<p id="total">0 kcal</p>
+<h3>🔥 Daily Macro Summary</h3>
+
+<p id="calories">Calories: 0 kcal</p>
+<p id="protein">Protein: 0 g</p>
+<p id="carbs">Carbs: 0 g</p>
+<p id="fat">Fat: 0 g</p>
+
+<p id="mealScore">Meal Score: --</p>
 <p id="risk"></p>
 </div>
 
@@ -96,32 +102,44 @@ weight:70
 }
 }
 
-/* ================= RISK ENGINE ================= */
-function getRisk(total,bmi){
-
-let score = 100
-
-if(total > 2800) score -= 40
-else if(total > 2400) score -= 25
-else if(total > 2000) score -= 10
-
-if(bmi > 28) score -= 20
-
-if(score >= 80) return {text:"🟢 LOW",cls:"green",score}
-if(score >= 60) return {text:"🟡 MEDIUM",cls:"yellow",score}
-return {text:"🔴 HIGH",cls:"red",score}
+/* ================= SAFE LOGS ================= */
+async function safeFoodLogs(date){
+if(typeof getFoodLogs === "undefined") return []
+const p = getProfile()
+const logs = await getFoodLogs(date) || []
+return logs.filter(f => !f.userId || f.userId === p.id)
 }
 
-/* ================= MEAL CLASSIFY ================= */
-function classify(food){
+/* ================= DAILY GLOBAL SYNC ================= */
+async function getDailyMacro(date){
 
-food = (food || "").toLowerCase()
+const foods = await safeFoodLogs(date)
 
-if(food.includes("egg") || food.includes("bread")) return "Breakfast"
-if(food.includes("rice") || food.includes("chicken") || food.includes("noodle")) return "Lunch"
-if(food.includes("snack") || food.includes("chips")) return "Snack"
+let calories = 0
+let protein = 0
+let carbs = 0
+let fat = 0
 
-return "Dinner"
+foods.forEach(f=>{
+calories += Number(f.calories || 0)
+protein += Number(f.protein || 0)
+carbs += Number(f.carbs || 0)
+fat += Number(f.fat || 0)
+})
+
+let ai = (typeof getAIInsight !== "undefined")
+? getAIInsight(calories, 22)
+: {score:0, mealScore:0, risk:{level:"🟢"}}
+
+return {
+calories,
+protein,
+carbs,
+fat,
+score: ai.score,
+mealScore: ai.mealScore || 0,
+risk: ai.risk.level
+}
 }
 
 /* ================= LOAD ================= */
@@ -135,25 +153,41 @@ document.getElementById("profile").innerText =
 document.getElementById("title").innerText =
 `📅 ${date}`
 
-let foods = []
+const data = await getDailyMacro(date)
 
-try{
-foods = await getFoodLogs(date) || []
-}catch(e){
-foods = []
-}
+if(data.calories === 0){
 
-foods = foods.filter(f =>
-!f.userId || f.userId === profile.id
-)
-
-if(!foods.length){
 document.getElementById("meals").innerHTML = "No data"
 document.getElementById("ai").innerText = "No analysis"
 return
 }
 
-let total = 0
+/* ================= UI MACROS ================= */
+document.getElementById("calories").innerText =
+`Calories: ${data.calories} kcal`
+
+document.getElementById("protein").innerText =
+`Protein: ${data.protein} g`
+
+document.getElementById("carbs").innerText =
+`Carbs: ${data.carbs} g`
+
+document.getElementById("fat").innerText =
+`Fat: ${data.fat} g`
+
+document.getElementById("mealScore").innerText =
+`Meal Score: ${data.mealScore}/100`
+
+document.getElementById("risk").innerHTML =
+`<span class="tag ${
+data.risk==="HIGH"?"red":
+data.risk==="MEDIUM"?"yellow":"green"
+}">
+${data.risk}
+</span>`
+
+/* ================= GROUP FOOD ================= */
+const foods = await safeFoodLogs(date)
 
 let grouped = {
 Breakfast:[],
@@ -163,25 +197,15 @@ Snack:[]
 }
 
 foods.forEach(f=>{
-total += Number(f.calories || 0)
-grouped[classify(f.food)].push(f)
+let cat =
+(f.food||"").toLowerCase().includes("egg") ? "Breakfast"
+: (f.food||"").toLowerCase().includes("rice") ? "Lunch"
+: (f.food||"").toLowerCase().includes("snack") ? "Snack"
+: "Dinner"
+
+grouped[cat].push(f)
 })
 
-let bmi = profile.weight / ((profile.height/100)*(profile.height/100))
-bmi = bmi.toFixed(1)
-
-let risk = getRisk(total,bmi)
-
-/* TOTAL */
-document.getElementById("total").innerText =
-`${total} kcal`
-
-document.getElementById("risk").innerHTML =
-`<span class="tag ${risk.cls}">
-${risk.text} | Score ${risk.score}
-</span>`
-
-/* MEALS */
 let html = ""
 
 Object.keys(grouped).forEach(k=>{
@@ -203,25 +227,16 @@ html += `</div>`
 
 document.getElementById("meals").innerHTML = html
 
-/* AI ANALYSIS */
-let ai = ""
+/* ================= AI ANALYSIS ================= */
+document.getElementById("ai").innerText =
+data.risk==="HIGH"
+?"High intake detected. Reduce carbs and processed food."
+:data.risk==="MEDIUM"
+?"Moderate intake. Maintain balance."
+:"Healthy balance maintained."
 
-if(total > 2800){
-ai = "Severe overconsumption detected. High risk for fat storage."
-}
-else if(total > 2400){
-ai = "Above optimal intake. Reduce carbs and processed food."
-}
-else if(total > 2000){
-ai = "Slightly high intake. Maintain balance with activity."
-}
-else{
-ai = "Healthy intake. Good energy balance maintained."
-}
-
-document.getElementById("ai").innerText = ai
 document.getElementById("aiScore").innerText =
-`Daily Health Score: ${risk.score}/100`
+`Daily Health Score: ${data.score}/100`
 }
 
 load()
