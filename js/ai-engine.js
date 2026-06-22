@@ -1,6 +1,36 @@
 //////////////////////////////
-// 🧠 AI ENGINE v11.5 FULL FIXED (PHASE 6 READY - FINAL)
+// 🧠 AI ENGINE v11.6 (PHASE D - MEMORY UPGRADE)
 //////////////////////////////
+
+/* =========================
+📡 SUPABASE MEMORY LAYER (NEW)
+========================= */
+async function getUserFoodHistory(userId, limit = 30){
+
+try{
+
+if(typeof SUPABASE_URL === "undefined") return []
+
+const res = await fetch(
+`${SUPABASE_URL}/rest/v1/food_logs?userId=eq.${userId}&order=createdAt.desc&limit=${limit}`,
+{
+method:"GET",
+headers:{
+apikey: SUPABASE_KEY,
+Authorization:"Bearer " + SUPABASE_KEY
+}
+}
+)
+
+if(!res.ok) return []
+
+return await res.json()
+
+}catch(e){
+console.log("history fetch error:", e)
+return []
+}
+}
 
 /* =========================
 🍜 FOOD NORMALIZATION LAYER
@@ -32,7 +62,7 @@ return foodText
 }
 
 /* =========================
-🍜 MULTI FOOD PARSER (SAFE FIX)
+🍜 PARSER
 ========================= */
 function parseFoodAI(text){
 
@@ -85,7 +115,7 @@ return Math.max(0, Math.min(100, score))
 }
 
 /* =========================
-⚠️ UNIFIED RISK ENGINE (FIXED)
+⚠️ RISK ENGINE
 ========================= */
 function getRiskLevel(calories, bmi){
 
@@ -113,17 +143,14 @@ score
 }
 
 /* =========================
-🍽 MEAL SCORE (IMPROVED BALANCE)
+🍽 MEAL SCORE
 ========================= */
 function calculateMealScore(items){
 
 if(!items || items.length === 0) return 0
 
 let score = 100
-
-let protein = 0
-let carbs = 0
-let fat = 0
+let protein = 0, carbs = 0, fat = 0
 
 items.forEach(i=>{
 
@@ -145,7 +172,7 @@ return Math.max(0, Math.min(100, score))
 }
 
 /* =========================
-📊 MACRO SCORE (PHASE 6 FIXED)
+📊 MACROS
 ========================= */
 function calculateMacroScores(items){
 
@@ -177,7 +204,7 @@ fatScore: Math.min(100, fat)
 }
 
 /* =========================
-🍜 CALORIE SPLIT ENGINE
+🍜 SPLIT CALORIES
 ========================= */
 function splitCalories(foods, totalCalories){
 
@@ -196,19 +223,12 @@ calories: Math.round(avg)
 ========================= */
 function detectAnomaly(calories, history = []){
 
-if(!history || history.length < 3){
-return "insufficient data"
-}
+if(!history || history.length < 3) return "insufficient data"
 
-let avg = history.reduce((a,b)=>a+b,0) / history.length
+let avg = history.reduce((a,b)=>a+b,0)/history.length
 
-if(calories > avg * 1.8){
-return "possible overeating detected"
-}
-
-if(calories < avg * 0.5){
-return "unusually low intake detected"
-}
+if(calories > avg * 1.8) return "possible overeating detected"
+if(calories < avg * 0.5) return "unusually low intake detected"
 
 return "normal"
 }
@@ -222,23 +242,23 @@ let risk = getRiskLevel(calories, bmi)
 let anomaly = detectAnomaly(calories, history)
 
 if(risk.level === "HIGH"){
-return "High risk detected. Reduce carbs/sugar, prioritize protein, and walk 30–45 min."
+return "High risk detected. Reduce carbs/sugar, increase protein, walk 30–45 min."
 }
 
 if(risk.level === "MEDIUM"){
 if(anomaly.includes("overeating")){
-return "Above normal intake trend. Consider lighter meals tomorrow."
+return "Above normal trend detected. Reduce portion tomorrow."
 }
-return "Moderate intake. Maintain balance and avoid late-night eating."
+return "Moderate intake. Maintain balance."
 }
 
-return "Healthy balance. Keep current routine and hydration."
+return "Healthy pattern. Keep routine."
 }
 
 /* =========================
-🧠 FINAL AI ENGINE v11.5 (PHASE 6 READY FIXED)
+🧠 MAIN AI ENGINE v11.6 (MEMORY UPGRADE)
 ========================= */
-function getAIInsight(calories, bmi, history = [], foodText = ""){
+async function getAIInsight(calories, bmi, history = [], foodText = "", userId = null){
 
 let foods = parseFoodAI(foodText)
 let split = splitCalories(foods, calories)
@@ -255,12 +275,36 @@ let macro = calculateMacroScores(items)
 let baseScore = calculateHealthScore(calories, bmi)
 let mealScore = calculateMealScore(items)
 
-/* FINAL SCORE (SAFE CLAMPED) */
+/* =========================
+🧠 MEMORY INJECTION (NEW)
+========================= */
+let memoryTrend = 0
+
+if(userId && typeof getUserFoodHistory !== "undefined"){
+
+let historyData = await getUserFoodHistory(userId)
+
+if(historyData && historyData.length > 3){
+
+let last7 = historyData.slice(0,7).map(x=>x.calories)
+
+let avg = last7.reduce((a,b)=>a+b,0)/last7.length
+
+if(calories > avg * 1.2) memoryTrend = -5
+else if(calories < avg * 0.8) memoryTrend = +5
+else memoryTrend = +2
+}
+}
+
+/* =========================
+FINAL SCORE (WITH MEMORY)
+========================= */
 let finalScore =
 (baseScore * 0.4) +
 (mealScore * 0.4) +
 ((macro.proteinScore + macro.carbScore + macro.fatScore)/3 * 0.2)
 
+finalScore += memoryTrend
 finalScore = Math.max(0, Math.min(100, finalScore))
 
 return {
@@ -275,6 +319,8 @@ risk: getRiskLevel(calories, bmi),
 
 advice: getAdvice(calories, bmi, history),
 
-foods: items
+foods: items,
+
+memoryTrend
 }
 }
