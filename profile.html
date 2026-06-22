@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Profile Lite v12.1 (Cloud Sync Ready)</title>
+<title>Profile Lite v12.2 (Stable Cloud Sync)</title>
 
 <link rel="stylesheet" href="style.css">
 
@@ -26,9 +26,16 @@ border-radius:6px;
 cursor:pointer;
 }
 
-.small{font-size:13px;opacity:0.75}
+.small{
+font-size:13px;
+opacity:0.75;
+}
 
-.row{display:flex;gap:10px;flex-wrap:wrap}
+.row{
+display:flex;
+gap:10px;
+flex-wrap:wrap;
+}
 
 .badge{
 display:inline-block;
@@ -54,7 +61,7 @@ margin-top:5px;
 <a href="profile.html">Profile</a>
 </div>
 
-<h2 class="center">👤 Profile Lite (Cloud Sync v12.1)</h2>
+<h2 class="center">👤 Profile Lite v12.2 (Cloud Sync Stable)</h2>
 
 <!-- ACTIVE PROFILE -->
 <div class="card">
@@ -66,10 +73,20 @@ margin-top:5px;
 <p id="bmiStatus"></p>
 
 <div class="row">
-<button onclick="goDetail()">View Full Profile →</button>
+
+<!-- ⭐ NEW BUTTON (你要的) -->
+<button onclick="location.href='create-profile.html'">
+➕ Create New Profile
+</button>
+
+<button onclick="goDetail()">
+View Full Profile →
+</button>
+
 <button onclick="deleteProfile()" style="background:red;color:white">
 Delete Profile
 </button>
+
 </div>
 
 <p class="small">Lite mode: fast UI + cloud sync enabled</p>
@@ -120,40 +137,32 @@ return {text:"Obese", color:"red"}
 }
 
 //////////////////////////////
-// CLOUD SYNC HELPERS (SAFE)
+// CLOUD SAFETY WRAPPER
 //////////////////////////////
-
-async function syncToCloud(profile){
+async function safeCloud(fn, arg){
 
 try{
-if(typeof upsertProfile === "function"){
-await upsertProfile(profile)
+if(typeof fn === "function"){
+return await fn(arg)
 }
 }catch(e){
-console.log("cloud sync failed:", e)
+console.log("cloud error:", e)
 }
+}
+
+//////////////////////////////
+// CLOUD SYNC
+//////////////////////////////
+async function syncToCloud(profile){
+await safeCloud(upsertProfile, profile)
 }
 
 async function syncDeleteCloud(id){
-
-try{
-if(typeof deleteProfileCloud === "function"){
-await deleteProfileCloud(id)
-}
-}catch(e){
-console.log("delete cloud failed:", e)
-}
+await safeCloud(deleteProfileCloud, id)
 }
 
 //////////////////////////////
-// SAVE (LOCAL + CLOUD)
-//////////////////////////////
-function saveProfiles(list){
-localStorage.setItem("profiles", JSON.stringify(list))
-}
-
-//////////////////////////////
-// DELETE SAFE + CLOUD
+// DELETE PROFILE (LOCAL + CLOUD)
 //////////////////////////////
 async function deleteProfile(){
 
@@ -163,7 +172,8 @@ if(p.id === "guest") return
 await syncDeleteCloud(p.id)
 
 let list = getProfiles().filter(x => x.id !== p.id)
-saveProfiles(list)
+
+localStorage.setItem("profiles", JSON.stringify(list))
 
 let fallback = list[0] || {
 id:"guest",
@@ -178,7 +188,7 @@ render()
 }
 
 //////////////////////////////
-// SWITCH (UNCHANGED)
+// SWITCH PROFILE
 //////////////////////////////
 function switchProfile(id){
 
@@ -198,20 +208,24 @@ location.href = `profile-detail.html?id=${p.id}`
 }
 
 //////////////////////////////
-// RENDER (UNCHANGED LOGIC + SAFE CLOUD HOOK)
+// RENDER
 //////////////////////////////
 function render(){
 
 let p = getActiveProfile()
 
+if(!p){
+p = {name:"Guest",height:170,weight:70}
+}
+
 let bmi = calcBMI(p.height, p.weight)
 let status = bmiStatus(bmi)
 
 document.getElementById("name").innerText =
-`👤 ${p.name}`
+`👤 ${p.name || "Guest"}`
 
 document.getElementById("heightWeight").innerText =
-`Height: ${p.height} cm | Weight: ${p.weight} kg`
+`Height: ${p.height || 170} cm | Weight: ${p.weight || 70} kg`
 
 document.getElementById("bmi").innerText =
 `BMI: ${bmi}`
@@ -233,7 +247,7 @@ let div = document.createElement("div")
 div.className = "card"
 
 div.innerHTML = `
-<b>${x.name}</b><br>
+<b>${x.name || "Unnamed"}</b><br>
 BMI: ${bmiVal}
 <span class="badge ${status.color}">
 ${status.text}
