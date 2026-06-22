@@ -100,9 +100,29 @@ display:inline-block;
 
 <script>
 
+/* ================= 🔥 FIX: REAL TIME CLOCK ================= */
+function updateClock(){
+
+const now = new Date()
+
+const date = now.toLocaleDateString()
+const time = now.toLocaleTimeString()
+
+const dateEl = document.getElementById("date")
+const timeEl = document.getElementById("time")
+
+if(dateEl) dateEl.innerText = date
+if(timeEl) timeEl.innerText = time
+}
+
 /* ================= BASIC ================= */
 function profile(){
-return JSON.parse(localStorage.getItem("activeProfile")) || {height:170,weight:70,id:"guest",name:"Guest"}
+return JSON.parse(localStorage.getItem("activeProfile")) || {
+height:170,
+weight:70,
+id:"guest",
+name:"Guest"
+}
 }
 
 function bmi(h,w){
@@ -138,7 +158,7 @@ out.push({date,cal,p,c,f})
 return out
 }
 
-/* ================= AI SIMPLE LEARN ================= */
+/* ================= AI ================= */
 function learnPattern(data){
 
 let proteinDays=0
@@ -151,16 +171,6 @@ return {
 prefProtein: proteinDays>=4,
 trend: data[data.length-1].cal > data[0].cal
 }
-}
-
-/* ================= SIMPLE PREDICTION ================= */
-function predict(data,key){
-
-let sum=0
-for(let i=1;i<data.length;i++){
-sum += data[i][key]-data[i-1][key]
-}
-return data[data.length-1][key] + sum/6
 }
 
 /* ================= RISK ================= */
@@ -195,12 +205,11 @@ async function load(){
 let p=profile()
 
 document.getElementById("profile").innerText=p.name
-
 document.getElementById("bmi").innerText=bmi(p.height,p.weight)
 
 let data=await getData7()
 
-let today=data[data.length-1]
+let today=data[data.length-1] || {cal:0,p:0,c:0,f:0}
 
 document.getElementById("cal").innerText=`Calories ${today.cal}`
 document.getElementById("p").innerText=`Protein ${today.p}`
@@ -237,7 +246,12 @@ risk:d.cal>3000?3:d.cal>2400?2:1
 draw("riskChart",riskData,"risk")
 }
 
+/* ================= INIT ================= */
 load()
+
+/* 🔥 FIX: REAL TIME CLOCK START */
+updateClock()
+setInterval(updateClock, 1000)
 
 </script>
 
