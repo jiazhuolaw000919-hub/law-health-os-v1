@@ -67,7 +67,7 @@ margin-top:5px;
 
 <div class="row">
 
-<!-- ✅ FIXED CREATE BUTTON (NO 404 EVER) -->
+<!-- ✅ FIXED CREATE BUTTON -->
 <button onclick="goCreateProfile()">
 ➕ Create New Profile
 </button>
@@ -94,25 +94,11 @@ Delete Profile
 <script>
 
 //////////////////////////////
-// 🔥 NAVIGATION FIX (NO 404 GUARANTEE)
+// NAVIGATION (FIXED 100%)
 //////////////////////////////
 function goCreateProfile(){
-
-console.log("Opening create profile page...")
-
-const routes = [
-"./create-profile.html",
-"./create.html"
-]
-
-// try first valid route
-for(let r of routes){
-window.location.href = r
-return
-}
-
-// ultimate fallback
-alert("Create profile page not found. Please check file name.")
+console.log("→ go profile-create.html")
+window.location.href = "./profile-create.html"
 }
 
 //////////////////////////////
@@ -152,7 +138,7 @@ return {text:"Obese", color:"red"}
 }
 
 //////////////////////////////
-// CLOUD WRAPPER (SAFE)
+// CLOUD WRAPPER
 //////////////////////////////
 async function safeCloud(fn, arg){
 try{
@@ -173,18 +159,24 @@ await safeCloud(deleteProfileCloud, id)
 }
 
 //////////////////////////////
-// DELETE PROFILE
+// DELETE (FIXED - DELETE BY ID)
 //////////////////////////////
-async function deleteProfile(){
+async function deleteProfileById(id){
 
-let p = getActiveProfile()
-if(p.id === "guest") return
+if(id === "guest"){
+alert("Guest cannot be deleted")
+return
+}
 
-await syncDeleteCloud(p.id)
+await syncDeleteCloud(id)
 
-let list = getProfiles().filter(x => x.id !== p.id)
+let list = getProfiles().filter(x => x.id !== id)
 
 localStorage.setItem("profiles", JSON.stringify(list))
+
+let active = getActiveProfile()
+
+if(active.id === id){
 
 let fallback = list[0] || {
 id:"guest",
@@ -194,12 +186,13 @@ weight:70
 }
 
 localStorage.setItem("activeProfile", JSON.stringify(fallback))
+}
 
 render()
 }
 
 //////////////////////////////
-// SWITCH PROFILE
+// SWITCH
 //////////////////////////////
 function switchProfile(id){
 
@@ -215,7 +208,7 @@ render()
 //////////////////////////////
 function goDetail(){
 let p = getActiveProfile()
-location.href = `profile-detail.html?id=${p.id}`
+window.location.href = `./profile-detail.html?id=${encodeURIComponent(p.id)}`
 }
 
 //////////////////////////////
@@ -225,18 +218,14 @@ function render(){
 
 let p = getActiveProfile()
 
-if(!p){
-p = {name:"Guest",height:170,weight:70}
-}
-
 let bmi = calcBMI(p.height, p.weight)
 let status = bmiStatus(bmi)
 
 document.getElementById("name").innerText =
-`👤 ${p.name || "Guest"}`
+`👤 ${p.name}`
 
 document.getElementById("heightWeight").innerText =
-`Height: ${p.height || 170} cm | Weight: ${p.weight || 70} kg`
+`Height: ${p.height} cm | Weight: ${p.weight} kg`
 
 document.getElementById("bmi").innerText =
 `BMI: ${bmi}`
@@ -258,7 +247,7 @@ let div = document.createElement("div")
 div.className = "card"
 
 div.innerHTML = `
-<b>${x.name || "Unnamed"}</b><br>
+<b>${x.name}</b><br>
 BMI: ${bmiVal}
 <span class="badge ${status.color}">
 ${status.text}
@@ -266,7 +255,7 @@ ${status.text}
 <br><br>
 
 <button onclick="switchProfile('${x.id}')">Switch</button>
-<button onclick="deleteProfile()" style="background:red;color:white">
+<button onclick="deleteProfileById('${x.id}')" style="background:red;color:white">
 Delete
 </button>
 `
@@ -275,9 +264,6 @@ list.appendChild(div)
 })
 }
 
-//////////////////////////////
-// INIT
-//////////////////////////////
 render()
 
 </script>
