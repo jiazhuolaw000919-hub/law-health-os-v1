@@ -48,10 +48,7 @@ return new Set(JSON.parse(localStorage.getItem(DELETE_GUARD_KEY)) || [])
 }
 
 function saveDeletedSet(set){
-localStorage.setItem(
-DELETE_GUARD_KEY,
-JSON.stringify(Array.from(set))
-)
+localStorage.setItem(DELETE_GUARD_KEY, JSON.stringify(Array.from(set)))
 }
 
 function markDeleted(id){
@@ -72,7 +69,7 @@ return list.filter(i => i && i.id && !isDeleted(i.id))
 }
 
 //////////////////////////////
-// 🍽 FOOD LOG READ (UPDATED v3)
+// 🍽 FOOD LOG READ
 //////////////////////////////
 async function getFoodLogs(date){
 
@@ -93,7 +90,7 @@ return filterDeleted(data)
 }
 
 //////////////////////////////
-// 🍽 FOOD LOG WRITE (PHASE 3 MACROS)
+// 🍽 FOOD LOG WRITE
 //////////////////////////////
 async function saveFood(data){
 
@@ -102,13 +99,10 @@ const profile = getActiveProfile()
 const payload = {
 userId: profile.id,
 food: data.food || "unknown",
-
-// 🔥 Phase 3 macros
 calories: Number(data.calories || 0),
 protein: Number(data.protein || 0),
 carbs: Number(data.carbs || 0),
 fat: Number(data.fat || 0),
-
 date: data.date,
 createdAt: new Date().toISOString()
 }
@@ -126,7 +120,7 @@ body: JSON.stringify(payload)
 }
 
 //////////////////////////////
-// 📊 PHASE 2 — 7 DAY FOOD ANALYTICS
+// 📊 7 DAY STATS
 //////////////////////////////
 async function getFoodStats7Days(){
 
@@ -140,10 +134,7 @@ let date = d.toISOString().split("T")[0]
 let logs = await getFoodLogs(date)
 
 let total = 0
-
-logs.forEach(l=>{
-total += Number(l.calories || 0)
-})
+logs.forEach(l=> total += Number(l.calories || 0))
 
 arr.push(total)
 }
@@ -161,12 +152,11 @@ min
 }
 
 //////////////////////////////
-// ❌ SAFE DELETE FOOD
+// ❌ DELETE FOOD
 //////////////////////////////
 async function deleteFood(foodId){
 
 const profile = getActiveProfile()
-
 if(!foodId) return null
 
 markDeleted(foodId)
@@ -174,49 +164,30 @@ markDeleted(foodId)
 const url =
 `${SUPABASE_URL}/rest/v1/food_logs?id=eq.${foodId}&userId=eq.${profile.id}`
 
-const res = await safeFetch(url,{
+return await safeFetch(url,{
 method:"DELETE",
 headers:{
 apikey: SUPABASE_KEY,
 Authorization: "Bearer " + SUPABASE_KEY
 }
 })
-
-setTimeout(()=>{
-if(typeof syncProfiles === "function"){
-syncProfiles()
-}
-},400)
-
-return res
 }
 
 //////////////////////////////
-// CLOUD PROFILES
+// =========================
+// 🧠 PROFILE CLOUD FUNCTIONS (NEW - PHASE B)
+// =========================
 //////////////////////////////
-async function getProfilesCloud(){
 
-const data = await safeFetch(`${SUPABASE_URL}/rest/v1/profiles`,{
-method:"GET",
-headers:{
-apikey: SUPABASE_KEY,
-Authorization: "Bearer " + SUPABASE_KEY
-}
-})
-
-return filterDeleted(data)
-}
-
-//////////////////////////////
-// PROFILE UPSERT
-//////////////////////////////
-async function saveProfile(profile){
+// 1️⃣ UPSERT PROFILE (FIXED - REAL UPSERT)
+async function upsertProfile(profile){
 
 const payload = {
 id: profile.id,
 name: profile.name,
 height: Number(profile.height || 170),
 weight: Number(profile.weight || 70),
+goal: profile.goal || "maintain",
 bmi: Number(profile.bmi || 0),
 weightHistory: profile.weightHistory || [],
 updatedAt: new Date().toISOString()
@@ -234,14 +205,64 @@ body: JSON.stringify(payload)
 })
 }
 
+// 2️⃣ FETCH ALL PROFILES
+async function fetchProfiles(){
+
+const data = await safeFetch(`${SUPABASE_URL}/rest/v1/profiles`,{
+method:"GET",
+headers:{
+apikey: SUPABASE_KEY,
+Authorization: "Bearer " + SUPABASE_KEY
+}
+})
+
+return filterDeleted(data)
+}
+
+// 3️⃣ FETCH SINGLE PROFILE
+async function fetchProfile(id){
+
+const data = await safeFetch(
+`${SUPABASE_URL}/rest/v1/profiles?id=eq.${id}`,
+{
+method:"GET",
+headers:{
+apikey: SUPABASE_KEY,
+Authorization: "Bearer " + SUPABASE_KEY
+}
+}
+)
+
+return data?.[0] || null
+}
+
+// 4️⃣ DELETE PROFILE CLOUD
+async function deleteProfileCloud(id){
+
+if(!id) return null
+
+markDeleted(id)
+
+return await safeFetch(
+`${SUPABASE_URL}/rest/v1/profiles?id=eq.${id}`,
+{
+method:"DELETE",
+headers:{
+apikey: SUPABASE_KEY,
+Authorization: "Bearer " + SUPABASE_KEY
+}
+}
+)
+}
+
 //////////////////////////////
-// 🔄 SYNC ENGINE
+// 🔄 SYNC ENGINE (FIXED)
 //////////////////////////////
 async function syncProfiles(){
 
 try{
 
-let cloud = await getProfilesCloud()
+let cloud = await fetchProfiles()
 let local = JSON.parse(localStorage.getItem("profiles")) || []
 
 cloud = filterDeleted(cloud)
@@ -249,13 +270,14 @@ local = filterDeleted(local)
 
 let map = new Map()
 
+// merge strategy (cloud + local)
 ;[...local, ...cloud].forEach(p=>{
-if(p && p.id && !isDeleted(p.id)){
+if(!p || !p.id || isDeleted(p.id)) return
+
 map.set(p.id,{
-...map.get(p.id),
+...(map.get(p.id) || {}),
 ...p
 })
-}
 })
 
 let merged = Array.from(map.values())
@@ -264,24 +286,19 @@ localStorage.setItem("profiles", JSON.stringify(merged))
 
 let active = getActiveProfile()
 
-if(active && cloud.length){
+if(active?.id){
 
-let server = cloud.find(p => p.id === active.id)
+let server = merged.find(p => p.id === active.id)
 
-if(server){
-
-if(server.updatedAt && active.updatedAt){
+if(server?.updatedAt && active?.updatedAt){
 
 if(new Date(server.updatedAt) > new Date(active.updatedAt)){
 localStorage.setItem("activeProfile", JSON.stringify(server))
 }
 
-}else{
+}else if(server){
 localStorage.setItem("activeProfile", JSON.stringify(server))
 }
-
-}
-
 }
 
 }catch(e){
@@ -290,7 +307,7 @@ console.log("sync error:", e)
 }
 
 //////////////////////////////
-// REALTIME ENGINE
+// REALTIME ENGINE (FIXED)
 //////////////////////////////
 let realtimeChannel = null
 let realtimeCooldown = false
@@ -313,6 +330,7 @@ table:'food_logs'
 
 if(realtimeCooldown) return
 realtimeCooldown = true
+
 setTimeout(()=> realtimeCooldown=false, 800)
 
 syncProfiles()
@@ -337,7 +355,7 @@ window.dispatchEvent(new Event("profileSyncUpdate"))
 initRealtime()
 
 //////////////////////////////
-// AUTO SYNC
+// AUTO SYNC LOOP
 //////////////////////////////
 let syncLock = false
 
