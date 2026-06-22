@@ -1,230 +1,273 @@
 //////////////////////////////
-// 🧠 AI VISION v11.5 (PHASE 4)
+// 🧠 AI ENGINE v11.5 FULL SCORE SYSTEM
 //////////////////////////////
 
 /* =========================
-IMAGE PREVIEW HELPER
+🍜 FOOD NORMALIZATION LAYER
 ========================= */
-function previewFoodImage(file, callback){
+function normalizeFoodAI(foodText){
 
-if(!file) return
-
-const reader = new FileReader()
-
-reader.onload = function(e){
-
-const img = document.createElement("img")
-img.src = e.target.result
-img.style.maxWidth = "100%"
-img.style.borderRadius = "10px"
-img.style.marginTop = "10px"
-
-const container = document.getElementById("aiResult")
-
-if(container){
-container.innerHTML = ""
-container.appendChild(img)
+if(!foodText){
+return "unknown food"
 }
 
-if(callback) callback(e.target.result)
-}
+foodText = foodText.toLowerCase()
 
-reader.readAsDataURL(file)
-}
-
-//////////////////////////////
-// 🧠 MAIN VISION ENGINE
-//////////////////////////////
-async function analyzeFoodImage(base64Image){
-
-try{
-
-const response = await fetch("https://api.openai.com/v1/chat/completions",{
-method:"POST",
-headers:{
-"Content-Type":"application/json",
-"Authorization":"Bearer YOUR_OPENAI_API_KEY"
-},
-body:JSON.stringify({
-model:"gpt-4o-mini",
-
-messages:[
-{
-role:"system",
-content:`
-You are a professional nutrition AI.
-Return STRICT JSON only.
-
-Detect ALL foods in the image.
-
-Each food must include:
-- food name
-- calories estimate
-- protein (g)
-- carbs (g)
-- fat (g)
-- portion size estimate
-- cuisine type
-- confidence (0-1)
-
-Also return:
-- totalCalories
-- totalProtein
-- totalCarbs
-- totalFat
-- mealScore (0-100)
-- healthRisk (low / medium / high)
-
-Output format:
-{
-foods: [...],
-totalCalories: number,
-totalProtein: number,
-totalCarbs: number,
-totalFat: number,
-mealScore: number,
-healthRisk: "low|medium|high"
-}
-`
-},
-{
-role:"user",
-content:[
-{
-type:"text",
-text:"Analyze this food image carefully and return structured nutrition JSON."
-},
-{
-type:"image_url",
-image_url:{ url: base64Image }
-}
+const map = [
+  {key:"tomyam", value:"tom yum soup"},
+  {key:"tom yam", value:"tom yum soup"},
+  {key:"friedrice", value:"fried rice"},
+  {key:"nasilemak", value:"nasi lemak"},
+  {key:"chickenrice", value:"chicken rice"},
+  {key:"milktea", value:"milk tea"},
+  {key:"milo", value:"milo drink"},
+  {key:"char kway teow", value:"char kway teow"}
 ]
+
+for(let m of map){
+if(foodText.includes(m.key)){
+return m.value
 }
-],
-temperature:0.2
-})
-})
+}
 
-const data = await response.json()
-
-let raw = data?.choices?.[0]?.message?.content
-
-if(!raw){
-return fallbackVision()
+return foodText
 }
 
 /* =========================
-SAFE PARSE (IMPORTANT FIX)
+🍜 MULTI FOOD PARSER
 ========================= */
-let parsed = null
+function parseFoodAI(text){
 
-try{
-parsed = JSON.parse(raw)
-}catch(e){
+if(!text) return []
 
-// fallback clean parsing
-const cleaned = raw
-.replace(/```json/g,"")
-.replace(/```/g,"")
-.trim()
+text = text.toLowerCase()
 
-try{
-parsed = JSON.parse(cleaned)
-}catch(err){
-return fallbackVision()
+let parts = text.split(/,|\+| and | with /)
+
+let results = parts
+.map(p => normalizeFoodAI(p.trim()))
+.filter(p => p && p !== "unknown food")
+
+return results.length ? results : ["unknown food"]
+}
+
+/* =========================
+🌍 CUISINE DETECTION
+========================= */
+function detectCuisine(food){
+
+if(!food) return "unknown"
+
+if(/chicken rice|nasi lemak|fried rice/.test(food)) return "Asian"
+if(/tom yum/.test(food)) return "Thai"
+if(/pasta|burger|steak/.test(food)) return "Western"
+if(/char kway teow|noodle/.test(food)) return "Chinese"
+if(/milk tea|milo/.test(food)) return "Drink"
+
+return "Mixed"
+}
+
+/* =========================
+⚖️ BASE HEALTH SCORE
+========================= */
+function calculateHealthScore(calories, bmi = 22){
+
+let score = 100
+
+if(calories < 1500) score -= 8
+else if(calories < 2000) score -= 12
+else if(calories < 2400) score -= 20
+else if(calories < 2800) score -= 35
+else if(calories < 3200) score -= 55
+else score -= 80
+
+if(bmi >= 30) score -= 20
+else if(bmi >= 27) score -= 12
+else if(bmi >= 25) score -= 6
+
+return Math.max(0, Math.min(100, score))
+}
+
+/* =========================
+⚠️ RISK ENGINE
+========================= */
+function getRiskLevel(calories, bmi){
+
+let score = calculateHealthScore(calories, bmi)
+
+if(score >= 80){
+return {level:"🟢", text:"Low Risk", color:"green"}
+}
+
+if(score >= 55){
+return {level:"🟡", text:"Medium Risk", color:"orange"}
+}
+
+return {level:"🔴", text:"High Risk", color:"red"}
+}
+
+/* =========================
+🍽 MEAL SCORE (OLD + NEW MIX)
+========================= */
+function calculateMealScore(items){
+
+if(!items || items.length === 0) return 0
+
+let score = 100
+
+let protein = 0
+let carbs = 0
+let fat = 0
+
+items.forEach(i=>{
+
+// old logic
+if(i.calories > 800) score -= 10
+if(i.cuisine === "Western") score -= 5
+if(i.cuisine === "Asian") score += 3
+
+// NEW macro awareness
+if(i.food.includes("chicken") || i.food.includes("egg")) protein += 1
+if(i.food.includes("rice") || i.food.includes("bread")) carbs += 1
+if(i.food.includes("fried") || i.food.includes("oil")) fat += 1
+
+})
+
+/* macro balance scoring */
+if(protein === 0) score -= 10
+if(carbs > protein * 2) score -= 12
+if(fat > protein) score -= 15
+
+return Math.max(0, Math.min(100, score))
+}
+
+/* =========================
+📊 MACRO SCORING ENGINE (NEW)
+========================= */
+function calculateMacroScores(items){
+
+let protein = 0
+let carbs = 0
+let fat = 0
+
+items.forEach(i=>{
+
+if(i.food.includes("chicken") || i.food.includes("egg") || i.food.includes("fish")){
+protein += 25
+}
+
+if(i.food.includes("rice") || i.food.includes("bread") || i.food.includes("noodle")){
+carbs += 25
+}
+
+if(i.food.includes("fried") || i.food.includes("oil") || i.food.includes("burger")){
+fat += 25
+}
+
+})
+
+return {
+proteinScore: Math.min(100, protein),
+carbScore: Math.min(100, carbs),
+fatScore: Math.min(100, fat)
 }
 }
 
 /* =========================
-NORMALIZE OUTPUT
+🍜 CALORIE SPLIT ENGINE
 ========================= */
-return normalizeVision(parsed)
+function splitCalories(foods, totalCalories){
 
-}catch(e){
-console.log("vision error:", e)
-return fallbackVision()
+if(!foods.length) return []
+
+let avg = totalCalories / foods.length
+
+return foods.map(f => ({
+food: f,
+calories: Math.round(avg)
+}))
 }
+
+/* =========================
+⚠️ ANOMALY DETECTION
+========================= */
+function detectAnomaly(calories, history = []){
+
+if(!history || history.length < 3){
+return "insufficient data"
 }
 
-//////////////////////////////
-// 🧠 NORMALIZER (CRITICAL FIX)
-//////////////////////////////
-function normalizeVision(data){
+let avg = history.reduce((a,b)=>a+b,0) / history.length
 
-if(!data) return fallbackVision()
+if(calories > avg * 1.8){
+return "possible overeating detected"
+}
+
+if(calories < avg * 0.5){
+return "unusually low intake detected"
+}
+
+return "normal"
+}
+
+/* =========================
+🧠 ADVICE ENGINE
+========================= */
+function getAdvice(calories, bmi = 22, history = []){
+
+let risk = getRiskLevel(calories, bmi)
+let anomaly = detectAnomaly(calories, history)
+
+if(risk.level === "🔴"){
+return "High risk detected. Reduce carbs/sugar, prioritize protein, and walk 30–45 min."
+}
+
+if(risk.level === "🟡"){
+if(anomaly.includes("overeating")){
+return "Above normal intake trend. Consider lighter meals tomorrow."
+}
+return "Moderate intake. Maintain balance and avoid late-night eating."
+}
+
+return "Healthy balance. Keep current routine and hydration."
+}
+
+/* =========================
+🧠 FINAL AI ENGINE v11.5
+========================= */
+function getAIInsight(calories, bmi, history = [], foodText = ""){
+
+let foods = parseFoodAI(foodText)
+
+let split = splitCalories(foods, calories)
+
+let items = split.map(s => ({
+food: s.food,
+calories: s.calories,
+cuisine: detectCuisine(s.food),
+risk: getRiskLevel(s.calories, bmi).level
+}))
+
+let macro = calculateMacroScores(items)
+
+/* FINAL WEIGHTED SCORE */
+let baseScore = calculateHealthScore(calories, bmi)
+let mealScore = calculateMealScore(items)
+
+let finalScore =
+(baseScore * 0.4) +
+(mealScore * 0.4) +
+((macro.proteinScore + macro.carbScore + macro.fatScore)/3 * 0.2)
 
 return {
-foods: (data.foods || []).map(f=>({
+score: Math.round(finalScore),
+baseScore,
+mealScore,
+macro,
 
-food: f.food || "Unknown",
-calories: Number(f.calories || 0),
-protein: Number(f.protein || 0),
-carbs: Number(f.carbs || 0),
-fat: Number(f.fat || 0),
-portion: f.portion || "",
-cuisine: f.cuisine || "",
-confidence: Number(f.confidence || 0)
+risk: getRiskLevel(calories, bmi),
+advice: getAdvice(calories, bmi, history),
 
-})),
-
-totalCalories: Number(data.totalCalories || 0),
-totalProtein: Number(data.totalProtein || 0),
-totalCarbs: Number(data.totalCarbs || 0),
-totalFat: Number(data.totalFat || 0),
-
-mealScore: Number(data.mealScore || 0),
-healthRisk: data.healthRisk || "medium"
+foods: items
 }
-}
-
-//////////////////////////////
-// 🧠 FALLBACK (SAFE MODE)
-//////////////////////////////
-function fallbackVision(){
-
-return {
-foods:[
-{
-food:"Unknown Food",
-calories:500,
-protein:10,
-carbs:60,
-fat:15,
-portion:"unknown",
-cuisine:"unknown",
-confidence:0.3
-}
-],
-totalCalories:500,
-totalProtein:10,
-totalCarbs:60,
-totalFat:15,
-mealScore:50,
-healthRisk:"medium"
-}
-}
-
-//////////////////////////////
-// 🧠 SIMPLE WRAPPER (FOR FOOD.HTML)
-//////////////////////////////
-async function scanFoodAI(file){
-
-return new Promise((resolve)=>{
-
-if(!file){
-resolve(fallbackVision())
-return
-}
-
-const reader = new FileReader()
-
-reader.onload = async function(){
-
-const result = await analyzeFoodImage(reader.result)
-resolve(result)
-
-}
-
-reader.readAsDataURL(file)
-})
 }
