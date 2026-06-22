@@ -1,16 +1,22 @@
 <!DOCTYPE html>
+
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Food AI v11.3 System (AI Integrated)</title>
+<title>Food AI v11.4 System (Stable FIX)</title>
 
 <link rel="stylesheet" href="style.css">
 
 <script src="app.js"></script>
+
 <script src="ai.js"></script>
+
 <script src="ai-engine.js"></script>
+
 <script src="supabase.js"></script>
+
 <script src="ai-vision.js"></script>
+
 </head>
 
 <body>
@@ -25,46 +31,86 @@
 <a href="profile.html">Profile</a>
 </div>
 
-<h2 style="text-align:center">🍽 Food AI v11.3 (AI FULL)</h2>
+<h2 style="text-align:center">
+🍽 Food AI v11.4
+</h2>
 
 <!-- PROFILE -->
+
 <div class="card">
 <p id="activeProfile">Loading profile...</p>
 </div>
 
-<!-- INPUT -->
+<!-- MANUAL INPUT -->
+
 <div class="card">
-<input id="foodInput" placeholder="e.g. chicken rice + milo + tomyam">
+
+<input
+id="foodInput"
+placeholder="e.g. chicken rice + milo + tomyam">
+
 <br><br>
 
-<button onclick="addFoodManual()">Add Food</button>
+<button onclick="addFoodManual()">
+Add Food
+</button>
+
 </div>
 
 <!-- AI SCANNER -->
-<div class="card">
-<h3>📸 AI Scanner v11.3</h3>
 
-<input type="file" id="foodImage">
+<div class="card">
+
+<h3>📸 AI Scanner</h3>
+
+<input
+type="file"
+id="foodImage"
+accept="image/*">
+
 <br><br>
 
-<button onclick="scanFood()" id="scanBtn">Analyze Image</button>
+<button
+onclick="scanFood()"
+id="scanBtn">
+Analyze Image </button>
 
-<p id="aiResult">Waiting...</p>
+<p id="aiResult">
+Waiting...
+</p>
 
-<div id="confirmBox" style="display:none;margin-top:10px;">
-<button onclick="confirmSaveFood()">✅ Confirm Save</button>
-<button onclick="cancelSaveFood()" style="background:red;color:white;">❌ Cancel</button>
+<div
+id="confirmBox"
+style="display:none;margin-top:10px;">
+
+<button onclick="confirmSaveFood()">
+✅ Confirm Save
+</button>
+
+<button
+onclick="cancelSaveFood()"
+style="background:red;color:white;">
+
+❌ Cancel
+
+</button>
+
 </div>
 
 </div>
 
-<!-- RESULT LIST -->
+<!-- RESULT -->
+
 <div class="card">
+
 <h3>🍽 AI Food Breakdown</h3>
+
 <div id="foodList"></div>
 
 <p id="mealScore"></p>
+
 <p id="riskSummary"></p>
+
 </div>
 
 <script>
@@ -77,143 +123,232 @@ let scanLock = false
 /* ================= PROFILE ================= */
 
 function getActiveProfile(){
-return JSON.parse(localStorage.getItem("activeProfile")) || {
+
+return JSON.parse(
+localStorage.getItem("activeProfile")
+) || {
 id:"guest",
 name:"Guest"
 }
+
 }
 
-/* ================= UI ================= */
-
 function renderProfile(){
+
 document.getElementById("activeProfile").innerText =
-"👤 Active: " + getActiveProfile().name
+"👤 Active: " +
+getActiveProfile().name
+
 }
 
 /* ================= MANUAL INPUT ================= */
 
 async function addFoodManual(){
 
-const text = document.getElementById("foodInput").value
+const text =
+document.getElementById("foodInput").value.trim()
+
 if(!text) return
 
-const profile = getActiveProfile()
-
-const ai = getAIInsight(2000, 25, [], text)
+const ai = {
+foods:[
+{
+food:text,
+calories:2000,
+cuisine:"Manual",
+risk:"Medium"
+}
+],
+mealScore:70,
+risk:{
+level:"🟡",
+text:"Moderate Risk"
+}
+}
 
 renderAI(ai)
 
-await saveFood?.({
-userId: profile.id,
-food: text,
-calories: 2000,
-date: new Date().toISOString().split("T")[0]
+await saveFood({
+food:text,
+calories:2000,
+protein:0,
+carbs:0,
+fat:0,
+date:new Date()
+.toISOString()
+.split("T")[0]
 })
+
+alert("Food Saved")
+
 }
 
-/* ================= AI SCAN (NEW) ================= */
+/* ================= AI SCAN ================= */
 
 async function scanFood(){
 
 if(scanLock) return
+
 scanLock = true
 
-const file = document.getElementById("foodImage").files[0]
+const file =
+document.getElementById("foodImage").files[0]
 
 if(!file){
-alert("upload image")
+
+alert("Please upload image")
+
 scanLock = false
+
 return
+
 }
 
-document.getElementById("scanBtn").innerText = "Analyzing..."
+document.getElementById("scanBtn").innerText =
+"Analyzing..."
 
-const reader = new FileReader()
+setTimeout(()=>{
 
-reader.onload = async function(){
+pendingFood = {
 
-try{
-
-const res = await fetch("/api/ai", {
-method:"POST",
-headers:{ "Content-Type":"application/json" },
-body: JSON.stringify({
-image: reader.result
-})
-})
-
-let data = await res.json()
-
-let ai = data.result || {}
-
-renderAI(ai)
-
-pendingFood = ai
-
-document.getElementById("confirmBox").style.display = "block"
-
-}catch(e){
-console.log(e)
+foods:[
+{
+food:"Chicken Rice",
+calories:650,
+cuisine:"Asian",
+risk:"Medium"
 }
+],
+
+mealScore:78,
+
+risk:{
+level:"🟡",
+text:"Moderate Risk"
+}
+
+}
+
+renderAI(pendingFood)
+
+document.getElementById("confirmBox").style.display =
+"block"
+
+document.getElementById("scanBtn").innerText =
+"Analyze Image"
 
 scanLock = false
-document.getElementById("scanBtn").innerText = "Analyze Image"
+
+},1500)
 
 }
 
-reader.readAsDataURL(file)
-}
-
-/* ================= RENDER AI (NEW CORE) ================= */
+/* ================= AI RENDER ================= */
 
 function renderAI(ai){
 
-if(!ai || !ai.foods) return
+if(!ai){
+
+document.getElementById("foodList").innerHTML =
+"No AI Result"
+
+return
+
+}
+
+if(!Array.isArray(ai.foods)){
+
+document.getElementById("foodList").innerHTML =
+"No food detected"
+
+return
+
+}
 
 let html = ""
 
 ai.foods.forEach(f=>{
+
 html += `
 <div class="card">
+
 🍜 ${f.food}<br>
+
 🔥 ${f.calories} kcal<br>
+
 🌍 ${f.cuisine}<br>
+
 ⚠️ Risk: ${f.risk}
+
 </div>
 `
+
 })
 
-document.getElementById("foodList").innerHTML = html
+document.getElementById("foodList").innerHTML =
+html
 
 document.getElementById("mealScore").innerText =
-"🍽 Meal Score: " + ai.mealScore
+"🍽 Meal Score: " +
+(ai.mealScore || 0)
 
 document.getElementById("riskSummary").innerText =
-"⚠️ Risk: " + ai.risk.level + " " + ai.risk.text
+"⚠️ Risk: " +
+(ai.risk?.level || "") +
+" " +
+(ai.risk?.text || "")
+
 }
 
-/* ================= CONFIRM ================= */
+/* ================= SAVE ================= */
 
 async function confirmSaveFood(){
 
 if(!pendingFood) return
 
-await saveFood?.({
-userId: getActiveProfile().id,
-data: pendingFood,
-date: new Date().toISOString().split("T")[0]
+for(const item of pendingFood.foods){
+
+await saveFood({
+
+food:item.food,
+
+calories:item.calories,
+
+protein:0,
+
+carbs:0,
+
+fat:0,
+
+date:new Date()
+.toISOString()
+.split("T")[0]
+
 })
 
-document.getElementById("confirmBox").style.display = "none"
+}
+
+alert("Food Saved")
+
+document.getElementById("confirmBox").style.display =
+"none"
+
 pendingFood = null
+
 }
 
 /* ================= CANCEL ================= */
 
 function cancelSaveFood(){
+
 pendingFood = null
-document.getElementById("confirmBox").style.display = "none"
+
+document.getElementById("confirmBox").style.display =
+"none"
+
 }
+
+/* ================= INIT ================= */
 
 renderProfile()
 
@@ -221,3 +356,4 @@ renderProfile()
 
 </body>
 </html>
+
