@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Food AI v11.6 System (FULL SYNC FIX)</title>
+<title>Food AI v11.6 System </title>
 
 <link rel="stylesheet" href="style.css">
 
@@ -61,6 +61,10 @@ box-shadow:0 1px 4px rgba(0,0,0,.05);
 
 <p id="mealScore">Meal Score: --</p>
 <p id="riskSummary">Risk: --</p>
+
+<!-- 🧠 NEW AI OUTPUT -->
+<p id="aiAdvice"></p>
+<p id="aiInsight"></p>
 </div>
 
 <!-- WEEK -->
@@ -121,13 +125,13 @@ document.getElementById("activeProfile").innerText =
 "👤 Active: " + getActiveProfile().name
 }
 
-/* ================= SAFE AI FALLBACK ================= */
+/* ================= SAFE ================= */
 function safeMacro(f){
 return {
-calories: Number(f.calories || 0),
-protein: Number(f.protein || 0),
-carbs: Number(f.carbs || 0),
-fat: Number(f.fat || 0)
+calories: Number(f?.calories || 0),
+protein: Number(f?.protein || 0),
+carbs: Number(f?.carbs || 0),
+fat: Number(f?.fat || 0)
 }
 }
 
@@ -138,7 +142,6 @@ const profile = getActiveProfile()
 const today = new Date().toISOString().split("T")[0]
 
 let foods = []
-
 try{
 foods = await getFoodLogs?.(today) || []
 }catch(e){ foods = [] }
@@ -146,20 +149,26 @@ foods = await getFoodLogs?.(today) || []
 foods = foods.filter(f => !f.userId || f.userId === profile.id)
 
 let calories=0, protein=0, carbs=0, fat=0
+let foodText = ""
 
 foods.forEach(f=>{
 calories += Number(f.calories||0)
 protein += Number(f.protein||0)
 carbs += Number(f.carbs||0)
 fat += Number(f.fat||0)
+foodText += (f.food || "") + " "
 })
 
-let ai = (typeof getAIInsight !== "undefined")
-? getAIInsight(calories, 22, [], "")
-: null
+let ai = null
+
+if(typeof getAIInsight !== "undefined"){
+ai = getAIInsight(calories, 22, [], foodText)
+}
 
 let score = ai?.score || 0
 let risk = ai?.risk?.level || "🟢"
+let advice = ai?.advice || ""
+let insight = ai?.foods?.map(f=>f.food).join(", ") || ""
 
 document.getElementById("todayCalories").innerText = `Calories: ${calories} kcal`
 document.getElementById("todayProtein").innerText = `Protein: ${protein} g`
@@ -168,6 +177,9 @@ document.getElementById("todayFat").innerText = `Fat: ${fat} g`
 
 document.getElementById("mealScore").innerText = `Meal Score: ${score}/100`
 document.getElementById("riskSummary").innerText = `Risk: ${risk}`
+
+document.getElementById("aiAdvice").innerText = "AI Advice: " + advice
+document.getElementById("aiInsight").innerText = "AI Detected: " + insight
 
 return {calories, protein, carbs, fat}
 }
@@ -228,17 +240,20 @@ await calculateToday()
 await calculateWeek()
 }
 
-/* ================= AI SCAN (SAFE FIXED) ================= */
+/* ================= AI SCAN FIXED ================= */
 async function scanFood(){
 
 if(scanLock) return
 scanLock = true
+
+document.getElementById("scanBtn").innerText = "Analyzing..."
 
 const file=document.getElementById("foodImage").files[0]
 
 if(!file){
 alert("upload image")
 scanLock=false
+document.getElementById("scanBtn").innerText = "Analyze Image"
 return
 }
 
@@ -269,11 +284,12 @@ risk:"medium"
 }
 
 renderAI(pendingFood)
-
+document.getElementById("aiResult").innerText = "AI Analysis Ready"
 document.getElementById("confirmBox").style.display="block"
 
 }catch(e){
 console.log("AI scan failed",e)
+document.getElementById("aiResult").innerText = "AI Error"
 }
 
 scanLock=false
@@ -298,7 +314,7 @@ ai.foods.forEach(f=>{
 html+=`
 <div class="card">
 🍜 ${f.food}<br>
-🔥 ${f.calories}<br>
+🔥 ${f.calories} kcal<br>
 🥩 ${f.protein||0}g<br>
 🍞 ${f.carbs||0}g<br>
 🧈 ${f.fat||0}g<br>
