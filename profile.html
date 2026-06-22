@@ -74,8 +74,8 @@ margin-top:5px;
 
 <div class="row">
 
-<!-- ⭐ NEW BUTTON (你要的) -->
-<button onclick="location.href='create-profile.html'">
+<!-- ✅ FIXED CREATE BUTTON (no more 404) -->
+<button onclick="goCreateProfile()">
 ➕ Create New Profile
 </button>
 
@@ -99,6 +99,14 @@ Delete Profile
 </div>
 
 <script>
+
+//////////////////////////////
+// NAVIGATION FIX (IMPORTANT)
+//////////////////////////////
+function goCreateProfile(){
+console.log("→ Redirecting to create-profile.html")
+window.location.href = "./create-profile.html"
+}
 
 //////////////////////////////
 // SAFE PROFILE
@@ -140,7 +148,6 @@ return {text:"Obese", color:"red"}
 // CLOUD SAFETY WRAPPER
 //////////////////////////////
 async function safeCloud(fn, arg){
-
 try{
 if(typeof fn === "function"){
 return await fn(arg)
