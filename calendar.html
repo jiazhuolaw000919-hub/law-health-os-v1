@@ -46,7 +46,6 @@ margin-top:5px;
 .yellow{background:#fef9c3;color:#854d0e}
 .red{background:#fee2e2;color:#991b1b}
 
-/* 🔥 FIX: modal safety layer */
 #modal{
 pointer-events:auto;
 z-index:9999;
@@ -77,21 +76,18 @@ justify-content:center;
 
 <h2 class="center">📅 AI Calendar v11.5 (PHASE 6 GLOBAL SYNC)</h2>
 
-<!-- PROFILE -->
 <div class="card">
 <p id="time"></p>
 <p id="profile"></p>
 <p id="bmi"></p>
 </div>
 
-<!-- AI SUMMARY -->
 <div class="card">
 <h3>🧠 AI Weekly Intelligence</h3>
 <p id="summary">Loading...</p>
 <div id="riskSummary"></div>
 </div>
 
-<!-- CALENDAR -->
 <div class="card">
 <div class="month-bar">
 <button onclick="changeMonth(-1)">‹</button>
@@ -105,11 +101,8 @@ justify-content:center;
 
 <div class="grid" id="grid"></div>
 
-<!-- MODAL FIXED -->
 <div id="modal" class="modal-bg">
-
 <div style="background:white;padding:20px;border-radius:12px;width:360px;">
-
 <h3 id="modalDate"></h3>
 
 <p id="modalCalories"></p>
@@ -145,23 +138,24 @@ weight:70
 }
 }
 
-/* ================= SAFE LOGS ================= */
+/* ================= SAFE FOOD LOGS (FIXED) ================= */
 async function safeFoodLogs(date){
-if(typeof getFoodLogs === "undefined") return []
+if(typeof getFoodLogs !== "function") return []
+
 const p = getActiveProfile()
 const logs = await getFoodLogs(date) || []
-return logs.filter(f => !f.userId || f.userId === p.id)
+
+return logs.filter(f =>
+!f.userId || f.userId === p.id
+)
 }
 
-/* ================= DAILY GLOBAL SYNC ================= */
+/* ================= DAILY ================= */
 async function getDailyMacro(date){
 
 const foods = await safeFoodLogs(date)
 
-let calories = 0
-let protein = 0
-let carbs = 0
-let fat = 0
+let calories=0, protein=0, carbs=0, fat=0
 
 foods.forEach(f=>{
 calories += Number(f.calories||0)
@@ -170,9 +164,9 @@ carbs += Number(f.carbs||0)
 fat += Number(f.fat||0)
 })
 
-let ai = (typeof getAIInsight !== "undefined")
+let ai = (typeof getAIInsight === "function")
 ? getAIInsight(calories, 22)
-: {score:0, risk:{level:"🟢"}}
+: {score:50, risk:{level:"🟢"}}
 
 return {
 calories,
@@ -184,14 +178,13 @@ risk: ai.risk.level
 }
 }
 
-/* ================= WEEK SUMMARY ================= */
+/* ================= WEEK ================= */
 async function buildWeeklySummary(){
 
 let total=0,max=0,days=7
-let macroP=0, macroC=0, macroF=0
+let macroP=0,macroC=0,macroF=0
 
 for(let i=0;i<7;i++){
-
 let d=new Date()
 d.setDate(d.getDate()-i)
 let date=d.toISOString().split("T")[0]
@@ -207,9 +200,8 @@ if(data.calories>max) max=data.calories
 }
 
 let avg = total/days
-
 let p = getActiveProfile()
-let bmi = (p.weight / ((p.height/100)*(p.height/100))).toFixed(1)
+let bmi = (p.weight/((p.height/100)**2)).toFixed(1)
 
 let risk =
 (bmi>28 || avg>2500) ? "HIGH"
@@ -231,26 +223,37 @@ ${risk} RISK
 <p>Protein: ${macroP}g | Carbs: ${macroC}g | Fat: ${macroF}g</p>`
 }
 
-/* ================= GRID ================= */
+/* ================= FIXED LOAD (KEY FIX) ================= */
 async function load(){
 
 grid.innerHTML=""
 
-let y=+yearSelect.value
-let m=+monthSelect.value
+let y = Number(yearSelect.value)
+let m = Number(monthSelect.value)
 
-let first=new Date(y,m,1).getDay()
-let days=new Date(y,m+1,0).getDate()
+let first = new Date(y,m,1).getDay()
+let days = new Date(y,m+1,0).getDate()
 
-for(let i=0;i<first;i++)grid.innerHTML+="<div></div>"
+for(let i=0;i<first;i++){
+grid.innerHTML += "<div></div>"
+}
 
-for(let d=1;d<=days;d++){
+let tasks = []
 
-let date=`${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`
+for(let d=1; d<=days; d++){
+let date = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`
+tasks.push(renderDay(date,d))
+}
+
+await Promise.all(tasks)
+}
+
+/* render day (optimized) */
+async function renderDay(date,d){
 
 let data = await getDailyMacro(date)
 
-let div=document.createElement("div")
+let div = document.createElement("div")
 div.className="day"
 
 div.innerHTML=`
@@ -261,14 +264,12 @@ ${data.risk}
 </span>
 `
 
-/* 🔥 FIX: stable binding */
-div.onclick=() => window.openModal(date, data)
+div.onclick = () => window.openModal(date,data)
 
 grid.appendChild(div)
 }
-}
 
-/* ================= MODAL FIXED ================= */
+/* ================= MODAL ================= */
 function openModal(date,data){
 
 document.getElementById("modal").style.display="flex"
@@ -296,35 +297,39 @@ data.score>80?"🟢 Excellent day"
 :"🔴 Needs improvement"
 }
 
-/* ================= CLOSE FIX ================= */
 function closeModal(){
 document.getElementById("modal").style.display="none"
 }
 
-/* ================= OPEN DAY ================= */
 function openDayPage(){
 let date=document.getElementById("modalDate").innerText
 window.location.href=`day.html?date=${date}`
 }
 
-/* ================= INIT ================= */
+/* ================= INIT (FIXED ORDER) ================= */
 function init(){
 
 monthSelect.innerHTML=""
 yearSelect.innerHTML=""
 
-for(let i=0;i<12;i++)
-monthSelect.innerHTML+=`<option value="${i}">${i+1}</option>`
-
-let y=new Date().getFullYear()
-for(let i=y-3;i<=y+3;i++)
-yearSelect.innerHTML+=`<option>${i}</option>`
-
-monthSelect.value=new Date().getMonth()
-yearSelect.value=new Date().getFullYear()
+for(let i=0;i<12;i++){
+monthSelect.innerHTML += `<option value="${i}">${i+1}</option>`
 }
 
-/* ================= TIME ================= */
+let y=new Date().getFullYear()
+
+for(let i=y-3;i<=y+3;i++){
+yearSelect.innerHTML += `<option value="${i}">${i}</option>`
+}
+
+monthSelect.value = new Date().getMonth()
+yearSelect.value = y
+
+/* IMPORTANT FIX */
+monthSelect.onchange = load
+yearSelect.onchange = load
+}
+
 function updateTime(){
 document.getElementById("time").innerText =
 "🕒 " + new Date().toLocaleString()
@@ -337,10 +342,9 @@ init()
 buildWeeklySummary()
 load()
 
-/* 🔥 GLOBAL EXPORT FIX */
-window.openModal = openModal
-window.closeModal = closeModal
-window.openDayPage = openDayPage
+window.openModal=openModal
+window.closeModal=closeModal
+window.openDayPage=openDayPage
 
 </script>
 
