@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>AI Calendar v11.5 (Phase 6 Sync FIXED)</title>
+<title>AI Calendar v11.5 (PHASE 6 GLOBAL SYNC FIXED)</title>
 
 <link rel="stylesheet" href="style.css">
 
@@ -45,6 +45,21 @@ margin-top:5px;
 .green{background:#dcfce7;color:#166534}
 .yellow{background:#fef9c3;color:#854d0e}
 .red{background:#fee2e2;color:#991b1b}
+
+/* 🔥 FIX: modal safety layer */
+#modal{
+pointer-events:auto;
+z-index:9999;
+}
+
+.modal-bg{
+position:fixed;
+inset:0;
+background:rgba(0,0,0,0.5);
+display:none;
+align-items:center;
+justify-content:center;
+}
 </style>
 </head>
 
@@ -90,9 +105,8 @@ margin-top:5px;
 
 <div class="grid" id="grid"></div>
 
-<!-- MODAL -->
-<div id="modal" style="display:none;position:fixed;inset:0;
-background:rgba(0,0,0,0.5);align-items:center;justify-content:center;">
+<!-- MODAL FIXED -->
+<div id="modal" class="modal-bg">
 
 <div style="background:white;padding:20px;border-radius:12px;width:360px;">
 
@@ -170,7 +184,7 @@ risk: ai.risk.level
 }
 }
 
-/* ================= WEEK SUMMARY (FIXED) ================= */
+/* ================= WEEK SUMMARY ================= */
 async function buildWeeklySummary(){
 
 let total=0,max=0,days=7
@@ -214,18 +228,7 @@ document.getElementById("riskSummary").innerHTML =
 `<span class="badge ${color}">
 ${risk} RISK
 </span>
-<p>Protein: ${macroP}g | Carbs: ${macroC}g | Fat: ${macroF}g</p>
-<p>${
-risk==="HIGH"?"Increase activity + reduce carbs"
-:risk==="MEDIUM"?"Balance meals + monitor intake"
-:"Stable healthy pattern"
-}</p>`
-}
-
-/* ================= CALORIES ================= */
-async function getCalories(date){
-let data = await getDailyMacro(date)
-return data.calories
+<p>Protein: ${macroP}g | Carbs: ${macroC}g | Fat: ${macroF}g</p>`
 }
 
 /* ================= GRID ================= */
@@ -258,14 +261,15 @@ ${data.risk}
 </span>
 `
 
-div.onclick=()=>openModal(date,data)
+/* 🔥 FIX: stable binding */
+div.onclick=() => window.openModal(date, data)
 
 grid.appendChild(div)
 }
 }
 
-/* ================= MODAL (FIXED MACRO DISPLAY) ================= */
-async function openModal(date,data){
+/* ================= MODAL FIXED ================= */
+function openModal(date,data){
 
 document.getElementById("modal").style.display="flex"
 document.getElementById("modalDate").innerText=date
@@ -290,6 +294,17 @@ document.getElementById("miniAI").innerText =
 data.score>80?"🟢 Excellent day"
 :data.score>60?"🟡 Balanced day"
 :"🔴 Needs improvement"
+}
+
+/* ================= CLOSE FIX ================= */
+function closeModal(){
+document.getElementById("modal").style.display="none"
+}
+
+/* ================= OPEN DAY ================= */
+function openDayPage(){
+let date=document.getElementById("modalDate").innerText
+window.location.href=`day.html?date=${date}`
 }
 
 /* ================= INIT ================= */
@@ -321,6 +336,11 @@ updateTime()
 init()
 buildWeeklySummary()
 load()
+
+/* 🔥 GLOBAL EXPORT FIX */
+window.openModal = openModal
+window.closeModal = closeModal
+window.openDayPage = openDayPage
 
 </script>
 
