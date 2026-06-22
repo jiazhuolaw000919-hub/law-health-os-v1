@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>AI Calendar v12.2 Stable Pro</title>
+<title>AI Calendar v12.3 Stable Pro (FIXED FINAL)</title>
 
 <link rel="stylesheet" href="style.css">
 
@@ -14,6 +14,20 @@
 <script src="js/ai-engine.js"></script>
 
 <style>
+body{
+margin:0;
+font-family:Arial;
+}
+
+/* 🔥 FIX GRID (CRITICAL) */
+.grid{
+display:grid;
+grid-template-columns:repeat(7,1fr);
+gap:8px;
+padding:10px;
+}
+
+/* DAY CARD */
 .day{
 background:#fff;
 border-radius:10px;
@@ -35,6 +49,7 @@ border-radius:10px;
 box-shadow:0 1px 4px rgba(0,0,0,.05);
 }
 
+/* BADGE */
 .badge{
 display:inline-block;
 padding:4px 8px;
@@ -47,6 +62,7 @@ margin-top:5px;
 .yellow{background:#fef9c3;color:#854d0e}
 .red{background:#fee2e2;color:#991b1b}
 
+/* CHEAT DAY */
 .cheat{
 position:absolute;
 top:6px;
@@ -56,11 +72,23 @@ color:#ef4444;
 font-weight:bold;
 }
 
+/* ICON */
 .warn{
 position:absolute;
 top:6px;
 left:8px;
 font-size:14px;
+}
+
+/* MODAL FIX */
+#modal{
+position:fixed;
+inset:0;
+display:none;
+align-items:center;
+justify-content:center;
+background:rgba(0,0,0,0.5);
+z-index:9999;
 }
 </style>
 </head>
@@ -77,7 +105,7 @@ font-size:14px;
 <a href="profile.html">Profile</a>
 </div>
 
-<h2 class="center">📅 AI Calendar v12.2 Stable Pro (Cheat Detection)</h2>
+<h2 class="center">📅 AI Calendar v12.3 Stable Pro (FIXED FINAL)</h2>
 
 <div class="card">
 <p id="time"></p>
@@ -93,18 +121,19 @@ font-size:14px;
 
 <div class="card">
 <div class="month-bar">
-<button onclick="changeMonth(-1)">‹</button>
+<button onclick="load()">‹</button>
 
 <select id="monthSelect"></select>
 <select id="yearSelect"></select>
 
-<button onclick="changeMonth(1)">›</button>
+<button onclick="load()">›</button>
 </div>
 </div>
 
 <div class="grid" id="grid"></div>
 
-<div id="modal" class="modal-bg">
+<!-- MODAL -->
+<div id="modal">
 <div style="background:white;padding:20px;border-radius:12px;width:360px;">
 <h3 id="modalDate"></h3>
 
@@ -120,7 +149,6 @@ font-size:14px;
 
 <button onclick="openDayPage()">📄 View Full Day</button>
 <button onclick="closeModal()">Close</button>
-
 </div>
 </div>
 
@@ -130,7 +158,7 @@ const grid = document.getElementById("grid")
 const monthSelect = document.getElementById("monthSelect")
 const yearSelect = document.getElementById("yearSelect")
 
-/* ================= PROFILE ================= */
+/* PROFILE */
 function getActiveProfile(){
 return JSON.parse(localStorage.getItem("activeProfile")) || {
 id:"guest",
@@ -140,7 +168,7 @@ weight:70
 }
 }
 
-/* ================= SAFE FOOD ================= */
+/* SAFE FOOD */
 async function safeFoodLogs(date){
 try{
 if(typeof getFoodLogs !== "function") return []
@@ -152,7 +180,7 @@ return []
 }
 }
 
-/* ================= DAILY ================= */
+/* DAILY */
 async function getDailyMacro(date){
 
 let foods = await safeFoodLogs(date)
@@ -180,15 +208,12 @@ risk: ai.risk.level
 }
 }
 
-/* ================= CHEAT DAY LOGIC (NEW) ================= */
+/* CHEAT DAY */
 function isCheatDay(calories, risk){
-
-if(calories >= 3200) return true
-if(risk === "HIGH" && calories >= 2800) return true
-return false
+return calories >= 3200 || (risk==="HIGH" && calories >= 2800)
 }
 
-/* ================= WEEK SUMMARY ================= */
+/* WEEK */
 async function buildWeeklySummary(){
 
 let total=0,max=0
@@ -231,7 +256,7 @@ document.getElementById("riskSummary").innerHTML =
 <p>Protein: ${macroP}g | Carbs: ${macroC}g | Fat: ${macroF}g</p>`
 }
 
-/* ================= LOAD ================= */
+/* LOAD FIXED (PARALLEL SAFE) */
 async function load(){
 
 grid.innerHTML=""
@@ -246,13 +271,17 @@ for(let i=0;i<first;i++){
 grid.innerHTML += "<div></div>"
 }
 
+let tasks = []
+
 for(let d=1; d<=days; d++){
 let date = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`
-await renderDay(date,d)
-}
+tasks.push(renderDay(date,d))
 }
 
-/* ================= RENDER DAY (CHEAT DAY + ! MARKER) ================= */
+await Promise.all(tasks)
+}
+
+/* RENDER DAY */
 async function renderDay(date,d){
 
 try{
@@ -261,15 +290,7 @@ let data = await getDailyMacro(date)
 
 let cheat = isCheatDay(data.calories, data.risk)
 
-/* ICON SYSTEM */
-let icon = ""
-if(cheat){
-icon = "❗"
-}else if(data.risk === "HIGH"){
-icon = "⚠"
-}else if(data.risk === "MEDIUM"){
-icon = "▲"
-}
+let icon = cheat ? "❗" : data.risk==="HIGH" ? "⚠" : data.risk==="MEDIUM" ? "▲" : ""
 
 let div = document.createElement("div")
 div.className="day"
@@ -284,47 +305,37 @@ ${data.risk}
 `
 
 if(cheat){
-let mark = document.createElement("div")
+let mark=document.createElement("div")
 mark.className="cheat"
 mark.innerText="!"
 div.appendChild(mark)
 }
 
-div.onclick = () => openModal(date,data)
+div.onclick=()=>openModal(date,data)
 
 grid.appendChild(div)
 
 }catch(e){
-console.log("render error:",e)
+console.log(e)
 }
 }
 
-/* ================= MODAL ================= */
+/* MODAL */
 function openModal(date,data){
 
 document.getElementById("modal").style.display="flex"
 document.getElementById("modalDate").innerText=date
 
-document.getElementById("modalCalories").innerText =
-`Calories: ${data.calories}`
+document.getElementById("modalCalories").innerText=`Calories: ${data.calories}`
+document.getElementById("modalProtein").innerText=`Protein: ${data.protein}`
+document.getElementById("modalCarbs").innerText=`Carbs: ${data.carbs}`
+document.getElementById("modalFat").innerText=`Fat: ${data.fat}`
 
-document.getElementById("modalProtein").innerText =
-`Protein: ${data.protein}`
+document.getElementById("mealBreakdown").innerHTML=
+`<p>AI Score: ${data.score}/100</p><p>Risk: ${data.risk}</p>`
 
-document.getElementById("modalCarbs").innerText =
-`Carbs: ${data.carbs}`
-
-document.getElementById("modalFat").innerText =
-`Fat: ${data.fat}`
-
-document.getElementById("mealBreakdown").innerHTML =
-`<p>AI Score: ${data.score}/100</p>
-<p>Risk: ${data.risk}</p>`
-
-document.getElementById("miniAI").innerText =
-data.score>80?"🟢 Excellent"
-:data.score>60?"🟡 Balanced"
-:"🔴 Needs improvement"
+document.getElementById("miniAI").innerText=
+data.score>80?"🟢 Excellent":data.score>60?"🟡 Balanced":"🔴 Needs improvement"
 }
 
 function closeModal(){
@@ -336,36 +347,31 @@ let date=document.getElementById("modalDate").innerText
 window.location.href=`day.html?date=${date}`
 }
 
-/* ================= INIT ================= */
+/* INIT */
 function init(){
 
 monthSelect.innerHTML=""
 yearSelect.innerHTML=""
 
 for(let i=0;i<12;i++){
-monthSelect.innerHTML += `<option value="${i}">${i+1}</option>`
+monthSelect.innerHTML+=`<option value="${i}">${i+1}</option>`
 }
 
 let y=new Date().getFullYear()
 
 for(let i=y-3;i<=y+3;i++){
-yearSelect.innerHTML += `<option value="${i}">${i}</option>`
+yearSelect.innerHTML+=`<option value="${i}">${i}</option>`
 }
 
-monthSelect.value = new Date().getMonth()
-yearSelect.value = y
-
-monthSelect.onchange = load
-yearSelect.onchange = load
+monthSelect.value=new Date().getMonth()
+yearSelect.value=y
 }
 
 function updateTime(){
-document.getElementById("time").innerText =
-"🕒 " + new Date().toLocaleString()
+document.getElementById("time").innerText="🕒 "+new Date().toLocaleString()
 }
 
 setInterval(updateTime,1000)
-updateTime()
 
 init()
 buildWeeklySummary()
