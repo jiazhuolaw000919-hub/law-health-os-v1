@@ -1,5 +1,5 @@
 //////////////////////////////
-// 🧠 AI ENGINE v11.5 FULL SCORE SYSTEM
+// 🧠 AI ENGINE v11.5 FULL FIXED (PHASE 6 READY)
 //////////////////////////////
 
 /* =========================
@@ -44,11 +44,9 @@ text = text.toLowerCase()
 
 let parts = text.split(/,|\+| and | with /)
 
-let results = parts
+return parts
 .map(p => normalizeFoodAI(p.trim()))
 .filter(p => p && p !== "unknown food")
-
-return results.length ? results : ["unknown food"]
 }
 
 /* =========================
@@ -89,25 +87,25 @@ return Math.max(0, Math.min(100, score))
 }
 
 /* =========================
-⚠️ RISK ENGINE
+⚠️ RISK ENGINE (UNIFIED)
 ========================= */
 function getRiskLevel(calories, bmi){
 
 let score = calculateHealthScore(calories, bmi)
 
 if(score >= 80){
-return {level:"🟢", text:"Low Risk", color:"green"}
+return {level:"🟢", text:"Low Risk", color:"green", score}
 }
 
 if(score >= 55){
-return {level:"🟡", text:"Medium Risk", color:"orange"}
+return {level:"🟡", text:"Medium Risk", color:"orange", score}
 }
 
-return {level:"🔴", text:"High Risk", color:"red"}
+return {level:"🔴", text:"High Risk", color:"red", score}
 }
 
 /* =========================
-🍽 MEAL SCORE (OLD + NEW MIX)
+🍽 MEAL SCORE (IMPROVED BALANCE)
 ========================= */
 function calculateMealScore(items){
 
@@ -121,19 +119,17 @@ let fat = 0
 
 items.forEach(i=>{
 
-// old logic
 if(i.calories > 800) score -= 10
 if(i.cuisine === "Western") score -= 5
 if(i.cuisine === "Asian") score += 3
 
-// NEW macro awareness
-if(i.food.includes("chicken") || i.food.includes("egg")) protein += 1
-if(i.food.includes("rice") || i.food.includes("bread")) carbs += 1
-if(i.food.includes("fried") || i.food.includes("oil")) fat += 1
+// macro hints (fallback only)
+if(i.food.includes("chicken") || i.food.includes("egg")) protein++
+if(i.food.includes("rice") || i.food.includes("bread")) carbs++
+if(i.food.includes("fried") || i.food.includes("oil")) fat++
 
 })
 
-/* macro balance scoring */
 if(protein === 0) score -= 10
 if(carbs > protein * 2) score -= 12
 if(fat > protein) score -= 15
@@ -142,7 +138,7 @@ return Math.max(0, Math.min(100, score))
 }
 
 /* =========================
-📊 MACRO SCORING ENGINE (NEW)
+📊 MACRO SCORE (FIXED PHASE 6)
 ========================= */
 function calculateMacroScores(items){
 
@@ -152,16 +148,17 @@ let fat = 0
 
 items.forEach(i=>{
 
+// fallback scoring ONLY (AI vision overrides this later)
 if(i.food.includes("chicken") || i.food.includes("egg") || i.food.includes("fish")){
-protein += 25
+protein += 20
 }
 
 if(i.food.includes("rice") || i.food.includes("bread") || i.food.includes("noodle")){
-carbs += 25
+carbs += 20
 }
 
 if(i.food.includes("fried") || i.food.includes("oil") || i.food.includes("burger")){
-fat += 25
+fat += 20
 }
 
 })
@@ -233,12 +230,11 @@ return "Healthy balance. Keep current routine and hydration."
 }
 
 /* =========================
-🧠 FINAL AI ENGINE v11.5
+🧠 FINAL AI ENGINE v11.5 (PHASE 6 READY)
 ========================= */
 function getAIInsight(calories, bmi, history = [], foodText = ""){
 
 let foods = parseFoodAI(foodText)
-
 let split = splitCalories(foods, calories)
 
 let items = split.map(s => ({
@@ -250,19 +246,23 @@ risk: getRiskLevel(s.calories, bmi).level
 
 let macro = calculateMacroScores(items)
 
-/* FINAL WEIGHTED SCORE */
 let baseScore = calculateHealthScore(calories, bmi)
 let mealScore = calculateMealScore(items)
 
+/* FINAL SCORE (CLAMPED SAFE) */
 let finalScore =
 (baseScore * 0.4) +
 (mealScore * 0.4) +
 ((macro.proteinScore + macro.carbScore + macro.fatScore)/3 * 0.2)
 
+finalScore = Math.max(0, Math.min(100, finalScore))
+
 return {
 score: Math.round(finalScore),
+
 baseScore,
 mealScore,
+
 macro,
 
 risk: getRiskLevel(calories, bmi),
