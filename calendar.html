@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>AI Calendar v11.5 (FIXED FINAL STABLE)</title>
+<title>AI Calendar v12.2 Stable Pro</title>
 
 <link rel="stylesheet" href="style.css">
 
@@ -23,6 +23,7 @@ font-size:12px;
 cursor:pointer;
 box-shadow:0 1px 3px rgba(0,0,0,.05);
 transition:0.2s;
+position:relative;
 }
 .day:hover{transform:scale(1.05)}
 
@@ -46,18 +47,20 @@ margin-top:5px;
 .yellow{background:#fef9c3;color:#854d0e}
 .red{background:#fee2e2;color:#991b1b}
 
-#modal{
-pointer-events:auto;
-z-index:9999;
+.cheat{
+position:absolute;
+top:6px;
+right:8px;
+font-size:16px;
+color:#ef4444;
+font-weight:bold;
 }
 
-.modal-bg{
-position:fixed;
-inset:0;
-background:rgba(0,0,0,0.5);
-display:none;
-align-items:center;
-justify-content:center;
+.warn{
+position:absolute;
+top:6px;
+left:8px;
+font-size:14px;
 }
 </style>
 </head>
@@ -74,7 +77,7 @@ justify-content:center;
 <a href="profile.html">Profile</a>
 </div>
 
-<h2 class="center">📅 AI Calendar v11.5 (FIXED STABLE)</h2>
+<h2 class="center">📅 AI Calendar v12.2 Stable Pro (Cheat Detection)</h2>
 
 <div class="card">
 <p id="time"></p>
@@ -137,7 +140,7 @@ weight:70
 }
 }
 
-/* ================= SAFE FOOD LOGS (IMPORTANT FIX) ================= */
+/* ================= SAFE FOOD ================= */
 async function safeFoodLogs(date){
 try{
 if(typeof getFoodLogs !== "function") return []
@@ -145,7 +148,6 @@ const p = getActiveProfile()
 const logs = await getFoodLogs(date) || []
 return logs.filter(f => !f.userId || f.userId === p.id)
 }catch(e){
-console.log("food log error:",e)
 return []
 }
 }
@@ -178,11 +180,18 @@ risk: ai.risk.level
 }
 }
 
+/* ================= CHEAT DAY LOGIC (NEW) ================= */
+function isCheatDay(calories, risk){
+
+if(calories >= 3200) return true
+if(risk === "HIGH" && calories >= 2800) return true
+return false
+}
+
 /* ================= WEEK SUMMARY ================= */
 async function buildWeeklySummary(){
 
 let total=0,max=0
-
 let macroP=0,macroC=0,macroF=0
 
 for(let i=0;i<7;i++){
@@ -222,12 +231,11 @@ document.getElementById("riskSummary").innerHTML =
 <p>Protein: ${macroP}g | Carbs: ${macroC}g | Fat: ${macroF}g</p>`
 }
 
-/* ================= LOAD (CRITICAL FIX) ================= */
+/* ================= LOAD ================= */
 async function load(){
 
 grid.innerHTML=""
 
-/* 🔥 FIX: never NaN */
 let y = Number(yearSelect.value || new Date().getFullYear())
 let m = Number(monthSelect.value || new Date().getMonth())
 
@@ -244,17 +252,30 @@ await renderDay(date,d)
 }
 }
 
-/* ================= SAFE RENDER ================= */
+/* ================= RENDER DAY (CHEAT DAY + ! MARKER) ================= */
 async function renderDay(date,d){
 
 try{
 
 let data = await getDailyMacro(date)
 
+let cheat = isCheatDay(data.calories, data.risk)
+
+/* ICON SYSTEM */
+let icon = ""
+if(cheat){
+icon = "❗"
+}else if(data.risk === "HIGH"){
+icon = "⚠"
+}else if(data.risk === "MEDIUM"){
+icon = "▲"
+}
+
 let div = document.createElement("div")
 div.className="day"
 
 div.innerHTML=`
+<div class="warn">${icon}</div>
 <b>${d}</b><br>
 ${data.calories} kcal<br>
 <span class="badge ${data.risk==="HIGH"?"red":data.risk==="MEDIUM"?"yellow":"green"}">
@@ -262,12 +283,19 @@ ${data.risk}
 </span>
 `
 
-div.onclick = () => window.openModal(date,data)
+if(cheat){
+let mark = document.createElement("div")
+mark.className="cheat"
+mark.innerText="!"
+div.appendChild(mark)
+}
+
+div.onclick = () => openModal(date,data)
 
 grid.appendChild(div)
 
 }catch(e){
-console.log("render error:",date,e)
+console.log("render error:",e)
 }
 }
 
@@ -278,24 +306,24 @@ document.getElementById("modal").style.display="flex"
 document.getElementById("modalDate").innerText=date
 
 document.getElementById("modalCalories").innerText =
-`Calories: ${data.calories} kcal`
+`Calories: ${data.calories}`
 
 document.getElementById("modalProtein").innerText =
-`Protein: ${data.protein} g`
+`Protein: ${data.protein}`
 
 document.getElementById("modalCarbs").innerText =
-`Carbs: ${data.carbs} g`
+`Carbs: ${data.carbs}`
 
 document.getElementById("modalFat").innerText =
-`Fat: ${data.fat} g`
+`Fat: ${data.fat}`
 
 document.getElementById("mealBreakdown").innerHTML =
 `<p>AI Score: ${data.score}/100</p>
 <p>Risk: ${data.risk}</p>`
 
 document.getElementById("miniAI").innerText =
-data.score>80?"🟢 Excellent day"
-:data.score>60?"🟡 Balanced day"
+data.score>80?"🟢 Excellent"
+:data.score>60?"🟡 Balanced"
 :"🔴 Needs improvement"
 }
 
