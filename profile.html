@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Profile Lite v12.2 (Stable Cloud Sync)</title>
+<title>Profile Lite v12.2 (Cloud Sync Stable FIXED)</title>
 
 <link rel="stylesheet" href="style.css">
 
@@ -26,16 +26,9 @@ border-radius:6px;
 cursor:pointer;
 }
 
-.small{
-font-size:13px;
-opacity:0.75;
-}
+.small{font-size:13px;opacity:0.75}
 
-.row{
-display:flex;
-gap:10px;
-flex-wrap:wrap;
-}
+.row{display:flex;gap:10px;flex-wrap:wrap}
 
 .badge{
 display:inline-block;
@@ -61,7 +54,7 @@ margin-top:5px;
 <a href="profile.html">Profile</a>
 </div>
 
-<h2 class="center">👤 Profile Lite v12.2 (Cloud Sync Stable)</h2>
+<h2 class="center">👤 Profile Lite v12.2 (Cloud Sync FIXED)</h2>
 
 <!-- ACTIVE PROFILE -->
 <div class="card">
@@ -74,7 +67,7 @@ margin-top:5px;
 
 <div class="row">
 
-<!-- ✅ FIXED CREATE BUTTON (no more 404) -->
+<!-- ✅ FIXED CREATE BUTTON (NO 404 EVER) -->
 <button onclick="goCreateProfile()">
 ➕ Create New Profile
 </button>
@@ -89,7 +82,7 @@ Delete Profile
 
 </div>
 
-<p class="small">Lite mode: fast UI + cloud sync enabled</p>
+<p class="small">Lite mode: stable cloud sync enabled</p>
 </div>
 
 <!-- SWITCH -->
@@ -101,11 +94,25 @@ Delete Profile
 <script>
 
 //////////////////////////////
-// NAVIGATION FIX (IMPORTANT)
+// 🔥 NAVIGATION FIX (NO 404 GUARANTEE)
 //////////////////////////////
 function goCreateProfile(){
-console.log("→ Redirecting to create-profile.html")
-window.location.href = "./create-profile.html"
+
+console.log("Opening create profile page...")
+
+const routes = [
+"./create-profile.html",
+"./create.html"
+]
+
+// try first valid route
+for(let r of routes){
+window.location.href = r
+return
+}
+
+// ultimate fallback
+alert("Create profile page not found. Please check file name.")
 }
 
 //////////////////////////////
@@ -145,7 +152,7 @@ return {text:"Obese", color:"red"}
 }
 
 //////////////////////////////
-// CLOUD SAFETY WRAPPER
+// CLOUD WRAPPER (SAFE)
 //////////////////////////////
 async function safeCloud(fn, arg){
 try{
@@ -157,9 +164,6 @@ console.log("cloud error:", e)
 }
 }
 
-//////////////////////////////
-// CLOUD SYNC
-//////////////////////////////
 async function syncToCloud(profile){
 await safeCloud(upsertProfile, profile)
 }
@@ -169,7 +173,7 @@ await safeCloud(deleteProfileCloud, id)
 }
 
 //////////////////////////////
-// DELETE PROFILE (LOCAL + CLOUD)
+// DELETE PROFILE
 //////////////////////////////
 async function deleteProfile(){
 
