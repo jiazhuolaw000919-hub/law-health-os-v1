@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Profile Details AI Center</title>
+
+<link rel="stylesheet" href="style.css">
+
+<script src="app.js"></script>
+<script src="supabase.js"></script>
+<script src="js/db.js"></script>
+<script src="js/profile.js"></script>
+<script src="js/ai-engine.js"></script>
+
+<style>
+.card{
+margin:10px;
+padding:12px;
+background:#fff;
+border-radius:10px;
+box-shadow:0 1px 4px rgba(0,0,0,.05);
+}
+
+.section{
+margin-top:10px;
+padding-top:10px;
+border-top:1px solid #eee;
+}
+
+.badge{
+padding:4px 8px;
+border-radius:6px;
+font-size:12px;
+display:inline-block;
+}
+
+.green{background:#dcfce7;color:#166534}
+.yellow{background:#fef9c3;color:#854d0e}
+.red{background:#fee2e2;color:#991b1b}
+
+.center{text-align:center}
+</style>
+</head>
+
+<body>
+
+<div class="nav">
+<a href="profile.html">← Back</a>
+</div>
+
+<h2 class="center">🧠 Profile AI Details Center</h2>
+
+<!-- ACTIVE PROFILE -->
+<div class="card">
+<h3>👤 Identity Overview</h3>
+<p id="basic"></p>
+</div>
+
+<!-- BODY METRICS -->
+<div class="card">
+<h3>⚖ Body Metrics</h3>
+
+<p id="body"></p>
+<p id="bmi"></p>
+<p id="goal"></p>
+</div>
+
+<!-- AI INSIGHT -->
+<div class="card">
+<h3>🧠 AI Health Insight</h3>
+
+<p id="risk"></p>
+<p id="score"></p>
+<p id="advice"></p>
+</div>
+
+<!-- FUTURE AI PLACEHOLDER -->
+<div class="card">
+<h3>📊 Future AI Trends (Phase 8 Ready)</h3>
+
+<p id="trend">Loading AI prediction...</p>
+</div>
+
+<script>
+
+/* ================= PROFILE ================= */
+function getActiveProfile(){
+return JSON.parse(localStorage.getItem("activeProfile")) || {
+name:"Guest",
+height:170,
+weight:70,
+target_weight:70,
+primary_goal:"maintenance"
+}
+}
+
+/* ================= BMI ================= */
+function calcBMI(h,w){
+return (w / ((h/100)*(h/100))).toFixed(1)
+}
+
+/* ================= LOAD ================= */
+function load(){
+
+const p = getActiveProfile()
+
+/* ================= BASIC ================= */
+document.getElementById("basic").innerHTML = `
+<b>Name:</b> ${p.name}<br>
+<b>Email:</b> ${p.email || "-"}<br>
+<b>Phone:</b> ${p.phone || "-"}<br>
+<b>Gender:</b> ${p.gender || "-"}<br>
+<b>Age:</b> ${p.age || "-"}<br>
+<b>Country:</b> ${p.country || "-"}<br>
+<b>Occupation:</b> ${p.occupation || "-"}
+`
+
+/* ================= BODY ================= */
+document.getElementById("body").innerHTML = `
+<b>Height:</b> ${p.height} cm<br>
+<b>Weight:</b> ${p.weight} kg<br>
+<b>Target Weight:</b> ${p.target_weight || "-"} kg<br>
+<b>Body Fat:</b> ${p.body_fat_percentage || "-"} %<br>
+<b>Muscle Mass:</b> ${p.muscle_mass || "-"} kg
+`
+
+/* ================= BMI ================= */
+let bmi = calcBMI(p.height, p.weight)
+
+document.getElementById("bmi").innerHTML = `
+<b>BMI:</b> ${bmi} <br>
+<span class="badge ${
+bmi < 18.5 ? "yellow" :
+bmi < 25 ? "green" :
+bmi < 30 ? "yellow" : "red"
+}">
+${bmi < 18.5 ? "Underweight"
+: bmi < 25 ? "Normal"
+: bmi < 30 ? "Overweight"
+: "Obese"}
+</span>
+`
+
+/* ================= GOAL ================= */
+document.getElementById("goal").innerHTML = `
+<b>Primary Goal:</b> ${p.primary_goal}
+`
+
+/* ================= AI ENGINE (optional) ================= */
+let ai = null
+
+if(typeof getAIInsight !== "undefined"){
+ai = getAIInsight(2200, Number(bmi || 22), [], "")
+}
+
+document.getElementById("risk").innerText =
+`Risk: ${ai?.risk?.level || "🟢 Low Risk"}`
+
+document.getElementById("score").innerText =
+`Health Score: ${ai?.score || 0}/100`
+
+document.getElementById("advice").innerText =
+ai?.advice || "No AI advice available yet."
+
+/* ================= FUTURE PLACEHOLDER ================= */
+document.getElementById("trend").innerText =
+"AI prediction engine ready (Phase 8: weight + calorie + risk forecasting)"
+}
+
+load()
+
+</script>
+
+</body>
+</html>
