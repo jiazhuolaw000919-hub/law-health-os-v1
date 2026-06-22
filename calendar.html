@@ -74,7 +74,7 @@ justify-content:center;
 <a href="profile.html">Profile</a>
 </div>
 
-<h2 class="center">📅 AI Calendar v11.5 (PHASE 6 GLOBAL SYNC)</h2>
+<h2 class="center">📅 AI Calendar v11.5 (FIXED RENDER)</h2>
 
 <div class="card">
 <p id="time"></p>
@@ -138,16 +138,12 @@ weight:70
 }
 }
 
-/* ================= SAFE FOOD LOGS (FIXED) ================= */
+/* ================= SAFE FOOD LOGS ================= */
 async function safeFoodLogs(date){
 if(typeof getFoodLogs !== "function") return []
-
 const p = getActiveProfile()
 const logs = await getFoodLogs(date) || []
-
-return logs.filter(f =>
-!f.userId || f.userId === p.id
-)
+return logs.filter(f => !f.userId || f.userId === p.id)
 }
 
 /* ================= DAILY ================= */
@@ -217,19 +213,18 @@ document.getElementById("summary").innerText =
 `Avg ${avg.toFixed(0)} kcal | Max ${max} kcal`
 
 document.getElementById("riskSummary").innerHTML =
-`<span class="badge ${color}">
-${risk} RISK
-</span>
+`<span class="badge ${color}">${risk} RISK</span>
 <p>Protein: ${macroP}g | Carbs: ${macroC}g | Fat: ${macroF}g</p>`
 }
 
-/* ================= FIXED LOAD (KEY FIX) ================= */
+/* ================= FIXED LOAD ================= */
 async function load(){
 
 grid.innerHTML=""
 
-let y = Number(yearSelect.value)
-let m = Number(monthSelect.value)
+/* 🔥 FIX 1: guarantee safe values */
+let y = Number(yearSelect.value || new Date().getFullYear())
+let m = Number(monthSelect.value || new Date().getMonth())
 
 let first = new Date(y,m,1).getDay()
 let days = new Date(y,m+1,0).getDate()
@@ -248,8 +243,10 @@ tasks.push(renderDay(date,d))
 await Promise.all(tasks)
 }
 
-/* render day (optimized) */
+/* ================= SAFE RENDER DAY ================= */
 async function renderDay(date,d){
+
+try{
 
 let data = await getDailyMacro(date)
 
@@ -267,6 +264,10 @@ ${data.risk}
 div.onclick = () => window.openModal(date,data)
 
 grid.appendChild(div)
+
+}catch(e){
+console.log("render day error",date,e)
+}
 }
 
 /* ================= MODAL ================= */
@@ -306,7 +307,7 @@ let date=document.getElementById("modalDate").innerText
 window.location.href=`day.html?date=${date}`
 }
 
-/* ================= INIT (FIXED ORDER) ================= */
+/* ================= INIT FIX ================= */
 function init(){
 
 monthSelect.innerHTML=""
@@ -325,11 +326,12 @@ yearSelect.innerHTML += `<option value="${i}">${i}</option>`
 monthSelect.value = new Date().getMonth()
 yearSelect.value = y
 
-/* IMPORTANT FIX */
+/* 🔥 FIX 2: auto reload */
 monthSelect.onchange = load
 yearSelect.onchange = load
 }
 
+/* ================= TIME ================= */
 function updateTime(){
 document.getElementById("time").innerText =
 "🕒 " + new Date().toLocaleString()
@@ -338,6 +340,7 @@ document.getElementById("time").innerText =
 setInterval(updateTime,1000)
 updateTime()
 
+/* 🔥 IMPORTANT ORDER FIX */
 init()
 buildWeeklySummary()
 load()
