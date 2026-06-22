@@ -1,7 +1,7 @@
 const SUPABASE_URL = "https://jwcgamxkwzrjnepxrvzr.supabase.co"
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9"
 
-// 🔥 DELETE GUARD (anti revive v2)
+// 🔥 DELETE GUARD
 const DELETE_GUARD_KEY = "deleted_items_v2"
 
 //////////////////////////////
@@ -21,14 +21,6 @@ return null
 //////////////////////////////
 // PROFILE CORE
 //////////////////////////////
-function getActiveProfile(){
-try{
-return JSON.parse(localStorage.getItem("activeProfile")) || fallbackProfile()
-}catch(e){
-return fallbackProfile()
-}
-}
-
 function fallbackProfile(){
 return {
 id:"guest",
@@ -40,10 +32,17 @@ updatedAt: new Date().toISOString()
 }
 }
 
-//////////////////////////////
-// 🧠 DELETE SYSTEM (v2 STRONG)
-//////////////////////////////
+function getActiveProfile(){
+try{
+return JSON.parse(localStorage.getItem("activeProfile")) || fallbackProfile()
+}catch(e){
+return fallbackProfile()
+}
+}
 
+//////////////////////////////
+// DELETE SYSTEM
+//////////////////////////////
 function getDeletedSet(){
 return new Set(JSON.parse(localStorage.getItem(DELETE_GUARD_KEY)) || [])
 }
@@ -55,35 +54,25 @@ JSON.stringify(Array.from(set))
 )
 }
 
-/* mark deleted */
 function markDeleted(id){
 if(!id) return
-
 let set = getDeletedSet()
 set.add(id)
 saveDeletedSet(set)
 }
 
-/* check deleted */
 function isDeleted(id){
 if(!id) return false
 return getDeletedSet().has(id)
 }
 
-//////////////////////////////
-// CLEAN FILTER HELPER (IMPORTANT FIX)
-//////////////////////////////
 function filterDeleted(list){
-
 if(!Array.isArray(list)) return []
-
-return list.filter(item=>{
-return item && item.id && !isDeleted(item.id)
-})
+return list.filter(i => i && i.id && !isDeleted(i.id))
 }
 
 //////////////////////////////
-// FOOD LOG READ
+// 🍽 FOOD LOG READ (UPDATED v3)
 //////////////////////////////
 async function getFoodLogs(date){
 
@@ -104,7 +93,7 @@ return filterDeleted(data)
 }
 
 //////////////////////////////
-// FOOD LOG WRITE
+// 🍽 FOOD LOG WRITE (PHASE 3 MACROS)
 //////////////////////////////
 async function saveFood(data){
 
@@ -113,10 +102,13 @@ const profile = getActiveProfile()
 const payload = {
 userId: profile.id,
 food: data.food || "unknown",
+
+// 🔥 Phase 3 macros
 calories: Number(data.calories || 0),
 protein: Number(data.protein || 0),
 carbs: Number(data.carbs || 0),
 fat: Number(data.fat || 0),
+
 date: data.date,
 createdAt: new Date().toISOString()
 }
@@ -134,21 +126,51 @@ body: JSON.stringify(payload)
 }
 
 //////////////////////////////
-// ❌ SAFE DELETE FOOD (FINAL ANTI-REVIVE CORE)
+// 📊 PHASE 2 — 7 DAY FOOD ANALYTICS
+//////////////////////////////
+async function getFoodStats7Days(){
+
+let arr = []
+
+for(let i=6;i>=0;i--){
+let d = new Date()
+d.setDate(d.getDate()-i)
+
+let date = d.toISOString().split("T")[0]
+let logs = await getFoodLogs(date)
+
+let total = 0
+
+logs.forEach(l=>{
+total += Number(l.calories || 0)
+})
+
+arr.push(total)
+}
+
+let avg = arr.reduce((a,b)=>a+b,0) / arr.length
+let max = Math.max(...arr)
+let min = Math.min(...arr)
+
+return {
+days: arr,
+avg: Math.round(avg),
+max,
+min
+}
+}
+
+//////////////////////////////
+// ❌ SAFE DELETE FOOD
 //////////////////////////////
 async function deleteFood(foodId){
 
 const profile = getActiveProfile()
 
-if(!foodId){
-console.log("delete blocked: missing id")
-return null
-}
+if(!foodId) return null
 
-// 🔒 STEP 1: mark locally FIRST (critical)
 markDeleted(foodId)
 
-// 🔒 STEP 2: server delete
 const url =
 `${SUPABASE_URL}/rest/v1/food_logs?id=eq.${foodId}&userId=eq.${profile.id}`
 
@@ -160,12 +182,11 @@ Authorization: "Bearer " + SUPABASE_KEY
 }
 })
 
-// 🔒 STEP 3: delayed cleanup sync (prevents revive race)
 setTimeout(()=>{
 if(typeof syncProfiles === "function"){
 syncProfiles()
 }
-}, 400)
+},400)
 
 return res
 }
@@ -214,7 +235,7 @@ body: JSON.stringify(payload)
 }
 
 //////////////////////////////
-// SMART SYNC ENGINE (NO REVIVE GUARANTEE)
+// 🔄 SYNC ENGINE
 //////////////////////////////
 async function syncProfiles(){
 
@@ -223,7 +244,6 @@ try{
 let cloud = await getProfilesCloud()
 let local = JSON.parse(localStorage.getItem("profiles")) || []
 
-// 🔒 double filter protection
 cloud = filterDeleted(cloud)
 local = filterDeleted(local)
 
@@ -270,9 +290,8 @@ console.log("sync error:", e)
 }
 
 //////////////////////////////
-// REALTIME ENGINE v11.7 (ANTI-DUP FIX)
+// REALTIME ENGINE
 //////////////////////////////
-
 let realtimeChannel = null
 let realtimeCooldown = false
 
@@ -290,11 +309,10 @@ realtimeChannel = supabase
 event:'*',
 schema:'public',
 table:'food_logs'
-},(payload)=>{
+},()=>{
 
 if(realtimeCooldown) return
 realtimeCooldown = true
-
 setTimeout(()=> realtimeCooldown=false, 800)
 
 syncProfiles()
@@ -314,13 +332,12 @@ window.dispatchEvent(new Event("profileSyncUpdate"))
 })
 
 .subscribe()
-
 }
 
 initRealtime()
 
 //////////////////////////////
-// SAFE SYNC WRAPPER
+// AUTO SYNC
 //////////////////////////////
 let syncLock = false
 
@@ -333,18 +350,9 @@ await syncProfiles()
 syncLock = false
 }
 
-//////////////////////////////
-// AUTO SYNC LOOP
-//////////////////////////////
 setInterval(safeSync, 10000)
 
-//////////////////////////////
-// ONLINE / FOCUS SYNC
-//////////////////////////////
 window.addEventListener("online", safeSync)
 window.addEventListener("focus", safeSync)
 
-//////////////////////////////
-// INIT
-//////////////////////////////
 syncProfiles()
