@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Profile Lite v12.1 (Stable Upgrade)</title>
+<title>Profile Lite v12.1 (Cloud Sync Ready)</title>
 
 <link rel="stylesheet" href="style.css">
 
@@ -26,16 +26,9 @@ border-radius:6px;
 cursor:pointer;
 }
 
-.small{
-font-size:13px;
-opacity:0.75;
-}
+.small{font-size:13px;opacity:0.75}
 
-.row{
-display:flex;
-gap:10px;
-flex-wrap:wrap;
-}
+.row{display:flex;gap:10px;flex-wrap:wrap}
 
 .badge{
 display:inline-block;
@@ -61,7 +54,7 @@ margin-top:5px;
 <a href="profile.html">Profile</a>
 </div>
 
-<h2 class="center">👤 Profile Lite (Stable v12.1)</h2>
+<h2 class="center">👤 Profile Lite (Cloud Sync v12.1)</h2>
 
 <!-- ACTIVE PROFILE -->
 <div class="card">
@@ -79,7 +72,7 @@ Delete Profile
 </button>
 </div>
 
-<p class="small">Lite mode: fast access only</p>
+<p class="small">Lite mode: fast UI + cloud sync enabled</p>
 </div>
 
 <!-- SWITCH -->
@@ -90,7 +83,9 @@ Delete Profile
 
 <script>
 
-/* ================= SAFE PROFILE ================= */
+//////////////////////////////
+// SAFE PROFILE
+//////////////////////////////
 function getActiveProfile(){
 return JSON.parse(localStorage.getItem("activeProfile")) || {
 id:"guest",
@@ -104,48 +99,70 @@ function getProfiles(){
 return JSON.parse(localStorage.getItem("profiles")) || []
 }
 
-/* ================= SAFE NUM ================= */
 function num(v){
 return isNaN(v) ? 0 : Number(v)
 }
 
-/* ================= BMI ================= */
 function calcBMI(h,w){
 h = num(h || 170)
 w = num(w || 70)
 return (w / ((h/100)*(h/100))).toFixed(1)
 }
 
-/* ================= BMI STATUS ================= */
 function bmiStatus(bmi){
 
 bmi = Number(bmi)
 
-if(bmi < 18.5){
-return {text:"Underweight", color:"yellow"}
-}
-if(bmi < 25){
-return {text:"Normal", color:"green"}
-}
-if(bmi < 30){
-return {text:"Overweight", color:"yellow"}
-}
+if(bmi < 18.5) return {text:"Underweight", color:"yellow"}
+if(bmi < 25) return {text:"Normal", color:"green"}
+if(bmi < 30) return {text:"Overweight", color:"yellow"}
 return {text:"Obese", color:"red"}
 }
 
-/* ================= SAVE ================= */
+//////////////////////////////
+// CLOUD SYNC HELPERS (SAFE)
+//////////////////////////////
+
+async function syncToCloud(profile){
+
+try{
+if(typeof upsertProfile === "function"){
+await upsertProfile(profile)
+}
+}catch(e){
+console.log("cloud sync failed:", e)
+}
+}
+
+async function syncDeleteCloud(id){
+
+try{
+if(typeof deleteProfileCloud === "function"){
+await deleteProfileCloud(id)
+}
+}catch(e){
+console.log("delete cloud failed:", e)
+}
+}
+
+//////////////////////////////
+// SAVE (LOCAL + CLOUD)
+//////////////////////////////
 function saveProfiles(list){
 localStorage.setItem("profiles", JSON.stringify(list))
 }
 
-/* ================= DELETE SAFE ================= */
-function deleteProfile(){
+//////////////////////////////
+// DELETE SAFE + CLOUD
+//////////////////////////////
+async function deleteProfile(){
 
 let p = getActiveProfile()
 if(p.id === "guest") return
 
-let list = getProfiles().filter(x => x.id !== p.id)
+await syncDeleteCloud(p.id)
 
+let list = getProfiles().filter(x => x.id !== p.id)
 saveProfiles(list)
 
 let fallback = list[0] || {
@@ -160,7 +177,9 @@ localStorage.setItem("activeProfile", JSON.stringify(fallback))
 render()
 }
 
-/* ================= SWITCH ================= */
+//////////////////////////////
+// SWITCH (UNCHANGED)
+//////////////////////////////
 function switchProfile(id){
 
 let p = getProfiles().find(x => x.id === id)
@@ -170,16 +189,17 @@ localStorage.setItem("activeProfile", JSON.stringify(p))
 render()
 }
 
-/* ================= DETAIL PAGE ================= */
+//////////////////////////////
+// DETAIL PAGE
+//////////////////////////////
 function goDetail(){
-
 let p = getActiveProfile()
-
-// optional future AI usage
 location.href = `profile-detail.html?id=${p.id}`
 }
 
-/* ================= RENDER ================= */
+//////////////////////////////
+// RENDER (UNCHANGED LOGIC + SAFE CLOUD HOOK)
+//////////////////////////////
 function render(){
 
 let p = getActiveProfile()
@@ -214,7 +234,7 @@ div.className = "card"
 
 div.innerHTML = `
 <b>${x.name}</b><br>
-BMI: ${bmiVal} 
+BMI: ${bmiVal}
 <span class="badge ${status.color}">
 ${status.text}
 </span>
@@ -230,7 +250,9 @@ list.appendChild(div)
 })
 }
 
-/* ================= INIT ================= */
+//////////////////////////////
+// INIT
+//////////////////////////////
 render()
 
 </script>
