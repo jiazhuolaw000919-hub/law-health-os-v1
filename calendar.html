@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>AI Calendar v11.5 (PHASE 6 GLOBAL SYNC FIXED)</title>
+<title>AI Calendar v11.5 (FIXED FINAL STABLE)</title>
 
 <link rel="stylesheet" href="style.css">
 
@@ -74,7 +74,7 @@ justify-content:center;
 <a href="profile.html">Profile</a>
 </div>
 
-<h2 class="center">📅 AI Calendar v11.5 (FIXED RENDER)</h2>
+<h2 class="center">📅 AI Calendar v11.5 (FIXED STABLE)</h2>
 
 <div class="card">
 <p id="time"></p>
@@ -111,7 +111,6 @@ justify-content:center;
 <p id="modalFat"></p>
 
 <div id="mealBreakdown"></div>
-
 <p id="miniAI"></p>
 
 <br>
@@ -138,18 +137,23 @@ weight:70
 }
 }
 
-/* ================= SAFE FOOD LOGS ================= */
+/* ================= SAFE FOOD LOGS (IMPORTANT FIX) ================= */
 async function safeFoodLogs(date){
+try{
 if(typeof getFoodLogs !== "function") return []
 const p = getActiveProfile()
 const logs = await getFoodLogs(date) || []
 return logs.filter(f => !f.userId || f.userId === p.id)
+}catch(e){
+console.log("food log error:",e)
+return []
+}
 }
 
 /* ================= DAILY ================= */
 async function getDailyMacro(date){
 
-const foods = await safeFoodLogs(date)
+let foods = await safeFoodLogs(date)
 
 let calories=0, protein=0, carbs=0, fat=0
 
@@ -174,10 +178,11 @@ risk: ai.risk.level
 }
 }
 
-/* ================= WEEK ================= */
+/* ================= WEEK SUMMARY ================= */
 async function buildWeeklySummary(){
 
-let total=0,max=0,days=7
+let total=0,max=0
+
 let macroP=0,macroC=0,macroF=0
 
 for(let i=0;i<7;i++){
@@ -195,7 +200,7 @@ macroF += data.fat
 if(data.calories>max) max=data.calories
 }
 
-let avg = total/days
+let avg = total/7
 let p = getActiveProfile()
 let bmi = (p.weight/((p.height/100)**2)).toFixed(1)
 
@@ -217,12 +222,12 @@ document.getElementById("riskSummary").innerHTML =
 <p>Protein: ${macroP}g | Carbs: ${macroC}g | Fat: ${macroF}g</p>`
 }
 
-/* ================= FIXED LOAD ================= */
+/* ================= LOAD (CRITICAL FIX) ================= */
 async function load(){
 
 grid.innerHTML=""
 
-/* 🔥 FIX 1: guarantee safe values */
+/* 🔥 FIX: never NaN */
 let y = Number(yearSelect.value || new Date().getFullYear())
 let m = Number(monthSelect.value || new Date().getMonth())
 
@@ -233,17 +238,13 @@ for(let i=0;i<first;i++){
 grid.innerHTML += "<div></div>"
 }
 
-let tasks = []
-
 for(let d=1; d<=days; d++){
 let date = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`
-tasks.push(renderDay(date,d))
+await renderDay(date,d)
+}
 }
 
-await Promise.all(tasks)
-}
-
-/* ================= SAFE RENDER DAY ================= */
+/* ================= SAFE RENDER ================= */
 async function renderDay(date,d){
 
 try{
@@ -266,7 +267,7 @@ div.onclick = () => window.openModal(date,data)
 grid.appendChild(div)
 
 }catch(e){
-console.log("render day error",date,e)
+console.log("render error:",date,e)
 }
 }
 
@@ -307,7 +308,7 @@ let date=document.getElementById("modalDate").innerText
 window.location.href=`day.html?date=${date}`
 }
 
-/* ================= INIT FIX ================= */
+/* ================= INIT ================= */
 function init(){
 
 monthSelect.innerHTML=""
@@ -326,12 +327,10 @@ yearSelect.innerHTML += `<option value="${i}">${i}</option>`
 monthSelect.value = new Date().getMonth()
 yearSelect.value = y
 
-/* 🔥 FIX 2: auto reload */
 monthSelect.onchange = load
 yearSelect.onchange = load
 }
 
-/* ================= TIME ================= */
 function updateTime(){
 document.getElementById("time").innerText =
 "🕒 " + new Date().toLocaleString()
@@ -340,7 +339,6 @@ document.getElementById("time").innerText =
 setInterval(updateTime,1000)
 updateTime()
 
-/* 🔥 IMPORTANT ORDER FIX */
 init()
 buildWeeklySummary()
 load()
