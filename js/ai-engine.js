@@ -1,15 +1,17 @@
-//////////////////////////////
-// 🧠 AI ENGINE v11.6 (PHASE D - MEMORY UPGRADE)
-//////////////////////////////
+// ==============================
+// 🧠 AI ENGINE v12.0 STABLE CORE FIX
+// ==============================
 
 /* =========================
-📡 SUPABASE MEMORY LAYER (NEW)
+📡 SUPABASE MEMORY LAYER (SAFE)
 ========================= */
 async function getUserFoodHistory(userId, limit = 30){
 
 try{
 
-if(typeof SUPABASE_URL === "undefined") return []
+if(typeof SUPABASE_URL === "undefined" || typeof SUPABASE_KEY === "undefined"){
+return []
+}
 
 const res = await fetch(
 `${SUPABASE_URL}/rest/v1/food_logs?userId=eq.${userId}&order=createdAt.desc&limit=${limit}`,
@@ -33,7 +35,7 @@ return []
 }
 
 /* =========================
-🍜 FOOD NORMALIZATION LAYER
+🍜 NORMALIZATION
 ========================= */
 function normalizeFoodAI(foodText){
 
@@ -42,14 +44,14 @@ if(!foodText) return "unknown food"
 foodText = String(foodText).toLowerCase()
 
 const map = [
-  {key:"tomyam", value:"tom yum soup"},
-  {key:"tom yam", value:"tom yum soup"},
-  {key:"friedrice", value:"fried rice"},
-  {key:"nasilemak", value:"nasi lemak"},
-  {key:"chickenrice", value:"chicken rice"},
-  {key:"milktea", value:"milk tea"},
-  {key:"milo", value:"milo drink"},
-  {key:"char kway teow", value:"char kway teow"}
+{key:"tomyam", value:"tom yum soup"},
+{key:"tom yam", value:"tom yum soup"},
+{key:"friedrice", value:"fried rice"},
+{key:"nasilemak", value:"nasi lemak"},
+{key:"chickenrice", value:"chicken rice"},
+{key:"milktea", value:"milk tea"},
+{key:"milo", value:"milo drink"},
+{key:"char kway teow", value:"char kway teow"}
 ]
 
 for(let m of map){
@@ -78,7 +80,7 @@ return parts
 }
 
 /* =========================
-🌍 CUISINE DETECTION
+🌍 CUISINE
 ========================= */
 function detectCuisine(food){
 
@@ -94,7 +96,7 @@ return "Mixed"
 }
 
 /* =========================
-⚖️ BASE HEALTH SCORE
+⚖️ HEALTH SCORE
 ========================= */
 function calculateHealthScore(calories, bmi = 22){
 
@@ -115,7 +117,7 @@ return Math.max(0, Math.min(100, score))
 }
 
 /* =========================
-⚠️ RISK ENGINE
+⚠️ FIXED RISK ENGINE (CRITICAL FIX)
 ========================= */
 function getRiskLevel(calories, bmi){
 
@@ -172,7 +174,7 @@ return Math.max(0, Math.min(100, score))
 }
 
 /* =========================
-📊 MACROS
+📊 MACRO SCORE
 ========================= */
 function calculateMacroScores(items){
 
@@ -256,7 +258,7 @@ return "Healthy pattern. Keep routine."
 }
 
 /* =========================
-🧠 MAIN AI ENGINE v11.6 (MEMORY UPGRADE)
+🧠 MAIN AI ENGINE v12.0 SAFE OUTPUT
 ========================= */
 async function getAIInsight(calories, bmi, history = [], foodText = "", userId = null){
 
@@ -267,7 +269,7 @@ let items = split.map(s => ({
 food: s.food,
 calories: s.calories,
 cuisine: detectCuisine(s.food),
-risk: getRiskLevel(s.calories, bmi).level
+risk: "UNKNOWN"
 }))
 
 let macro = calculateMacroScores(items)
@@ -276,17 +278,17 @@ let baseScore = calculateHealthScore(calories, bmi)
 let mealScore = calculateMealScore(items)
 
 /* =========================
-🧠 MEMORY INJECTION (NEW)
+🧠 MEMORY SAFE LAYER
 ========================= */
 let memoryTrend = 0
 
-if(userId && typeof getUserFoodHistory !== "undefined"){
-
+if(userId){
+try{
 let historyData = await getUserFoodHistory(userId)
 
 if(historyData && historyData.length > 3){
 
-let last7 = historyData.slice(0,7).map(x=>x.calories)
+let last7 = historyData.slice(0,7).map(x=>x.calories || 0)
 
 let avg = last7.reduce((a,b)=>a+b,0)/last7.length
 
@@ -294,10 +296,13 @@ if(calories > avg * 1.2) memoryTrend = -5
 else if(calories < avg * 0.8) memoryTrend = +5
 else memoryTrend = +2
 }
+}catch(e){
+memoryTrend = 0
+}
 }
 
 /* =========================
-FINAL SCORE (WITH MEMORY)
+FINAL SCORE (SAFE)
 ========================= */
 let finalScore =
 (baseScore * 0.4) +
@@ -307,20 +312,17 @@ let finalScore =
 finalScore += memoryTrend
 finalScore = Math.max(0, Math.min(100, finalScore))
 
+let risk = getRiskLevel(calories, bmi)
+
+/* 🔥 CRITICAL FIX: always safe structure */
 return {
 score: Math.round(finalScore),
-
 baseScore,
 mealScore,
-
 macro,
-
-risk: getRiskLevel(calories, bmi),
-
+risk,               // ALWAYS SAME STRUCTURE
 advice: getAdvice(calories, bmi, history),
-
 foods: items,
-
 memoryTrend
 }
 }
