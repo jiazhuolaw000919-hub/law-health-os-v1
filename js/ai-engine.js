@@ -1,5 +1,5 @@
 //////////////////////////////
-// 🧠 AI ENGINE v11.5 FULL FIXED (PHASE 6 READY)
+// 🧠 AI ENGINE v11.5 FULL FIXED (PHASE 6 READY - FINAL)
 //////////////////////////////
 
 /* =========================
@@ -7,11 +7,9 @@
 ========================= */
 function normalizeFoodAI(foodText){
 
-if(!foodText){
-return "unknown food"
-}
+if(!foodText) return "unknown food"
 
-foodText = foodText.toLowerCase()
+foodText = String(foodText).toLowerCase()
 
 const map = [
   {key:"tomyam", value:"tom yum soup"},
@@ -34,13 +32,13 @@ return foodText
 }
 
 /* =========================
-🍜 MULTI FOOD PARSER
+🍜 MULTI FOOD PARSER (SAFE FIX)
 ========================= */
 function parseFoodAI(text){
 
 if(!text) return []
 
-text = text.toLowerCase()
+text = String(text).toLowerCase()
 
 let parts = text.split(/,|\+| and | with /)
 
@@ -87,21 +85,31 @@ return Math.max(0, Math.min(100, score))
 }
 
 /* =========================
-⚠️ RISK ENGINE (UNIFIED)
+⚠️ UNIFIED RISK ENGINE (FIXED)
 ========================= */
 function getRiskLevel(calories, bmi){
 
 let score = calculateHealthScore(calories, bmi)
 
-if(score >= 80){
-return {level:"🟢", text:"Low Risk", color:"green", score}
-}
+let level =
+score >= 80 ? "LOW"
+: score >= 55 ? "MEDIUM"
+: "HIGH"
 
-if(score >= 55){
-return {level:"🟡", text:"Medium Risk", color:"orange", score}
-}
+return {
+level,
+text:
+level === "LOW" ? "Low Risk"
+: level === "MEDIUM" ? "Medium Risk"
+: "High Risk",
 
-return {level:"🔴", text:"High Risk", color:"red", score}
+color:
+level === "LOW" ? "green"
+: level === "MEDIUM" ? "orange"
+: "red",
+
+score
+}
 }
 
 /* =========================
@@ -123,7 +131,6 @@ if(i.calories > 800) score -= 10
 if(i.cuisine === "Western") score -= 5
 if(i.cuisine === "Asian") score += 3
 
-// macro hints (fallback only)
 if(i.food.includes("chicken") || i.food.includes("egg")) protein++
 if(i.food.includes("rice") || i.food.includes("bread")) carbs++
 if(i.food.includes("fried") || i.food.includes("oil")) fat++
@@ -138,7 +145,7 @@ return Math.max(0, Math.min(100, score))
 }
 
 /* =========================
-📊 MACRO SCORE (FIXED PHASE 6)
+📊 MACRO SCORE (PHASE 6 FIXED)
 ========================= */
 function calculateMacroScores(items){
 
@@ -148,7 +155,6 @@ let fat = 0
 
 items.forEach(i=>{
 
-// fallback scoring ONLY (AI vision overrides this later)
 if(i.food.includes("chicken") || i.food.includes("egg") || i.food.includes("fish")){
 protein += 20
 }
@@ -215,11 +221,11 @@ function getAdvice(calories, bmi = 22, history = []){
 let risk = getRiskLevel(calories, bmi)
 let anomaly = detectAnomaly(calories, history)
 
-if(risk.level === "🔴"){
+if(risk.level === "HIGH"){
 return "High risk detected. Reduce carbs/sugar, prioritize protein, and walk 30–45 min."
 }
 
-if(risk.level === "🟡"){
+if(risk.level === "MEDIUM"){
 if(anomaly.includes("overeating")){
 return "Above normal intake trend. Consider lighter meals tomorrow."
 }
@@ -230,7 +236,7 @@ return "Healthy balance. Keep current routine and hydration."
 }
 
 /* =========================
-🧠 FINAL AI ENGINE v11.5 (PHASE 6 READY)
+🧠 FINAL AI ENGINE v11.5 (PHASE 6 READY FIXED)
 ========================= */
 function getAIInsight(calories, bmi, history = [], foodText = ""){
 
@@ -249,7 +255,7 @@ let macro = calculateMacroScores(items)
 let baseScore = calculateHealthScore(calories, bmi)
 let mealScore = calculateMealScore(items)
 
-/* FINAL SCORE (CLAMPED SAFE) */
+/* FINAL SCORE (SAFE CLAMPED) */
 let finalScore =
 (baseScore * 0.4) +
 (mealScore * 0.4) +
@@ -266,6 +272,7 @@ mealScore,
 macro,
 
 risk: getRiskLevel(calories, bmi),
+
 advice: getAdvice(calories, bmi, history),
 
 foods: items
