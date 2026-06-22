@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Create Profile v2 (AI Ready)</title>
+<title>Create Profile v2 (AI Ready - Phase Safe)</title>
 
 <link rel="stylesheet" href="style.css">
 <script src="app.js"></script>
@@ -40,7 +40,7 @@ width:48%;
 <a href="profile.html">← Back</a>
 </div>
 
-<h2 class="center">➕ Create Profile (AI v2 Full Identity)</h2>
+<h2 class="center">➕ Create Profile (AI v2 Full Identity - Phase Safe)</h2>
 
 <div class="card">
 
@@ -94,60 +94,99 @@ width:48%;
 
 <script>
 
-/* ================= BMI ================= */
+/* ================= SAFE BMI ================= */
 function calcBMI(h,w){
 h = Number(h || 170)
 w = Number(w || 70)
 return (w / ((h/100)*(h/100))).toFixed(1)
 }
 
+/* ================= SAFE PROFILE NORMALIZER ================= */
+function normalizeProfile(p){
+
+return {
+id: p.id || Date.now().toString(),   // 🔥 FIX: unify ID for Supabase + local sync
+
+/* identity */
+name: p.name,
+email: p.email || "",
+phone: p.phone || "",
+gender: p.gender || "other",
+age: Number(p.age || 0),
+country: p.country || "",
+language: p.language || "",
+occupation: p.occupation || "",
+
+/* body */
+height: Number(p.height || 170),
+weight: Number(p.weight || 70),
+target_weight: Number(p.target_weight || 70),
+
+body_fat_percentage: Number(p.body_fat_percentage || 0),
+muscle_mass: Number(p.muscle_mass || 0),
+
+primary_goal: p.primary_goal || "maintenance",
+
+/* AI derived */
+bmi: Number(p.bmi || 0),
+
+/* timestamps (IMPORTANT for Phase C/D sync) */
+created_at: p.created_at || new Date().toISOString(),
+updated_at: new Date().toISOString()
+}
+}
+
 /* ================= SAVE ================= */
 function saveProfile(){
 
-let name = document.getElementById("name").value
+let name = document.getElementById("name").value.trim()
 
 if(!name){
 alert("Name required")
 return
 }
 
-let profile = {
+let rawProfile = {
 
-user_id: Date.now().toString(),
+id: Date.now().toString(),
 
-/* identity */
 name,
+
 email: document.getElementById("email").value || "",
 phone: document.getElementById("phone").value || "",
 gender: document.getElementById("gender").value,
-age: Number(document.getElementById("age").value || 0),
-country: document.getElementById("country").value || "",
-language: document.getElementById("language").value || "",
-occupation: document.getElementById("occupation").value || "",
+age: document.getElementById("age").value,
+country: document.getElementById("country").value,
+language: document.getElementById("language").value,
+occupation: document.getElementById("occupation").value,
 
-/* body */
-height: Number(document.getElementById("height").value || 170),
-weight: Number(document.getElementById("weight").value || 70),
-target_weight: Number(document.getElementById("target_weight").value || 70),
+height: document.getElementById("height").value,
+weight: document.getElementById("weight").value,
+target_weight: document.getElementById("target_weight").value,
 
-body_fat_percentage: Number(document.getElementById("body_fat").value || 0),
-muscle_mass: Number(document.getElementById("muscle_mass").value || 0),
+body_fat_percentage: document.getElementById("body_fat").value,
+muscle_mass: document.getElementById("muscle_mass").value,
 
-primary_goal: document.getElementById("goal").value,
-
-/* AI derived */
-bmi: 0,
-created_at: new Date().toISOString()
+primary_goal: document.getElementById("goal").value
 }
 
+/* normalize (CRITICAL for cloud sync stability) */
+let profile = normalizeProfile(rawProfile)
+
+/* compute BMI AFTER normalization */
 profile.bmi = calcBMI(profile.height, profile.weight)
 
-/* SAVE LOCAL */
+/* ================= LOCAL SAVE ================= */
 localStorage.setItem("activeProfile", JSON.stringify(profile))
 
 let all = JSON.parse(localStorage.getItem("profiles") || "[]")
+
 all.push(profile)
+
 localStorage.setItem("profiles", JSON.stringify(all))
+
+/* notify other pages (profile-lite / dashboard sync) */
+window.dispatchEvent(new Event("profileUpdated"))
 
 alert("Profile created successfully!")
 
