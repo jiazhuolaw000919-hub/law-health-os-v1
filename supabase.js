@@ -19,16 +19,31 @@ updatedAt: new Date().toISOString()
 }
 }
 
+/* ⚠️ FIX: ONLY SINGLE SOURCE (NO MERGE LOGIC ANYMORE) */
 export function getActiveProfile(){
 try{
-return JSON.parse(localStorage.getItem("activeProfile")) || fallbackProfile()
+const raw = localStorage.getItem("activeProfile")
+
+if(!raw || raw === "undefined" || raw === "null"){
+return fallbackProfile()
+}
+
+const parsed = JSON.parse(raw)
+
+if(!parsed || !parsed.id){
+return fallbackProfile()
+}
+
+return parsed
+
 }catch(e){
+console.log("profile parse error:", e)
 return fallbackProfile()
 }
 }
 
 /* =========================
-🧹 DELETE SYSTEM (LOCAL ONLY)
+🧹 DELETE SYSTEM (LOCAL ONLY - KEPT SAFE)
 ========================= */
 const DELETE_GUARD_KEY = "deleted_items_v2"
 
@@ -57,7 +72,7 @@ return list.filter(i => i && i.id && !isDeleted(i.id))
 }
 
 /* =========================
-🍽 FOOD READ (FIXED SAFE)
+🍽 FOOD READ (UNCHANGED)
 ========================= */
 export async function getFoodLogs(date){
 
@@ -78,7 +93,7 @@ return filterDeleted(data || [])
 }
 
 /* =========================
-🍽 FOOD WRITE
+🍽 FOOD WRITE (UNCHANGED)
 ========================= */
 export async function saveFood(data){
 
@@ -107,7 +122,7 @@ return result
 }
 
 /* =========================
-📊 7 DAY STATS
+📊 7 DAY STATS (UNCHANGED)
 ========================= */
 export async function getFoodStats7Days(){
 
@@ -135,7 +150,7 @@ min: Math.min(...arr)
 }
 
 /* =========================
-❌ DELETE FOOD (FIXED)
+❌ DELETE FOOD (UNCHANGED)
 ========================= */
 export async function deleteFood(foodId){
 
@@ -159,7 +174,7 @@ return true
 }
 
 /* =========================
-👤 PROFILE SYSTEM
+👤 PROFILE SYSTEM (CLEANED ONLY)
 ========================= */
 export async function upsertProfile(profile){
 
@@ -211,31 +226,7 @@ return data?.[0] || null
 }
 
 /* =========================
-🔄 SYNC ENGINE (SAFE VERSION)
-========================= */
-export async function syncProfiles(){
-
-try{
-
-const cloud = await fetchProfiles()
-const local = JSON.parse(localStorage.getItem("profiles")) || []
-
-const map = new Map()
-
-;[...local, ...cloud].forEach(p=>{
-if(!p || !p.id || isDeleted(p.id)) return
-map.set(p.id, {...(map.get(p.id)||{}), ...p})
-})
-
-localStorage.setItem("profiles", JSON.stringify([...map.values()]))
-
-}catch(e){
-console.log("sync error:", e)
-}
-}
-
-/* =========================
-⚡ REALTIME (SAFE GUARD)
+⚡ REALTIME ENGINE (FIXED - NO SYNC LOOP)
 ========================= */
 export function initRealtime(){
 
@@ -249,7 +240,6 @@ event:"*",
 schema:"public",
 table:"food_logs"
 },()=>{
-syncProfiles()
 window.dispatchEvent(new Event("foodSyncUpdate"))
 })
 
@@ -258,21 +248,20 @@ event:"*",
 schema:"public",
 table:"profiles"
 },()=>{
-syncProfiles()
 window.dispatchEvent(new Event("profileSyncUpdate"))
 })
 
 .subscribe()
 }
 
-initRealtime()
+/* =========================
+⛔ REMOVED:
+- syncProfiles()
+- localStorage merge system
+- polling sync loop (setInterval)
+========================= */
 
 /* =========================
-AUTO SYNC
+AUTO INIT REALTIME ONLY
 ========================= */
-setInterval(syncProfiles, 10000)
-
-window.addEventListener("online", syncProfiles)
-window.addEventListener("focus", syncProfiles)
-
-syncProfiles()
+initRealtime()
