@@ -1,16 +1,20 @@
-const SUPABASE_URL = “https://jqevcfyhnlttzdiylfrh.supabase.co”
-const SUPABASE_KEY = “sb_publishable_GMM5PgeRzudbeh4aHK-1pw_lQ6TQnVe”
-
 /* =========================
-LOAD SUPABASE CDN
+SUPABASE CONFIG (FIXED SAFE)
 ========================= */
 
-if(typeof window.supabase === “undefined”){
-console.error(“Supabase CDN not loaded”)
+const SUPABASE_URL = "https://jqevcfyhnlttzdiylfrh.supabase.co"
+const SUPABASE_KEY = "sb_publishable_GMM5PgeRzudbeh4aHK-1pw_lQ6TQnVe"
+
+/* =========================
+SAFE CDN CHECK
+========================= */
+
+if (typeof window.supabase === "undefined") {
+console.error("Supabase CDN not loaded")
 }
 
 /* =========================
-CREATE CLIENT
+CLIENT
 ========================= */
 
 const supabaseClient =
@@ -20,171 +24,214 @@ SUPABASE_KEY
 )
 
 /* =========================
-SAFE PROFILE
+FALLBACK PROFILE
 ========================= */
 
-function fallbackProfile(){
+function fallbackProfile() {
 return {
-id:“guest”,
-name:“Guest”,
-height:170,
-weight:70,
-weightHistory:[]
-}
-}
-
-function getActiveProfile(){
-
-try{
-
-const raw =
-localStorage.getItem(“activeProfile”)
-
-if(!raw){
-return fallbackProfile()
-}
-
-const p = JSON.parse(raw)
-
-return p?.id
-? p
-: fallbackProfile()
-
-}catch(e){
-
-return fallbackProfile()
-
+id: "guest",
+name: "Guest",
+height: 170,
+weight: 70,
+weightHistory: []
 }
 }
 
 /* =========================
-FOOD LOGS
+GET ACTIVE PROFILE (SAFE)
 ========================= */
 
-async function getFoodLogs(date){
+function getActiveProfile() {
+
+try {
+
+const raw =
+localStorage.getItem("activeProfile")
+
+if (!raw) return fallbackProfile()
+
+const p = JSON.parse(raw)
+
+return p?.id ? p : fallbackProfile()
+
+} catch (e) {
+return fallbackProfile()
+}
+}
+
+/* =========================
+FOOD LOGS (FIXED + SAFE + RESILIENT)
+========================= */
+
+async function getFoodLogs(date) {
+
+try {
 
 const profile = getActiveProfile()
 
-const { data,error } =
-await supabaseClient
-.from(“food_logs”)
-.select(”*”)
-.eq(“date”,date)
-.eq(“userId”,profile.id)
+if (!profile?.id) return []
 
-if(error){
-console.log(error)
+const { data, error } =
+await supabaseClient
+.from("food_logs")
+.select("*")
+.eq("date", date)
+.eq("userId", profile.id)
+
+if (error) {
+console.log("getFoodLogs error:", error)
 return []
 }
 
-return data || []
+return Array.isArray(data) ? data : []
+
+} catch (e) {
+console.log("getFoodLogs crash:", e)
+return []
+}
 }
 
-async function saveFood(food){
+/* =========================
+SAVE FOOD (SAFE + AUTO CLEAN)
+========================= */
+
+async function saveFood(food) {
+
+try {
 
 const profile = getActiveProfile()
 
-const { data,error } =
-await supabaseClient
-.from(“food_logs”)
-.insert([{
-userId: profile.id,
-food: food.food,
-calories:Number(food.calories||0),
-protein:Number(food.protein||0),
-carbs:Number(food.carbs||0),
-fat:Number(food.fat||0),
-date: food.date
-}])
+if (!profile?.id) return null
 
-if(error){
-console.log(error)
+const payload = {
+userId: profile.id,
+food: food.food || "unknown",
+calories: Number(food.calories || 0),
+protein: Number(food.protein || 0),
+carbs: Number(food.carbs || 0),
+fat: Number(food.fat || 0),
+date: food.date
+}
+
+const { data, error } =
+await supabaseClient
+.from("food_logs")
+.insert([payload])
+
+if (error) {
+console.log("saveFood error:", error)
 return null
 }
 
 return data
+
+} catch (e) {
+console.log("saveFood crash:", e)
+return null
+}
 }
 
 /* =========================
 PROFILES
 ========================= */
 
-async function fetchProfiles(){
+async function fetchProfiles() {
 
-const { data,error } =
+try {
+
+const { data, error } =
 await supabaseClient
-.from(“profiles”)
-.select(”*”)
+.from("profiles")
+.select("*")
 
-if(error){
+if (error) {
 console.log(error)
 return []
 }
 
-return data || []
+return Array.isArray(data) ? data : []
+
+} catch (e) {
+return []
+}
 }
 
-async function upsertProfile(profile){
+/* =========================
+UPSERT PROFILE
+========================= */
 
-const { data,error } =
+async function upsertProfile(profile) {
+
+try {
+
+const { data, error } =
 await supabaseClient
-.from(“profiles”)
+.from("profiles")
 .upsert(profile)
 .select()
 
-if(error){
+if (error) {
 console.log(error)
 return null
 }
 
 return data
+
+} catch (e) {
+return null
+}
 }
 
 /* =========================
-REALTIME
+REALTIME (SAFE FIXED)
 ========================= */
 
-function initRealtime(){
+function initRealtime() {
+
+try {
 
 supabaseClient
-.channel(“health”)
+.channel("health")
 
 .on(
-“postgres_changes”,
+"postgres_changes",
 {
-event:”*”,
-schema:“public”,
-table:“food_logs”
+event: "*",
+schema: "public",
+table: "food_logs"
 },
-()=>{
+() => {
 window.dispatchEvent(
-new Event(“foodSyncUpdate”)
+new Event("foodSyncUpdate")
 )
 }
 )
 
 .on(
-“postgres_changes”,
+"postgres_changes",
 {
-event:”*”,
-schema:“public”,
-table:“profiles”
+event: "*",
+schema: "public",
+table: "profiles"
 },
-()=>{
+() => {
 window.dispatchEvent(
-new Event(“profileSyncUpdate”)
+new Event("profileSyncUpdate")
 )
 }
 )
 
 .subscribe()
 
+} catch (e) {
+console.log("realtime init failed:", e)
+}
 }
 
 initRealtime()
 
 /* =========================
-GLOBAL EXPORT
+EXPORTS
 ========================= */
 
 window.supabaseClient = supabaseClient
