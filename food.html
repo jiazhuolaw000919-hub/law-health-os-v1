@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Food AI v16 PRO SYSTEM (AI COMPONENT + FOOD TYPE FIX)</title>
+<title>Food AI v15.2 PRO SYSTEM (AI COMPONENT FIX)</title>
 
 <link rel="stylesheet" href="style.css">
 
@@ -55,6 +55,11 @@ border:1px solid #ddd;
 cursor:pointer;
 }
 
+.active{
+background:#111;
+color:#fff;
+}
+
 .small-tag{
 display:inline-block;
 margin:2px;
@@ -78,7 +83,7 @@ font-size:12px;
 <a href="profile.html">Profile</a>
 </div>
 
-<h2>🍽 Food AI v16 (SMART FOOD TYPE + COMPONENT DETECTION)</h2>
+<h2>🍽 Food AI v15.2 (AI COMPONENT DETECTION FIX)</h2>
 
 <div class="card">
 <p id="activeProfile">Loading...</p>
@@ -88,10 +93,19 @@ font-size:12px;
 <h3>📊 Today</h3>
 <p id="todayCalories">Calories: --</p>
 <p id="deficitInfo">Deficit: --</p>
+<p id="modeStatus">Mode: normal</p>
+<p id="aiStatus">AI: idle</p>
 </div>
 
 <div class="card">
-<input id="foodInput" placeholder="e.g. chicken rice / sandwich / coffee / burger">
+<h3>⚙️ Mode</h3>
+<button onclick="setMode('normal')">Normal</button>
+<button onclick="setMode('deficit')">Fat Loss</button>
+<button onclick="setMode('bulk')">Bulk</button>
+</div>
+
+<div class="card">
+<input id="foodInput" placeholder="e.g. chicken rice + milo">
 
 <br><br>
 
@@ -131,36 +145,24 @@ let multiList = []
 document.getElementById("activeProfile").innerText =
 JSON.parse(localStorage.getItem("activeProfile"))?.name || "Guest"
 
-/* ================= FOOD TYPE DETECTOR (NEW UPGRADE) ================= */
-function detectFoodType(text){
-
-text = (text || "").toLowerCase()
-
-if(text.includes("rice") && text.includes("chicken")) return "Chicken Rice"
-if(text.includes("mixed rice") || text.includes("cai png")) return "Economy Rice"
-if(text.includes("sandwich")) return "Sandwich"
-if(text.includes("coffee") || text.includes("kopi")) return "Coffee"
-if(text.includes("burger")) return "Burger"
-if(text.includes("noodle") || text.includes("mee")) return "Noodles"
-if(text.includes("pizza")) return "Pizza"
-
-return "Mixed Meal"
+/* ================= AI STATUS ================= */
+function setAI(status){
+document.getElementById("aiStatus").innerText = "AI: " + status
 }
 
-/* ================= COMPONENT DETECTION (UPGRADED) ================= */
-function extractComponents(text){
+/* ================= AI ENHANCED ================= */
+function extractComponents(foodText){
 
-text = (text || "").toLowerCase()
+let t = foodText.toLowerCase()
 
 let components = []
 
-if(text.includes("rice")) components.push("rice")
-if(text.includes("chicken") || text.includes("meat")) components.push("meat")
-if(text.includes("egg")) components.push("egg")
-if(text.includes("vegetable") || text.includes("veg")) components.push("vegetables")
-if(text.includes("fish")) components.push("fish")
-if(text.includes("noodle")) components.push("noodles")
-if(text.includes("coffee") || text.includes("kopi")) components.push("coffee/milk")
+if(t.includes("rice")) components.push("rice")
+if(t.includes("chicken") || t.includes("meat")) components.push("meat")
+if(t.includes("egg")) components.push("egg")
+if(t.includes("vegetable") || t.includes("veg")) components.push("vegetables")
+if(t.includes("fish")) components.push("fish")
+if(t.includes("noodle")) components.push("noodles")
 
 if(components.length === 0){
 components = ["mixed ingredients"]
@@ -169,36 +171,18 @@ components = ["mixed ingredients"]
 return components
 }
 
-/* ================= NUTRITION ENGINE ================= */
-function estimateNutrition(food){
-
-let base = 400
-food = food.toLowerCase()
-
-if(food.includes("chicken")) base += 120
-if(food.includes("rice")) base += 120
-if(food.includes("milo")) base += 150
-if(food.includes("burger")) base += 300
-if(food.includes("egg")) base += 80
-if(food.includes("coffee")) base += 90
-if(food.includes("sandwich")) base += 200
-
-return {
-calories: base,
-protein: Math.round(base * 0.05),
-carbs: Math.round(base * 0.12),
-fat: Math.round(base * 0.04)
-}
-}
-
 /* ================= AI WRAPPER ================= */
 async function analyzeImage(base64){
+
+setAI("scanning...")
 
 try{
 
 if(window.analyzeFoodImage){
 
 const r = await window.analyzeFoodImage(base64)
+
+setAI("processing result")
 
 return {
 food: r?.food || "Unknown meal",
@@ -213,6 +197,8 @@ fat: Number(r?.fat ?? 12)
 console.log(e)
 }
 
+setAI("fallback")
+
 return {
 food:"Unknown meal",
 calories:450,
@@ -222,23 +208,61 @@ fat:12
 }
 }
 
-/* ================= MANUAL FLOW ================= */
+/* ================= MODE ================= */
+function setMode(m){
+mode = m
+document.getElementById("modeStatus").innerText = "Mode: " + m
+}
+
+/* ================= NUTRITION ================= */
+function estimateNutrition(food){
+
+let base = 400
+food = food.toLowerCase()
+
+if(food.includes("chicken")) base += 120
+if(food.includes("rice")) base += 120
+if(food.includes("milo")) base += 150
+if(food.includes("burger")) base += 300
+if(food.includes("egg")) base += 80
+
+return {
+calories: base,
+protein: Math.round(base*0.05),
+carbs: Math.round(base*0.12),
+fat: Math.round(base*0.04)
+}
+}
+
+/* ================= DEFICIT ================= */
+function getDeficit(cal){
+
+let maintenance = 2200
+let diff = cal - maintenance
+
+return {
+status: diff > 0 ? "surplus" : "deficit",
+diff
+}
+}
+
+/* ================= MANUAL ================= */
 function startManualFlow(){
 
 let input = document.getElementById("foodInput").value.trim()
 if(!input) return alert("Enter food")
 
 pendingFood = {
-food: detectFoodType(input),
-raw: input,
+food: input,
 components: extractComponents(input),
 ...estimateNutrition(input)
 }
 
 showPreview(pendingFood)
+openMealModal()
 }
 
-/* ================= AI UPLOAD ================= */
+/* ================= AI ================= */
 async function openAIUpload(){
 
 let input = document.createElement("input")
@@ -258,17 +282,18 @@ let base64 = reader.result
 
 let result = await analyzeImage(base64)
 
-let combinedText = (result.food || "")
+/* 🔥 NEW: COMPONENT DETECTION FROM AI TEXT */
+let components = extractComponents(result.food)
 
 pendingFood = {
-food: detectFoodType(combinedText),
-raw: combinedText,
-components: extractComponents(combinedText),
+food: result.food,
+components,
 ...result,
 image: base64
 }
 
 showPreview(pendingFood)
+openMealModal()
 }
 
 reader.readAsDataURL(file)
@@ -282,12 +307,9 @@ function openBarcode(){
 
 let code = prompt("barcode/name")
 
-let text = code || ""
-
 pendingFood = {
-food: detectFoodType(text),
-raw: text,
-components: extractComponents(text),
+food: code || "Unknown",
+components: extractComponents(code || ""),
 calories: 300,
 protein: 10,
 carbs: 40,
@@ -295,35 +317,23 @@ fat: 10
 }
 
 showPreview(pendingFood)
+openMealModal()
 }
 
 /* ================= MULTI ================= */
 function startMultiCapture(){
 
 multiList = [
-{
-food:"Chicken Rice",
-components:["rice","meat"],
-calories:600
-},
-{
-food:"Sandwich",
-components:["bread","meat","egg"],
-calories:450
-},
-{
-food:"Coffee",
-components:["coffee/milk"],
-calories:120
-}
+{food:"Chicken rice",calories:600},
+{food:"Mixed veg rice",calories:500},
+{food:"Egg noodle",calories:550}
 ]
 
 document.getElementById("foodList").innerHTML =
 multiList.map(m=>`
 <div class="preview-box">
 <b>${m.food}</b><br>
-${m.components?.map(c=>`<span class="small-tag">${c}</span>`).join(" ")}
-<br>${m.calories} kcal
+${m.calories} kcal
 </div>
 `).join("")
 }
@@ -331,23 +341,23 @@ ${m.components?.map(c=>`<span class="small-tag">${c}</span>`).join(" ")}
 /* ================= PREVIEW ================= */
 function showPreview(d){
 
+let adj = {...d}
+
+if(mode==="deficit") adj.calories*=0.85
+if(mode==="bulk") adj.calories*=1.15
+
 document.getElementById("previewArea").innerHTML = `
 <div class="preview-box">
 
-<b>Food Type:</b> ${d.food}<br>
-<b>Raw:</b> ${d.raw || "-"}<br>
+<b>Food:</b> ${adj.food}<br>
 
-<br>
-
-🔥 ${Math.round(d.calories)} kcal<br>
-🥩 Protein: ${Math.round(d.protein)}g<br>
-🍚 Carbs: ${Math.round(d.carbs)}g<br>
-🥑 Fat: ${Math.round(d.fat)}g<br>
-
-<br>
+🔥 ${Math.round(adj.calories)} kcal<br>
+🥩 P:${Math.round(adj.protein)} 
+🍚 C:${Math.round(adj.carbs)} 
+🥑 F:${Math.round(adj.fat)}<br><br>
 
 <b>Components:</b><br>
-${(d.components || []).map(c=>
+${(adj.components || []).map(c=>
 `<span class="small-tag">${c}</span>`
 ).join("")}
 
@@ -362,11 +372,13 @@ if(!pendingFood) return
 
 pendingFood.mealType = type
 
-console.log("Saved:", pendingFood)
+if(window.saveFood){
+window.saveFood(pendingFood)
+}
 
 pendingFood = null
 
-document.getElementById("mealModal").style.display="none"
+closeMealModal()
 updateToday()
 
 alert("Saved!")
@@ -377,12 +389,20 @@ function openMealModal(){
 document.getElementById("mealModal").style.display="flex"
 }
 
+function closeMealModal(){
+document.getElementById("mealModal").style.display="none"
+document.getElementById("previewArea").innerHTML=""
+}
+
 /* ================= TODAY ================= */
 function updateToday(){
 
-document.getElementById("todayCalories").innerText =
-"Calories: updating..."
+let cal = pendingFood?.calories || 0
+let def = getDeficit(cal)
 
+document.getElementById("todayCalories").innerText = "Calories: " + cal
+document.getElementById("deficitInfo").innerText =
+def.status + " (" + def.diff + ")"
 }
 
 </script>
