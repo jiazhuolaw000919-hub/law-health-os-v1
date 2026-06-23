@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Food AI v16 PRO SYSTEM (FULL FIX + DELETE + AI FOOD TYPE)</title>
+<title>Food AI v16.1 PRO SYSTEM (FULL FIX STABLE)</title>
 
 <link rel="stylesheet" href="style.css">
 
@@ -93,7 +93,7 @@ font-size:12px;
 <a href="profile.html">Profile</a>
 </div>
 
-<h2>🍽 Food AI v16 FIXED (SAVE + DELETE + AI FOOD TYPE)</h2>
+<h2>🍽 Food AI v16.1 (STABLE FIX + AI + SAVE + DELETE + POPUP FIX)</h2>
 
 <div class="card">
 <p id="activeProfile">Loading...</p>
@@ -147,7 +147,7 @@ font-size:12px;
 
 <script>
 
-/* ================= DB FIX ================= */
+/* ================= GLOBAL DB ================= */
 let foodDB = JSON.parse(localStorage.getItem("foodDB")) || []
 
 let pendingFood = null
@@ -163,7 +163,7 @@ function setAI(status){
 document.getElementById("aiStatus").innerText = "AI: " + status
 }
 
-/* ================= FOOD TYPE DETECTOR (IMPROVED) ================= */
+/* ================= COMPONENT DETECTOR ================= */
 function extractComponents(text){
 
 let t = (text || "").toLowerCase()
@@ -180,9 +180,12 @@ if(t.includes("coffee") || t.includes("kopi")) c.push("coffee")
 if(t.includes("sandwich")) c.push("bread + filling")
 if(t.includes("burger")) c.push("bun + meat")
 
-/* 🔥 NEW FOOD TYPE DETECTION */
-if(t.includes("rice") && t.includes("meat") && t.includes("veg")) c.push("mixed rice (cai fan)")
-if(t.includes("coffee") || t.includes("latte")) c.push("coffee drink")
+/* FOOD TYPE INTELLIGENCE */
+if(t.includes("rice") && (t.includes("meat") || t.includes("chicken"))){
+c.push("mixed rice / cai fan")
+}
+
+if(t.includes("coffee")) c.push("drink")
 if(t.includes("sandwich")) c.push("sandwich meal")
 
 if(c.length === 0) c = ["unknown meal"]
@@ -278,7 +281,7 @@ showPreview(pendingFood)
 openMealModal()
 }
 
-/* ================= AI UPLOAD ================= */
+/* ================= AI UPLOAD (FIXED POPUP GUARANTEE) ================= */
 async function openAIUpload(){
 
 let input = document.createElement("input")
@@ -298,6 +301,7 @@ let base64 = reader.result
 
 let result = await analyzeImage(base64)
 
+/* ALWAYS BUILD FOOD OBJECT */
 pendingFood = {
 food: result.food,
 date: new Date().toISOString().split("T")[0],
@@ -306,6 +310,7 @@ components: extractComponents(result.food),
 image: base64
 }
 
+/* 🔥 FIX: ALWAYS POPUP AFTER AI */
 showPreview(pendingFood)
 openMealModal()
 }
@@ -335,63 +340,22 @@ showPreview(pendingFood)
 openMealModal()
 }
 
-/* ================= SAVE (FIXED + SYNC) ================= */
-function saveMeal(type){
+/* ================= MULTI ================= */
+function startMultiCapture(){
 
-if(!pendingFood) return
-
-pendingFood.mealType = type
-
-if(!pendingFood.date){
-pendingFood.date = new Date().toISOString().split("T")[0]
-}
-
-/* save into DB */
-foodDB.push(pendingFood)
-localStorage.setItem("foodDB", JSON.stringify(foodDB))
-
-if(window.saveFood){
-window.saveFood(pendingFood)
-}
-
-pendingFood = null
-
-closeMealModal()
-updateToday()
-renderFoodList()
-
-alert("Saved!")
-}
-
-/* ================= DELETE FOOD (NEW FEATURE) ================= */
-function deleteFood(index){
-
-foodDB.splice(index,1)
-localStorage.setItem("foodDB", JSON.stringify(foodDB))
-
-renderFoodList()
-updateToday()
-}
-
-/* ================= RENDER SAVED LIST ================= */
-function renderFoodList(){
-
-let today = new Date().toISOString().split("T")[0]
-
-let list = foodDB
-.filter(f => f.date === today)
-.map((f,i)=>`
-<div class="preview-box">
-<b>${f.food}</b> (${f.calories} kcal)
-<br>
-${(f.components||[]).map(c=>`<span class="small-tag">${c}</span>`).join("")}
-<br>
-<button class="delete-btn" onclick="deleteFood(${i})">Delete</button>
-</div>
-`).join("")
+multiList = [
+{food:"Chicken rice",calories:600},
+{food:"Mixed veg rice",calories:500},
+{food:"Egg noodle",calories:550}
+]
 
 document.getElementById("foodList").innerHTML =
-list || "<p>No food saved today</p>"
+multiList.map(m=>`
+<div class="preview-box">
+<b>${m.food}</b><br>
+${m.calories} kcal
+</div>
+`).join("")
 }
 
 /* ================= PREVIEW ================= */
@@ -419,12 +383,66 @@ ${(adj.components||[]).map(c=>`<span class="small-tag">${c}</span>`).join("")}
 `
 }
 
-/* ================= TODAY FIXED ================= */
+/* ================= SAVE ================= */
+function saveMeal(type){
+
+if(!pendingFood) return
+
+pendingFood.mealType = type
+
+foodDB.push(pendingFood)
+localStorage.setItem("foodDB", JSON.stringify(foodDB))
+
+if(window.saveFood){
+window.saveFood(pendingFood)
+}
+
+pendingFood = null
+
+closeMealModal()
+updateToday()
+renderFoodList()
+
+alert("Saved!")
+}
+
+/* ================= DELETE ================= */
+function deleteFood(index){
+
+foodDB.splice(index,1)
+localStorage.setItem("foodDB", JSON.stringify(foodDB))
+
+renderFoodList()
+updateToday()
+}
+
+/* ================= RENDER ================= */
+function renderFoodList(){
+
+let today = new Date().toISOString().split("T")[0]
+
+let list = foodDB.filter(f=>f.date===today)
+
+document.getElementById("foodList").innerHTML =
+list.length ? list.map((f,i)=>`
+<div class="preview-box">
+<b>${f.food}</b> (${f.calories})
+<br>
+${(f.components||[]).map(c=>`<span class="small-tag">${c}</span>`).join("")}
+<br>
+<button class="delete-btn" onclick="deleteFood(${i})">Delete</button>
+</div>
+`).join("")
+:
+"<p>No food today</p>"
+}
+
+/* ================= TODAY ================= */
 function updateToday(){
 
 let today = new Date().toISOString().split("T")[0]
 
-let todayFoods = foodDB.filter(f => f.date === today)
+let todayFoods = foodDB.filter(f=>f.date===today)
 
 let cal = todayFoods.reduce((a,b)=>a+(b.calories||0),0)
 
