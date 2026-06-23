@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Food AI v16 PRO SYSTEM (FULL COMPAT UPGRADE)</title>
+<title>Food AI v16 PRO SYSTEM (FULL COMPAT UPGRADE FIXED)</title>
 
 <link rel="stylesheet" href="style.css">
 
@@ -83,7 +83,7 @@ font-size:12px;
 <a href="profile.html">Profile</a>
 </div>
 
-<h2>🍽 Food AI v16 (FULL BACKWARD COMPATIBLE UPGRADE)</h2>
+<h2>🍽 Food AI v16 (FULL BACKWARD COMPAT FIXED CORE)</h2>
 
 <div class="card">
 <p id="activeProfile">Loading...</p>
@@ -137,6 +137,9 @@ font-size:12px;
 
 <script>
 
+/* ======================= 🔥 FIX 1: GLOBAL DATABASE ======================= */
+let foodDB = JSON.parse(localStorage.getItem("foodDB")) || []
+
 let pendingFood = null
 let mode = "normal"
 let multiList = []
@@ -150,7 +153,7 @@ function setAI(status){
 document.getElementById("aiStatus").innerText = "AI: " + status
 }
 
-/* ================= COMPONENT DETECTOR (NEW ADD, NO DELETE) ================= */
+/* ================= COMPONENT DETECTOR ================= */
 function extractComponents(text){
 
 let t = (text || "").toLowerCase()
@@ -174,7 +177,7 @@ components = ["mixed ingredients"]
 return components
 }
 
-/* ================= AI WRAPPER (ENHANCED ONLY, NOT REMOVED) ================= */
+/* ================= AI WRAPPER ================= */
 async function analyzeImage(base64){
 
 setAI("scanning...")
@@ -211,13 +214,13 @@ fat:12
 }
 }
 
-/* ================= MODE (UNCHANGED) ================= */
+/* ================= MODE ================= */
 function setMode(m){
 mode = m
 document.getElementById("modeStatus").innerText = "Mode: " + m
 }
 
-/* ================= NUTRITION (UNCHANGED) ================= */
+/* ================= NUTRITION ================= */
 function estimateNutrition(food){
 
 let base = 400
@@ -237,7 +240,7 @@ fat: Math.round(base*0.04)
 }
 }
 
-/* ================= DEFICIT (UNCHANGED) ================= */
+/* ================= DEFICIT ================= */
 function getDeficit(cal){
 
 let maintenance = 2200
@@ -249,7 +252,7 @@ diff
 }
 }
 
-/* ================= MANUAL FLOW (ENHANCED ONLY) ================= */
+/* ================= MANUAL FLOW ================= */
 function startManualFlow(){
 
 let input = document.getElementById("foodInput").value.trim()
@@ -257,6 +260,7 @@ if(!input) return alert("Enter food")
 
 pendingFood = {
 food: input,
+date: new Date().toISOString().split("T")[0],
 components: extractComponents(input),
 ...estimateNutrition(input)
 }
@@ -265,7 +269,7 @@ showPreview(pendingFood)
 openMealModal()
 }
 
-/* ================= AI UPLOAD (ENHANCED ONLY) ================= */
+/* ================= AI UPLOAD ================= */
 async function openAIUpload(){
 
 let input = document.createElement("input")
@@ -285,12 +289,11 @@ let base64 = reader.result
 
 let result = await analyzeImage(base64)
 
-/* ================= NEW: SMART COMPONENT + FOOD TYPE ================= */
 let components = extractComponents(result.food || "")
 
-/* IMPORTANT: merge, don't replace */
 pendingFood = {
 food: result.food,
+date: new Date().toISOString().split("T")[0],
 components,
 ...result,
 image: base64
@@ -306,13 +309,14 @@ reader.readAsDataURL(file)
 input.click()
 }
 
-/* ================= BARCODE (UNCHANGED) ================= */
+/* ================= BARCODE ================= */
 function openBarcode(){
 
 let code = prompt("barcode/name")
 
 pendingFood = {
 food: code || "Unknown",
+date: new Date().toISOString().split("T")[0],
 components: extractComponents(code || ""),
 calories: 300,
 protein: 10,
@@ -324,7 +328,7 @@ showPreview(pendingFood)
 openMealModal()
 }
 
-/* ================= MULTI CAPTURE (UNCHANGED) ================= */
+/* ================= MULTI CAPTURE ================= */
 function startMultiCapture(){
 
 multiList = [
@@ -342,7 +346,7 @@ ${m.calories} kcal
 `).join("")
 }
 
-/* ================= PREVIEW (ENHANCED DISPLAY ONLY) ================= */
+/* ================= PREVIEW ================= */
 function showPreview(d){
 
 let adj = {...d}
@@ -369,13 +373,23 @@ ${(adj.components || []).map(c=>
 `
 }
 
-/* ================= SAVE (UNCHANGED) ================= */
+/* ================= 🔥 FIX 2: SAVE SYSTEM ================= */
 function saveMeal(type){
 
 if(!pendingFood) return
 
 pendingFood.mealType = type
 
+// add date safety
+if(!pendingFood.date){
+pendingFood.date = new Date().toISOString().split("T")[0]
+}
+
+/* ================= STORE INTO DB ================= */
+foodDB.push(pendingFood)
+localStorage.setItem("foodDB", JSON.stringify(foodDB))
+
+/* backend sync */
 if(window.saveFood){
 window.saveFood(pendingFood)
 }
@@ -383,12 +397,13 @@ window.saveFood(pendingFood)
 pendingFood = null
 
 closeMealModal()
+
 updateToday()
 
 alert("Saved!")
 }
 
-/* ================= MODAL (UNCHANGED) ================= */
+/* ================= MODAL ================= */
 function openMealModal(){
 document.getElementById("mealModal").style.display="flex"
 }
@@ -398,16 +413,39 @@ document.getElementById("mealModal").style.display="none"
 document.getElementById("previewArea").innerHTML=""
 }
 
-/* ================= TODAY (UNCHANGED) ================= */
+/* ================= 🔥 FIX 3: TODAY AGGREGATION ================= */
 function updateToday(){
 
-let cal = pendingFood?.calories || 0
+let today = new Date().toISOString().split("T")[0]
+
+let todayFoods = foodDB.filter(f => f.date === today)
+
+if(todayFoods.length === 0){
+document.getElementById("todayCalories").innerText = "Calories: 0"
+document.getElementById("deficitInfo").innerText = "deficit (0)"
+return
+}
+
+let cal = todayFoods.reduce((a,b)=>a + (b.calories||0),0)
+
 let def = getDeficit(cal)
 
-document.getElementById("todayCalories").innerText = "Calories: " + cal
+document.getElementById("todayCalories").innerText =
+"Calories: " + cal
+
 document.getElementById("deficitInfo").innerText =
 def.status + " (" + def.diff + ")"
 }
+
+/* ================= 🔥 FIX 4: LOAD ON START ================= */
+function loadDB(){
+
+foodDB = JSON.parse(localStorage.getItem("foodDB")) || []
+updateToday()
+
+}
+
+loadDB()
 
 </script>
 
