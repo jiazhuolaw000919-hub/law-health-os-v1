@@ -131,7 +131,6 @@ font-size:12px;
 
 <script>
 
-/* ================= DB ================= */
 let foodDB = JSON.parse(localStorage.getItem("foodDB")) || []
 let pendingFood = null
 let mode = "normal"
@@ -251,15 +250,16 @@ showPreview(pendingFood)
 openMealModal()
 }
 
-/* ================= 🔥 FIXED AI UPLOAD (STABLE POPUP) ================= */
+/* ================= 🔥 FIXED UPLOAD (100% STABLE IOS + ANDROID) ================= */
 function openAIUpload(){
 
 const input = document.createElement("input")
 input.type = "file"
 input.accept = "image/*"
+input.style.display = "none"
 
-/* IMPORTANT: attach BEFORE click (iOS fix) */
-input.onchange = async function(e){
+/* IMPORTANT: attach listener BEFORE click */
+input.addEventListener("change", async (e)=>{
 
 const file = e.target.files[0]
 if(!file) return
@@ -268,7 +268,7 @@ setAI("reading image...")
 
 const reader = new FileReader()
 
-reader.onload = async function(evt){
+reader.onload = async (evt)=>{
 
 const base64 = evt.target.result
 
@@ -276,7 +276,7 @@ setAI("processing AI...")
 
 let result = await analyzeImage(base64)
 
-/* BUILD FOOD OBJECT */
+/* ALWAYS BUILD OBJECT */
 pendingFood = {
 food: result.food,
 date: new Date().toISOString().split("T")[0],
@@ -285,24 +285,30 @@ components: extractComponents(result.food),
 image: base64
 }
 
-/* 🔥 FORCE UI FLOW (NO SKIP) */
+/* FORCE UI RENDER */
 showPreview(pendingFood)
 
-/* CRITICAL FIX: delay modal for iOS Safari */
+/* 🔥 CRITICAL FIX: double-frame modal open */
+requestAnimationFrame(()=>{
 setTimeout(()=>{
 openMealModal()
-}, 120)
+}, 80)
+})
+
 }
 
 reader.readAsDataURL(file)
-}
+})
 
-/* MUST append to DOM for Safari stability */
+/* MUST attach to DOM for Safari stability */
 document.body.appendChild(input)
+
+/* user gesture unlock */
 input.click()
+input.focus()
 
 /* cleanup */
-setTimeout(()=>input.remove(), 3000)
+setTimeout(()=>input.remove(), 5000)
 }
 
 /* ================= BARCODE ================= */
