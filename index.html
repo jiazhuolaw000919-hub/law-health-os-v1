@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>AI Dashboard v12.2 </title>
+<title>AI Dashboard v12.3 (SAFE UPGRADE + STABILITY FIX)</title>
 
 <link rel="stylesheet" href="style.css">
 
@@ -20,7 +20,9 @@ border-radius:10px;
 box-shadow:0 1px 4px rgba(0,0,0,.05);
 }
 
-canvas{max-width:100%}
+canvas{
+max-width:100%;
+}
 
 .tag{
 padding:4px 8px;
@@ -28,11 +30,12 @@ border-radius:6px;
 font-size:12px;
 display:inline-block;
 }
+
 .green{background:#dcfce7;color:#166534}
 .yellow{background:#fef9c3;color:#854d0e}
 .red{background:#fee2e2;color:#991b1b}
 
-/* ================= SKELETON (V12.2 IMPROVED) ================= */
+/* ================= SKELETON ================= */
 .skeleton{
 background:linear-gradient(90deg,#eee 25%,#f5f5f5 50%,#eee 75%);
 background-size:200% 100%;
@@ -59,7 +62,7 @@ border-radius:6px;
 <a href="profile.html">Profile</a>
 </div>
 
-<h2 class="center">📊 AI Dashboard v12.2 (Safe Skeleton + Engine Fix)</h2>
+<h2 class="center">📊 AI Dashboard v12.3 (SAFE UPGRADE + FIXED ENGINE)</h2>
 
 <!-- TIME -->
 <div class="card">
@@ -117,19 +120,17 @@ border-radius:6px;
 
 <script>
 
-/* ================= SAFE PROFILE ENGINE CALL (FIXED V12.2) ================= */
+/* ================= SAFE PROFILE ENGINE ================= */
 function safeProfileRender(){
 try{
 if(window.ProfileEngine && typeof ProfileEngine.render === "function"){
 ProfileEngine.render("profile")
 return
 }
-}catch(e){
-console.log("ProfileEngine not ready")
-}
+}catch(e){}
 }
 
-/* ================= PROFILE ================= */
+/* ================= PROFILE SAFE LOAD ================= */
 function getProfile(){
 try{
 const raw = localStorage.getItem("activeProfile")
@@ -143,7 +144,7 @@ return {id:"guest",name:"Guest",height:170,weight:70}
 }
 }
 
-/* ================= REAL-TIME SYNC ================= */
+/* ================= EVENTS ================= */
 window.addEventListener("profileSyncUpdate", safeProfileRender)
 window.addEventListener("focus", safeProfileRender)
 window.addEventListener("storage", safeProfileRender)
@@ -155,14 +156,21 @@ document.getElementById("date").innerText = now.toLocaleDateString()
 document.getElementById("time").innerText = now.toLocaleTimeString()
 }
 
-/* ================= BASIC ================= */
+/* ================= SAFE NUMBER ================= */
+function num(n){
+n = Number(n)
+return isNaN(n) ? 0 : n
+}
+
+/* ================= BMI ================= */
 function bmi(h,w){
+h = num(h)
+w = num(w)
+if(h<=0) return "0.0"
 return (w/(h/100)**2).toFixed(1)
 }
 
-function num(n){return Number(n||0)}
-
-/* ================= DATA ================= */
+/* ================= SAFE DATA ================= */
 async function getData7(){
 
 let out=[]
@@ -182,10 +190,10 @@ logs=[]
 let cal=0,p=0,c=0,f=0
 
 logs.forEach(x=>{
-cal+=num(x.calories)
-p+=num(x.protein)
-c+=num(x.carbs)
-f+=num(x.fat)
+cal+=num(x?.calories)
+p+=num(x?.protein)
+c+=num(x?.carbs)
+f+=num(x?.fat)
 })
 
 out.push({date,cal,p,c,f})
@@ -194,7 +202,7 @@ out.push({date,cal,p,c,f})
 return out
 }
 
-/* ================= AI ================= */
+/* ================= AI PATTERN ================= */
 function learnPattern(data){
 
 let proteinDays=0
@@ -212,12 +220,14 @@ trend: data.length>1 && data[data.length-1].cal > data[0].cal
 /* ================= RISK ================= */
 function riskLevel(cal){
 
+cal = num(cal)
+
 if(cal>3000) return "🔴 High"
 if(cal>2400) return "🟠 Medium"
 return "🟢 Low"
 }
 
-/* ================= SAFE CHART ================= */
+/* ================= SAFE CHART (FIXED SCALE) ================= */
 function draw(canvasId,data,key){
 
 let c=document.getElementById(canvasId)
@@ -228,19 +238,28 @@ if(!ctx) return
 
 ctx.clearRect(0,0,c.width,c.height || 200)
 
-if(!data.length) return
+if(!data || !data.length) return
+
+let max = Math.max(...data.map(d=>num(d[key])))
+if(max <= 0) max = 1
 
 ctx.beginPath()
-ctx.moveTo(20,100-data[0][key]/50)
+
+let startX = 20
+let startY = 120
+
+ctx.moveTo(startX, startY - (num(data[0][key]) / max) * 100)
 
 for(let i=1;i<data.length;i++){
-ctx.lineTo(20+i*40,100-data[i][key]/50)
+let x = startX + i*40
+let y = startY - (num(data[i][key]) / max) * 100
+ctx.lineTo(x,y)
 }
 
 ctx.stroke()
 }
 
-/* ================= SKELETON CONTROL V12.2 ================= */
+/* ================= SKELETON ================= */
 function showSkeleton(){
 const sk = document.getElementById("profileSkeleton")
 const el = document.getElementById("profile")
@@ -271,16 +290,16 @@ let data = await getData7()
 
 let today = data[data.length-1] || {cal:0,p:0,c:0,f:0}
 
-document.getElementById("cal").innerText=`Calories ${today.cal}`
-document.getElementById("p").innerText=`Protein ${today.p}`
-document.getElementById("c").innerText=`Carbs ${today.c}`
-document.getElementById("f").innerText=`Fat ${today.f}`
+document.getElementById("cal").innerText=`Calories ${num(today.cal)}`
+document.getElementById("p").innerText=`Protein ${num(today.p)}`
+document.getElementById("c").innerText=`Carbs ${num(today.c)}`
+document.getElementById("f").innerText=`Fat ${num(today.f)}`
 
-let score=(today.p+today.c+today.f)/3
+let score=(num(today.p)+num(today.c)+num(today.f))/3
 document.getElementById("mealScore").innerText="Score "+score
 document.getElementById("risk").innerText=riskLevel(today.cal)
 
-/* AI */
+/* AI INSIGHT SAFE */
 let learn=learnPattern(data)
 
 document.getElementById("insight").innerText =
@@ -297,27 +316,24 @@ learn.prefProtein
 draw("chart",data,"cal")
 
 let riskData=data.map(d=>({
-risk:d.cal>3000?3:d.cal>2400?2:1
+cal: d.cal
 }))
 
-draw("riskChart",riskData,"risk")
+draw("riskChart",riskData,"cal")
 
 hideSkeleton()
-
-/* FINAL SAFE PROFILE RENDER */
 safeProfileRender()
 }
 
-/* ================= BOOT SAFE ================= */
+/* ================= INIT ================= */
 function init(){
 updateClock()
 setInterval(updateClock,1000)
 
-/* wait DOM stable */
 setTimeout(()=>{
 safeProfileRender()
 load()
-},0)
+},50)
 }
 
 init()
