@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>AI Dashboard v12.0 (Phase 7 Advanced AI OS)</title>
+<title>AI Dashboard v12.1 (Unified Profile Engine)</title>
 
 <link rel="stylesheet" href="style.css">
 
@@ -31,6 +31,19 @@ display:inline-block;
 .green{background:#dcfce7;color:#166534}
 .yellow{background:#fef9c3;color:#854d0e}
 .red{background:#fee2e2;color:#991b1b}
+
+/* ================= SKELETON ================= */
+.skeleton{
+background:linear-gradient(90deg,#eee 25%,#f5f5f5 50%,#eee 75%);
+background-size:200% 100%;
+animation:shimmer 1.2s infinite;
+border-radius:6px;
+}
+
+@keyframes shimmer{
+0%{background-position:-200% 0}
+100%{background-position:200% 0}
+}
 </style>
 </head>
 
@@ -44,7 +57,7 @@ display:inline-block;
 <a href="profile.html">Profile</a>
 </div>
 
-<h2 class="center">📊 AI Dashboard v12.0 (Phase 7 Full AI OS)</h2>
+<h2 class="center">📊 AI Dashboard v12.1 (Unified Profile Engine)</h2>
 
 <!-- TIME -->
 <div class="card">
@@ -56,7 +69,9 @@ display:inline-block;
 <!-- PROFILE -->
 <div class="card">
 <h3>👤 Profile</h3>
-<p id="profile"></p>
+
+<div id="profileSkeleton" class="skeleton" style="height:18px;width:120px;"></div>
+<p id="profile" style="display:none"></p>
 </div>
 
 <!-- BMI -->
@@ -100,38 +115,58 @@ display:inline-block;
 
 <script>
 
-/* ================= 🔥 FIX: REAL TIME CLOCK ================= */
-function updateClock(){
+/* ================= 🔥 UNIFIED PROFILE ENGINE ================= */
+function getProfile(){
 
-const now = new Date()
+try{
+const raw = localStorage.getItem("activeProfile")
+if(!raw || raw==="undefined" || raw==="null"){
+return {id:"guest",name:"Guest",height:170,weight:70}
+}
 
-const date = now.toLocaleDateString()
-const time = now.toLocaleTimeString()
+const p = JSON.parse(raw)
+return p?.id ? p : {id:"guest",name:"Guest"}
 
-const dateEl = document.getElementById("date")
-const timeEl = document.getElementById("time")
+}catch(e){
+return {id:"guest",name:"Guest"}
+}
+}
 
-if(dateEl) dateEl.innerText = date
-if(timeEl) timeEl.innerText = time
+/* ================= REAL-TIME SYNC ================= */
+window.addEventListener("profileSyncUpdate", renderProfile)
+window.addEventListener("focus", renderProfile)
+
+/* ================= PROFILE RENDER ================= */
+function renderProfile(){
+
+const sk = document.getElementById("profileSkeleton")
+const el = document.getElementById("profile")
+
+const p = getProfile()
+
+if(sk) sk.style.display="none"
+if(el){
+el.style.display="block"
+el.innerText = p.name || "Guest"
+}
 }
 
 /* ================= BASIC ================= */
-function profile(){
-return JSON.parse(localStorage.getItem("activeProfile")) || {
-height:170,
-weight:70,
-id:"guest",
-name:"Guest"
-}
-}
-
 function bmi(h,w){
 return (w/(h/100)**2).toFixed(1)
 }
 
 function num(n){return Number(n||0)}
 
-/* ================= LOAD DATA ================= */
+/* ================= CLOCK ================= */
+function updateClock(){
+const now = new Date()
+
+document.getElementById("date").innerText = now.toLocaleDateString()
+document.getElementById("time").innerText = now.toLocaleTimeString()
+}
+
+/* ================= DATA ================= */
 async function getData7(){
 
 let out=[]
@@ -141,7 +176,12 @@ let d=new Date()
 d.setDate(d.getDate()-i)
 let date=d.toISOString().split("T")[0]
 
-let logs=await getFoodLogs?.(date)||[]
+let logs=[]
+try{
+logs = await getFoodLogs?.(date) || []
+}catch(e){
+logs=[]
+}
 
 let cal=0,p=0,c=0,f=0
 
@@ -169,7 +209,7 @@ if(d.p>60) proteinDays++
 
 return {
 prefProtein: proteinDays>=4,
-trend: data[data.length-1].cal > data[0].cal
+trend: data.length>1 && data[data.length-1].cal > data[0].cal
 }
 }
 
@@ -181,15 +221,21 @@ if(cal>2400) return "🟠 Medium"
 return "🟢 Low"
 }
 
-/* ================= DRAW ================= */
+/* ================= SAFE CHART ================= */
 function draw(canvasId,data,key){
 
 let c=document.getElementById(canvasId)
-let ctx=c.getContext("2d")
+if(!c) return
 
-ctx.clearRect(0,0,400,200)
+let ctx=c.getContext("2d")
+if(!ctx) return
+
+ctx.clearRect(0,0,c.width,c.height || 200)
 
 ctx.beginPath()
+
+if(!data.length) return
+
 ctx.moveTo(20,100-data[0][key]/50)
 
 for(let i=1;i<data.length;i++){
@@ -202,14 +248,14 @@ ctx.stroke()
 /* ================= MAIN ================= */
 async function load(){
 
-let p=profile()
+let p=getProfile()
 
-document.getElementById("profile").innerText=p.name
-document.getElementById("bmi").innerText=bmi(p.height,p.weight)
+document.getElementById("bmi").innerText =
+bmi(p.height,p.weight)
 
-let data=await getData7()
+let data = await getData7()
 
-let today=data[data.length-1] || {cal:0,p:0,c:0,f:0}
+let today = data[data.length-1] || {cal:0,p:0,c:0,f:0}
 
 document.getElementById("cal").innerText=`Calories ${today.cal}`
 document.getElementById("p").innerText=`Protein ${today.p}`
@@ -217,26 +263,23 @@ document.getElementById("c").innerText=`Carbs ${today.c}`
 document.getElementById("f").innerText=`Fat ${today.f}`
 
 let score=(today.p+today.c+today.f)/3
-
 document.getElementById("mealScore").innerText="Score "+score
 document.getElementById("risk").innerText=riskLevel(today.cal)
 
-/* AI INSIGHT */
+/* AI */
 let learn=learnPattern(data)
 
-document.getElementById("insight").innerText=
+document.getElementById("insight").innerText =
 learn.prefProtein
 ?"You prefer high protein meals"
 :"Balanced/low protein pattern"
 
-let rec =
+document.getElementById("recommend").innerText =
 learn.prefProtein
 ?"Tomorrow: chicken + eggs + fish"
 :"Tomorrow: balanced rice + veggies + protein"
 
-document.getElementById("recommend").innerText=rec
-
-/* charts */
+/* charts safe */
 draw("chart",data,"cal")
 
 let riskData=data.map(d=>({
@@ -247,11 +290,11 @@ draw("riskChart",riskData,"risk")
 }
 
 /* ================= INIT ================= */
-load()
-
-/* 🔥 FIX: REAL TIME CLOCK START */
 updateClock()
-setInterval(updateClock, 1000)
+setInterval(updateClock,1000)
+
+renderProfile()
+load()
 
 </script>
 
