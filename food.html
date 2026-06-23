@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Food AI v16.2 PRO SYSTEM (STABLE + SMART AI)</title>
+<title>Food AI v16.2 PRO SYSTEM (SMART FOOD TYPE FIX)</title>
 
 <link rel="stylesheet" href="style.css">
 
@@ -74,7 +74,7 @@ cursor:pointer;
 
 <body>
 
-<h2>🍽 Food AI v16.2 (SMART AI + SAVE + DELETE FIXED)</h2>
+<h2>🍽 Food AI v16.2 (SMART FOOD TYPE DETECTION FIX)</h2>
 
 <div class="card">
 <p id="activeProfile">Loading...</p>
@@ -100,7 +100,7 @@ cursor:pointer;
 </div>
 
 <div class="card">
-<h3>AI Result (Saved Foods)</h3>
+<h3>AI Result (Saved List)</h3>
 <div id="foodList"></div>
 </div>
 
@@ -120,11 +120,12 @@ cursor:pointer;
 
 <script>
 
-/* ================= DB ================= */
+/* ================= GLOBAL DB ================= */
 let foodDB = JSON.parse(localStorage.getItem("foodDB")) || []
 
 let pendingFood = null
 let mode = "normal"
+let multiList = []
 
 /* ================= PROFILE ================= */
 document.getElementById("activeProfile").innerText =
@@ -135,41 +136,62 @@ function setAI(status){
 document.getElementById("aiStatus").innerText = "AI: " + status
 }
 
-/* ================= 🔥 SMART FOOD DETECTION ================= */
+/* ================= 🔥 SMART FOOD TYPE DETECTOR (NEW FIX) ================= */
 function detectFoodType(text){
+
+let t = (text || "").toLowerCase()
+
+// default fallback
+let type = "mixed meal"
+
+// MAIN TYPES
+if(t.includes("economy rice") || t.includes("mixed rice") || t.includes("杂饭")){
+type = "Economy Rice (Cai Fan)"
+}
+else if(t.includes("coffee") || t.includes("kopi") || t.includes("milo")){
+type = "Drink (Coffee / Milo)"
+}
+else if(t.includes("sandwich")){
+type = "Sandwich"
+}
+else if(t.includes("burger")){
+type = "Burger"
+}
+else if(t.includes("noodle")){
+type = "Noodle Dish"
+}
+else if(t.includes("rice") && t.includes("chicken")){
+type = "Chicken Rice"
+}
+else if(t.includes("rice")){
+type = "Rice Dish"
+}
+else if(t.includes("salad")){
+type = "Salad"
+}
+
+return type
+}
+
+/* ================= COMPONENT DETECTOR (IMPROVED) ================= */
+function extractComponents(text){
 
 let t = (text || "").toLowerCase()
 
 let components = []
 
-// core foods
 if(t.includes("rice")) components.push("rice")
-if(t.includes("chicken")) components.push("meat")
-if(t.includes("meat")) components.push("meat")
+if(t.includes("chicken") || t.includes("meat")) components.push("meat")
 if(t.includes("egg")) components.push("egg")
-if(t.includes("veg")) components.push("vegetables")
+if(t.includes("vegetable") || t.includes("veg")) components.push("vegetables")
 if(t.includes("fish")) components.push("fish")
 if(t.includes("noodle")) components.push("noodles")
-
-// 🇸🇬 singapore real-world food detection
-if(t.includes("mixed rice") || t.includes("economy rice") || t.includes("杂饭")){
-components.push("rice","meat","vegetables")
-}
-
-if(t.includes("kopi") || t.includes("coffee") || t.includes("milo")){
-components.push("drink")
-}
-
-if(t.includes("sandwich")){
-components.push("bread","filling")
-}
-
-if(t.includes("burger")){
-components.push("bun","meat")
-}
+if(t.includes("coffee") || t.includes("kopi")) components.push("coffee/milk")
+if(t.includes("sandwich")) components.push("bread + filling")
+if(t.includes("burger")) components.push("bun + meat")
 
 if(components.length === 0){
-components = ["unknown mixed food"]
+components = ["mixed ingredients"]
 }
 
 return components
@@ -181,6 +203,7 @@ async function analyzeImage(base64){
 setAI("scanning...")
 
 try{
+
 if(window.analyzeFoodImage){
 
 const r = await window.analyzeFoodImage(base64)
@@ -195,6 +218,7 @@ carbs: Number(r?.carbs ?? 55),
 fat: Number(r?.fat ?? 12)
 }
 }
+
 }catch(e){
 console.log(e)
 }
@@ -238,6 +262,7 @@ fat: Math.round(base*0.04)
 
 /* ================= DEFICIT ================= */
 function getDeficit(cal){
+
 let maintenance = 2200
 let diff = cal - maintenance
 
@@ -253,11 +278,14 @@ function startManualFlow(){
 let input = document.getElementById("foodInput").value.trim()
 if(!input) return alert("Enter food")
 
+let type = detectFoodType(input)
+
 pendingFood = {
 id: Date.now(),
 food: input,
+type: type,
 date: new Date().toISOString().split("T")[0],
-components: detectFoodType(input),
+components: extractComponents(input),
 ...estimateNutrition(input)
 }
 
@@ -284,14 +312,14 @@ reader.onload = async ()=>{
 let base64 = reader.result
 let result = await analyzeImage(base64)
 
-/* 🔥 SMART MERGE */
-let components = detectFoodType(result.food)
+let type = detectFoodType(result.food)
 
 pendingFood = {
 id: Date.now(),
 food: result.food,
+type: type,
 date: new Date().toISOString().split("T")[0],
-components,
+components: extractComponents(result.food),
 ...result,
 image: base64
 }
@@ -311,11 +339,14 @@ function openBarcode(){
 
 let code = prompt("barcode/name")
 
+let type = detectFoodType(code)
+
 pendingFood = {
 id: Date.now(),
 food: code || "Unknown",
+type: type,
 date: new Date().toISOString().split("T")[0],
-components: detectFoodType(code || ""),
+components: extractComponents(code || ""),
 calories: 300,
 protein: 10,
 carbs: 40,
@@ -324,6 +355,24 @@ fat: 10
 
 showPreview(pendingFood)
 openMealModal()
+}
+
+/* ================= MULTI ================= */
+function startMultiCapture(){
+
+multiList = [
+{food:"Chicken rice",calories:600},
+{food:"Mixed veg rice",calories:500},
+{food:"Egg noodle",calories:550}
+]
+
+document.getElementById("foodList").innerHTML =
+multiList.map(m=>`
+<div class="preview-box">
+<b>${m.food}</b><br>
+${m.calories} kcal
+</div>
+`).join("")
 }
 
 /* ================= PREVIEW ================= */
@@ -338,17 +387,19 @@ document.getElementById("previewArea").innerHTML = `
 <div class="preview-box">
 
 <b>${adj.food}</b><br>
-🔥 ${Math.round(adj.calories)} kcal<br>
-P:${Math.round(adj.protein)} C:${Math.round(adj.carbs)} F:${Math.round(adj.fat)}<br><br>
+<span class="small-tag">${adj.type}</span><br><br>
 
-<b>Components:</b><br>
+🔥 ${Math.round(adj.calories)} kcal<br>
+P:${Math.round(adj.protein)} C:${Math.round(adj.carbs)} F:${Math.round(adj.fat)}<br>
+
+<br><b>Components:</b><br>
 ${(adj.components||[]).map(c=>`<span class="small-tag">${c}</span>`).join("")}
 
 </div>
 `
 }
 
-/* ================= SAVE (FIXED + STABLE) ================= */
+/* ================= SAVE ================= */
 function saveMeal(type){
 
 if(!pendingFood) return
@@ -357,6 +408,10 @@ pendingFood.mealType = type
 
 foodDB.push(pendingFood)
 localStorage.setItem("foodDB", JSON.stringify(foodDB))
+
+if(window.saveFood){
+window.saveFood(pendingFood)
+}
 
 pendingFood = null
 
@@ -383,7 +438,8 @@ function renderFoodList(){
 document.getElementById("foodList").innerHTML =
 foodDB.map(f=>`
 <div class="preview-box">
-<b>${f.food}</b> (${f.mealType || "?"})<br>
+<b>${f.food}</b><br>
+<span class="small-tag">${f.type || "unknown"}</span><br>
 🔥 ${f.calories} kcal
 
 <br><button class="delete-btn" onclick="deleteFood(${f.id})">Delete</button>
@@ -391,32 +447,40 @@ foodDB.map(f=>`
 `).join("")
 }
 
+/* ================= MODAL ================= */
+function openMealModal(){
+document.getElementById("mealModal").style.display="flex"
+}
+
+function closeMealModal(){
+document.getElementById("mealModal").style.display="none"
+document.getElementById("previewArea").innerHTML=""
+}
+
 /* ================= TODAY ================= */
 function updateToday(){
 
 let today = new Date().toISOString().split("T")[0]
 
-let total = foodDB
-.filter(f=>f.date===today)
-.reduce((a,b)=>a+(b.calories||0),0)
+let todayFoods = foodDB.filter(f => f.date === today)
 
-let def = getDeficit(total)
+let cal = todayFoods.reduce((a,b)=>a + (b.calories||0),0)
 
-document.getElementById("todayCalories").innerText =
-"Calories: " + total
+let def = getDeficit(cal)
 
+document.getElementById("todayCalories").innerText = "Calories: " + cal
 document.getElementById("deficitInfo").innerText =
 def.status + " (" + def.diff + ")"
 }
 
 /* ================= INIT ================= */
-function load(){
+function loadDB(){
 foodDB = JSON.parse(localStorage.getItem("foodDB")) || []
 renderFoodList()
 updateToday()
 }
 
-load()
+loadDB()
 
 </script>
 
