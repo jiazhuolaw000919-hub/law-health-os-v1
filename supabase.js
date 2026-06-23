@@ -1,5 +1,5 @@
-const SUPABASE_URL = "https://jwcgamxkwzrjnepxrvzr.supabase.co"
-const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9"
+const SUPABASE_URL = "https://jqevcfyhnlttzdiylfrh.supabase.co"
+const SUPABASE_KEY = "sb_publishable_GMM5PgeRzudbeh4aHK-1pw_lQ6TQnVe"
 
 // 🔥 DELETE GUARD
 const DELETE_GUARD_KEY = "deleted_items_v2"
