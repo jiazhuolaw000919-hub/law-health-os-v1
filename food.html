@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Food AI v16.2 PRO SYSTEM (SMART FOOD TYPE FIX)</title>
+<title>Food AI v16.2 PRO SYSTEM (FIXED STABLE VERSION)</title>
 
 <link rel="stylesheet" href="style.css">
 
@@ -28,7 +28,7 @@ background:rgba(0,0,0,0.5);
 display:none;
 align-items:center;
 justify-content:center;
-z-index:9999; /* 🔥 FIX: modal被盖住问题 */
+z-index:9999;
 }
 
 .modal-content{
@@ -75,7 +75,7 @@ cursor:pointer;
 
 <body>
 
-<h2>🍽 Food AI v16.2 (SMART FOOD TYPE DETECTION FIX)</h2>
+<h2>🍽 Food AI v16.2 (FIXED STABLE VERSION)</h2>
 
 <div class="card">
 <p id="activeProfile">Loading...</p>
@@ -202,9 +202,7 @@ async function analyzeImage(base64){
 setAI("scanning...")
 
 try{
-
 if(window.analyzeFoodImage){
-
 const r = await window.analyzeFoodImage(base64)
 
 setAI("done")
@@ -217,7 +215,6 @@ carbs: Number(r?.carbs ?? 55),
 fat: Number(r?.fat ?? 12)
 }
 }
-
 }catch(e){
 console.log(e)
 }
@@ -271,7 +268,7 @@ diff
 }
 }
 
-/* ================= MANUAL FLOW ================= */
+/* ================= MANUAL ================= */
 function startManualFlow(){
 
 let input = document.getElementById("foodInput").value.trim()
@@ -286,11 +283,15 @@ components: extractComponents(input),
 ...estimateNutrition(input)
 }
 
-showPreview(pendingFood)
+/* FIXED ORDER */
 openMealModal()
+
+requestAnimationFrame(()=>{
+showPreview(pendingFood)
+})
 }
 
-/* ================= AI UPLOAD (FIXED POPUP) ================= */
+/* ================= AI UPLOAD (FIXED STABLE POPUP) ================= */
 async function openAIUpload(){
 
 let input = document.createElement("input")
@@ -307,33 +308,34 @@ let reader = new FileReader()
 reader.onload = async ()=>{
 
 let base64 = reader.result
-
 let result = await analyzeImage(base64)
-
-let type = detectFoodType(result.food)
 
 pendingFood = {
 id: Date.now(),
 food: result.food,
-type: type,
+type: detectFoodType(result.food),
 date: new Date().toISOString().split("T")[0],
 components: extractComponents(result.food),
 ...result,
 image: base64
 }
 
-/* 🔥 FIX: force render before modal show (iOS SAFARI FIX) */
-setTimeout(()=>{
-showPreview(pendingFood)
+/* FIXED SAFARI SAFE RENDER */
 openMealModal()
-}, 50)
+
+requestAnimationFrame(()=>{
+showPreview(pendingFood)
+})
 
 }
 
 reader.readAsDataURL(file)
 }
 
+/* FIX: iOS safe click */
+setTimeout(()=>{
 input.click()
+},0)
 }
 
 /* ================= BARCODE ================= */
@@ -341,12 +343,10 @@ function openBarcode(){
 
 let code = prompt("barcode/name")
 
-let type = detectFoodType(code)
-
 pendingFood = {
 id: Date.now(),
 food: code || "Unknown",
-type: type,
+type: detectFoodType(code),
 date: new Date().toISOString().split("T")[0],
 components: extractComponents(code || ""),
 calories: 300,
@@ -355,8 +355,10 @@ carbs: 40,
 fat: 10
 }
 
-showPreview(pendingFood)
 openMealModal()
+requestAnimationFrame(()=>{
+showPreview(pendingFood)
+})
 }
 
 /* ================= MULTI ================= */
@@ -457,7 +459,9 @@ const modal = document.getElementById("mealModal")
 modal.style.display = "flex"
 modal.style.opacity = "1"
 
-/* 🔥 FIX: Safari repaint fix */
+/* FORCE REPAINT */
+modal.offsetHeight
+
 setTimeout(()=>{
 modal.style.transform = "translateZ(0)"
 },10)
