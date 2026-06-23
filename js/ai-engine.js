@@ -1,6 +1,8 @@
-// ==============================
-// 🧠 AI ENGINE v12.0 STABLE CORE FIX
-// ==============================
+
+/* =========================
+🧠 AI ENGINE v12.1 STABLE UPGRADE
+(SAFE + NO BREAK + SKELETON READY)
+========================= */
 
 /* =========================
 📡 SUPABASE MEMORY LAYER (SAFE)
@@ -26,7 +28,9 @@ Authorization:"Bearer " + SUPABASE_KEY
 
 if(!res.ok) return []
 
-return await res.json()
+const data = await res.json()
+
+return Array.isArray(data) ? data : []
 
 }catch(e){
 console.log("history fetch error:", e)
@@ -64,13 +68,13 @@ return foodText
 }
 
 /* =========================
-🍜 PARSER
+🍜 PARSER (SAFE)
 ========================= */
 function parseFoodAI(text){
 
-if(!text) return []
+if(!text || typeof text !== "string") return []
 
-text = String(text).toLowerCase()
+text = text.toLowerCase()
 
 let parts = text.split(/,|\+| and | with /)
 
@@ -84,7 +88,7 @@ return parts
 ========================= */
 function detectCuisine(food){
 
-if(!food) return "unknown"
+if(!food || typeof food !== "string") return "unknown"
 
 if(/chicken rice|nasi lemak|fried rice/.test(food)) return "Asian"
 if(/tom yum/.test(food)) return "Thai"
@@ -96,11 +100,13 @@ return "Mixed"
 }
 
 /* =========================
-⚖️ HEALTH SCORE
+⚖️ HEALTH SCORE (SAFE)
 ========================= */
 function calculateHealthScore(calories, bmi = 22){
 
 let score = 100
+
+if(!calories || isNaN(calories)) calories = 0
 
 if(calories < 1500) score -= 8
 else if(calories < 2000) score -= 12
@@ -117,7 +123,7 @@ return Math.max(0, Math.min(100, score))
 }
 
 /* =========================
-⚠️ FIXED RISK ENGINE (CRITICAL FIX)
+⚠️ RISK ENGINE (100% SAFE OUTPUT)
 ========================= */
 function getRiskLevel(calories, bmi){
 
@@ -129,7 +135,8 @@ score >= 80 ? "LOW"
 : "HIGH"
 
 return {
-level,
+level: level || "LOW",
+
 text:
 level === "LOW" ? "Low Risk"
 : level === "MEDIUM" ? "Medium Risk"
@@ -140,21 +147,24 @@ level === "LOW" ? "green"
 : level === "MEDIUM" ? "orange"
 : "red",
 
-score
+score: Number(score || 0)
 }
 }
 
 /* =========================
-🍽 MEAL SCORE
+🍽 MEAL SCORE (SAFE)
 ========================= */
 function calculateMealScore(items){
 
-if(!items || items.length === 0) return 0
+if(!Array.isArray(items)) return 0
+if(items.length === 0) return 0
 
 let score = 100
 let protein = 0, carbs = 0, fat = 0
 
 items.forEach(i=>{
+
+if(!i || !i.food) return
 
 if(i.calories > 800) score -= 10
 if(i.cuisine === "Western") score -= 5
@@ -174,15 +184,23 @@ return Math.max(0, Math.min(100, score))
 }
 
 /* =========================
-📊 MACRO SCORE
+📊 MACRO SCORE (SAFE)
 ========================= */
 function calculateMacroScores(items){
+
+if(!Array.isArray(items)) return {
+proteinScore:0,
+carbScore:0,
+fatScore:0
+}
 
 let protein = 0
 let carbs = 0
 let fat = 0
 
 items.forEach(i=>{
+
+if(!i || !i.food) return
 
 if(i.food.includes("chicken") || i.food.includes("egg") || i.food.includes("fish")){
 protein += 20
@@ -206,28 +224,29 @@ fatScore: Math.min(100, fat)
 }
 
 /* =========================
-🍜 SPLIT CALORIES
+🍜 SPLIT CALORIES (SAFE)
 ========================= */
 function splitCalories(foods, totalCalories){
 
+if(!Array.isArray(foods)) return []
 if(!foods.length) return []
 
 let avg = totalCalories / foods.length
 
 return foods.map(f => ({
 food: f,
-calories: Math.round(avg)
+calories: Math.round(avg || 0)
 }))
 }
 
 /* =========================
-⚠️ ANOMALY DETECTION
+⚠️ ANOMALY DETECTION (SAFE)
 ========================= */
 function detectAnomaly(calories, history = []){
 
-if(!history || history.length < 3) return "insufficient data"
+if(!Array.isArray(history) || history.length < 3) return "insufficient data"
 
-let avg = history.reduce((a,b)=>a+b,0)/history.length
+let avg = history.reduce((a,b)=>a+(Number(b)||0),0)/history.length
 
 if(calories > avg * 1.8) return "possible overeating detected"
 if(calories < avg * 0.5) return "unusually low intake detected"
@@ -236,7 +255,7 @@ return "normal"
 }
 
 /* =========================
-🧠 ADVICE ENGINE
+🧠 ADVICE ENGINE (SAFE)
 ========================= */
 function getAdvice(calories, bmi = 22, history = []){
 
@@ -248,7 +267,7 @@ return "High risk detected. Reduce carbs/sugar, increase protein, walk 30–45 m
 }
 
 if(risk.level === "MEDIUM"){
-if(anomaly.includes("overeating")){
+if(typeof anomaly === "string" && anomaly.includes("overeating")){
 return "Above normal trend detected. Reduce portion tomorrow."
 }
 return "Moderate intake. Maintain balance."
@@ -258,16 +277,19 @@ return "Healthy pattern. Keep routine."
 }
 
 /* =========================
-🧠 MAIN AI ENGINE v12.0 SAFE OUTPUT
+🧠 MAIN AI ENGINE v12.1 SAFE OUTPUT
 ========================= */
 async function getAIInsight(calories, bmi, history = [], foodText = "", userId = null){
+
+calories = Number(calories || 0)
+bmi = Number(bmi || 22)
 
 let foods = parseFoodAI(foodText)
 let split = splitCalories(foods, calories)
 
 let items = split.map(s => ({
-food: s.food,
-calories: s.calories,
+food: s.food || "unknown",
+calories: Number(s.calories || 0),
 cuisine: detectCuisine(s.food),
 risk: "UNKNOWN"
 }))
@@ -277,18 +299,16 @@ let macro = calculateMacroScores(items)
 let baseScore = calculateHealthScore(calories, bmi)
 let mealScore = calculateMealScore(items)
 
-/* =========================
-🧠 MEMORY SAFE LAYER
-========================= */
+/* ================= MEMORY SAFE ================= */
 let memoryTrend = 0
 
 if(userId){
 try{
 let historyData = await getUserFoodHistory(userId)
 
-if(historyData && historyData.length > 3){
+if(Array.isArray(historyData) && historyData.length > 3){
 
-let last7 = historyData.slice(0,7).map(x=>x.calories || 0)
+let last7 = historyData.slice(0,7).map(x=>Number(x?.calories || 0))
 
 let avg = last7.reduce((a,b)=>a+b,0)/last7.length
 
@@ -301,28 +321,31 @@ memoryTrend = 0
 }
 }
 
-/* =========================
-FINAL SCORE (SAFE)
-========================= */
+/* ================= FINAL SCORE (SAFE ALWAYS NUMBER) ================= */
 let finalScore =
 (baseScore * 0.4) +
 (mealScore * 0.4) +
 ((macro.proteinScore + macro.carbScore + macro.fatScore)/3 * 0.2)
 
 finalScore += memoryTrend
-finalScore = Math.max(0, Math.min(100, finalScore))
+finalScore = Math.max(0, Math.min(100, Number(finalScore || 0)))
 
 let risk = getRiskLevel(calories, bmi)
 
-/* 🔥 CRITICAL FIX: always safe structure */
+/* ================= FINAL SAFE RETURN ================= */
 return {
-score: Math.round(finalScore),
-baseScore,
-mealScore,
-macro,
-risk,               // ALWAYS SAME STRUCTURE
+score: Math.round(finalScore || 0),
+baseScore: Number(baseScore || 0),
+mealScore: Number(mealScore || 0),
+macro: macro || {proteinScore:0,carbScore:0,fatScore:0},
+risk: risk || {
+level:"LOW",
+text:"Low Risk",
+color:"green",
+score:0
+},
 advice: getAdvice(calories, bmi, history),
-foods: items,
-memoryTrend
+foods: Array.isArray(items) ? items : [],
+memoryTrend: Number(memoryTrend || 0)
 }
 }
