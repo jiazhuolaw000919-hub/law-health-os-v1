@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>AI Calendar v12.3 Stable Pro (FIXED FINAL)</title>
+<title>AI Calendar v12.3 Stable Pro (PROFILE FIXED)</title>
 
 <link rel="stylesheet" href="style.css">
 
@@ -99,11 +99,11 @@ z-index:9999;
 <a href="profile.html">Profile</a>
 </div>
 
-<h2 class="center">📅 AI Calendar v12.3 Stable Pro (FIXED FINAL)</h2>
+<h2 class="center">📅 AI Calendar v12.3 Stable Pro (PROFILE FIXED)</h2>
 
 <div class="card">
 <p id="time"></p>
-<p id="profile"></p>
+<p id="profile">Loading profile...</p>
 <p id="bmi"></p>
 </div>
 
@@ -152,9 +152,9 @@ const grid = document.getElementById("grid")
 const monthSelect = document.getElementById("monthSelect")
 const yearSelect = document.getElementById("yearSelect")
 
-/* PROFILE */
-function getActiveProfile(){
-return JSON.parse(localStorage.getItem("activeProfile")) || {
+/* ================= SAFE PROFILE SYSTEM (FIXED) ================= */
+function fallbackProfile(){
+return {
 id:"guest",
 name:"Guest",
 height:170,
@@ -162,7 +162,41 @@ weight:70
 }
 }
 
-/* SAFE FOOD */
+function getActiveProfile(){
+try{
+const raw = localStorage.getItem("activeProfile")
+
+if(!raw || raw === "undefined" || raw === "null"){
+return fallbackProfile()
+}
+
+const parsed = JSON.parse(raw)
+
+if(!parsed || !parsed.id){
+return fallbackProfile()
+}
+
+return parsed
+
+}catch(e){
+console.log("profile parse error:", e)
+return fallbackProfile()
+}
+}
+
+/* ================= PROFILE RENDER (NO FREEZE) ================= */
+function renderProfile(){
+const el = document.getElementById("profile")
+if(!el) return
+
+const p = getActiveProfile()
+el.innerText = "👤 Active: " + (p.name || "Guest")
+
+// optional debug
+console.log("Profile loaded:", p)
+}
+
+/* ================= SAFE FOOD ================= */
 async function safeFoodLogs(date){
 try{
 if(typeof getFoodLogs !== "function") return []
@@ -174,7 +208,7 @@ return []
 }
 }
 
-/* DAILY (🔥 FIXED AI SAFE MODE) */
+/* ================= DAILY ================= */
 async function getDailyMacro(date){
 
 let foods = await safeFoodLogs(date)
@@ -198,7 +232,6 @@ aiRaw = null
 }
 }
 
-/* 🔥 SAFE AI FALLBACK */
 let ai = {
 score: aiRaw?.score ?? 50,
 risk: aiRaw?.risk?.level ?? "LOW"
@@ -214,12 +247,12 @@ risk: ai.risk
 }
 }
 
-/* CHEAT DAY */
+/* ================= CHEAT DAY ================= */
 function isCheatDay(calories, risk){
 return calories >= 3200 || (risk==="HIGH" && calories >= 2800)
 }
 
-/* WEEK SUMMARY */
+/* ================= WEEK SUMMARY ================= */
 async function buildWeeklySummary(){
 
 let total=0,max=0
@@ -241,6 +274,7 @@ if(data.calories>max) max=data.calories
 }
 
 let avg = total/7
+
 let p = getActiveProfile()
 let bmi = (p.weight/((p.height/100)**2)).toFixed(1)
 
@@ -262,7 +296,7 @@ document.getElementById("riskSummary").innerHTML =
 <p>Protein: ${macroP}g | Carbs: ${macroC}g | Fat: ${macroF}g</p>`
 }
 
-/* LOAD */
+/* ================= LOAD ================= */
 async function load(){
 
 grid.innerHTML=""
@@ -287,7 +321,7 @@ tasks.push(renderDay(date,d))
 await Promise.all(tasks)
 }
 
-/* RENDER DAY */
+/* ================= RENDER DAY ================= */
 async function renderDay(date,d){
 
 try{
@@ -326,7 +360,7 @@ console.log(e)
 }
 }
 
-/* MODAL */
+/* ================= MODAL ================= */
 function openModal(date,data){
 
 document.getElementById("modal").style.display="flex"
@@ -353,7 +387,7 @@ let date=document.getElementById("modalDate").innerText
 window.location.href=`day.html?date=${date}`
 }
 
-/* INIT */
+/* ================= INIT ================= */
 function init(){
 
 monthSelect.innerHTML=""
@@ -379,9 +413,13 @@ document.getElementById("time").innerText="🕒 "+new Date().toLocaleString()
 
 setInterval(updateTime,1000)
 
+/* FIX: ensure profile renders AFTER DOM ready */
+window.addEventListener("DOMContentLoaded", () => {
 init()
+renderProfile()
 buildWeeklySummary()
 load()
+})
 
 window.openModal=openModal
 window.closeModal=closeModal
