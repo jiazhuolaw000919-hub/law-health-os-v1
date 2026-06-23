@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Food AI v15.1 PRO FIX</title>
+<title>Food AI v15.2 PRO SYSTEM (AI COMPONENT FIX)</title>
 
 <link rel="stylesheet" href="style.css">
 
@@ -59,6 +59,15 @@ cursor:pointer;
 background:#111;
 color:#fff;
 }
+
+.small-tag{
+display:inline-block;
+margin:2px;
+padding:2px 6px;
+background:#e5e7eb;
+border-radius:6px;
+font-size:12px;
+}
 </style>
 </head>
 
@@ -74,7 +83,7 @@ color:#fff;
 <a href="profile.html">Profile</a>
 </div>
 
-<h2>🍽 Food AI v15.1 (FIXED AI SCAN + STABLE CORE)</h2>
+<h2>🍽 Food AI v15.2 (AI COMPONENT DETECTION FIX)</h2>
 
 <div class="card">
 <p id="activeProfile">Loading...</p>
@@ -136,10 +145,36 @@ let multiList = []
 document.getElementById("activeProfile").innerText =
 JSON.parse(localStorage.getItem("activeProfile"))?.name || "Guest"
 
-/* ================= AI WRAPPER SAFE ================= */
+/* ================= AI STATUS ================= */
+function setAI(status){
+document.getElementById("aiStatus").innerText = "AI: " + status
+}
+
+/* ================= AI ENHANCED ================= */
+function extractComponents(foodText){
+
+let t = foodText.toLowerCase()
+
+let components = []
+
+if(t.includes("rice")) components.push("rice")
+if(t.includes("chicken") || t.includes("meat")) components.push("meat")
+if(t.includes("egg")) components.push("egg")
+if(t.includes("vegetable") || t.includes("veg")) components.push("vegetables")
+if(t.includes("fish")) components.push("fish")
+if(t.includes("noodle")) components.push("noodles")
+
+if(components.length === 0){
+components = ["mixed ingredients"]
+}
+
+return components
+}
+
+/* ================= AI WRAPPER ================= */
 async function analyzeImage(base64){
 
-document.getElementById("aiStatus").innerText = "AI: scanning..."
+setAI("scanning...")
 
 try{
 
@@ -147,14 +182,14 @@ if(window.analyzeFoodImage){
 
 const r = await window.analyzeFoodImage(base64)
 
-document.getElementById("aiStatus").innerText = "AI: done"
+setAI("processing result")
 
 return {
 food: r?.food || "Unknown meal",
-calories: Number(r?.calories || 450),
-protein: Number(r?.protein || 18),
-carbs: Number(r?.carbs || 55),
-fat: Number(r?.fat || 12)
+calories: Number(r?.calories ?? 450),
+protein: Number(r?.protein ?? 18),
+carbs: Number(r?.carbs ?? 55),
+fat: Number(r?.fat ?? 12)
 }
 }
 
@@ -162,7 +197,7 @@ fat: Number(r?.fat || 12)
 console.log(e)
 }
 
-document.getElementById("aiStatus").innerText = "AI: fallback"
+setAI("fallback")
 
 return {
 food:"Unknown meal",
@@ -189,6 +224,7 @@ if(food.includes("chicken")) base += 120
 if(food.includes("rice")) base += 120
 if(food.includes("milo")) base += 150
 if(food.includes("burger")) base += 300
+if(food.includes("egg")) base += 80
 
 return {
 calories: base,
@@ -218,6 +254,7 @@ if(!input) return alert("Enter food")
 
 pendingFood = {
 food: input,
+components: extractComponents(input),
 ...estimateNutrition(input)
 }
 
@@ -245,8 +282,12 @@ let base64 = reader.result
 
 let result = await analyzeImage(base64)
 
+/* 🔥 NEW: COMPONENT DETECTION FROM AI TEXT */
+let components = extractComponents(result.food)
+
 pendingFood = {
 food: result.food,
+components,
 ...result,
 image: base64
 }
@@ -268,6 +309,7 @@ let code = prompt("barcode/name")
 
 pendingFood = {
 food: code || "Unknown",
+components: extractComponents(code || ""),
 calories: 300,
 protein: 10,
 carbs: 40,
@@ -282,13 +324,18 @@ openMealModal()
 function startMultiCapture(){
 
 multiList = [
-{food:"Meal 1",calories:400},
-{food:"Meal 2",calories:500},
-{food:"Meal 3",calories:600}
+{food:"Chicken rice",calories:600},
+{food:"Mixed veg rice",calories:500},
+{food:"Egg noodle",calories:550}
 ]
 
 document.getElementById("foodList").innerHTML =
-multiList.map(m=>`<div class="preview-box">${m.food} ${m.calories}</div>`).join("")
+multiList.map(m=>`
+<div class="preview-box">
+<b>${m.food}</b><br>
+${m.calories} kcal
+</div>
+`).join("")
 }
 
 /* ================= PREVIEW ================= */
@@ -301,9 +348,19 @@ if(mode==="bulk") adj.calories*=1.15
 
 document.getElementById("previewArea").innerHTML = `
 <div class="preview-box">
-${adj.food}<br>
-${Math.round(adj.calories)} kcal<br>
-P:${Math.round(adj.protein)} C:${Math.round(adj.carbs)} F:${Math.round(adj.fat)}
+
+<b>Food:</b> ${adj.food}<br>
+
+🔥 ${Math.round(adj.calories)} kcal<br>
+🥩 P:${Math.round(adj.protein)} 
+🍚 C:${Math.round(adj.carbs)} 
+🥑 F:${Math.round(adj.fat)}<br><br>
+
+<b>Components:</b><br>
+${(adj.components || []).map(c=>
+`<span class="small-tag">${c}</span>`
+).join("")}
+
 </div>
 `
 }
@@ -344,7 +401,8 @@ let cal = pendingFood?.calories || 0
 let def = getDeficit(cal)
 
 document.getElementById("todayCalories").innerText = "Calories: " + cal
-document.getElementById("deficitInfo").innerText = def.status + " (" + def.diff + ")"
+document.getElementById("deficitInfo").innerText =
+def.status + " (" + def.diff + ")"
 }
 
 </script>
