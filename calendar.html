@@ -19,7 +19,6 @@ margin:0;
 font-family:Arial;
 }
 
-/* 🔥 FIX GRID (CRITICAL) */
 .grid{
 display:grid;
 grid-template-columns:repeat(7,1fr);
@@ -27,7 +26,6 @@ gap:8px;
 padding:10px;
 }
 
-/* DAY CARD */
 .day{
 background:#fff;
 border-radius:10px;
@@ -49,7 +47,6 @@ border-radius:10px;
 box-shadow:0 1px 4px rgba(0,0,0,.05);
 }
 
-/* BADGE */
 .badge{
 display:inline-block;
 padding:4px 8px;
@@ -62,7 +59,6 @@ margin-top:5px;
 .yellow{background:#fef9c3;color:#854d0e}
 .red{background:#fee2e2;color:#991b1b}
 
-/* CHEAT DAY */
 .cheat{
 position:absolute;
 top:6px;
@@ -72,7 +68,6 @@ color:#ef4444;
 font-weight:bold;
 }
 
-/* ICON */
 .warn{
 position:absolute;
 top:6px;
@@ -80,7 +75,6 @@ left:8px;
 font-size:14px;
 }
 
-/* MODAL FIX */
 #modal{
 position:fixed;
 inset:0;
@@ -180,7 +174,7 @@ return []
 }
 }
 
-/* DAILY */
+/* DAILY (🔥 FIXED AI SAFE MODE) */
 async function getDailyMacro(date){
 
 let foods = await safeFoodLogs(date)
@@ -194,9 +188,21 @@ carbs += Number(f.carbs||0)
 fat += Number(f.fat||0)
 })
 
-let ai = (typeof getAIInsight === "function")
-? getAIInsight(calories, 22)
-: {score:50, risk:{level:"🟢"}}
+let aiRaw = null
+
+if(typeof getAIInsight === "function"){
+try{
+aiRaw = await getAIInsight(calories, 22)
+}catch(e){
+aiRaw = null
+}
+}
+
+/* 🔥 SAFE AI FALLBACK */
+let ai = {
+score: aiRaw?.score ?? 50,
+risk: aiRaw?.risk?.level ?? "LOW"
+}
 
 return {
 calories,
@@ -204,7 +210,7 @@ protein,
 carbs,
 fat,
 score: ai.score,
-risk: ai.risk.level
+risk: ai.risk
 }
 }
 
@@ -213,7 +219,7 @@ function isCheatDay(calories, risk){
 return calories >= 3200 || (risk==="HIGH" && calories >= 2800)
 }
 
-/* WEEK */
+/* WEEK SUMMARY */
 async function buildWeeklySummary(){
 
 let total=0,max=0
@@ -256,7 +262,7 @@ document.getElementById("riskSummary").innerHTML =
 <p>Protein: ${macroP}g | Carbs: ${macroC}g | Fat: ${macroF}g</p>`
 }
 
-/* LOAD FIXED (PARALLEL SAFE) */
+/* LOAD */
 async function load(){
 
 grid.innerHTML=""
