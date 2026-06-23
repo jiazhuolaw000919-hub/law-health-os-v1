@@ -1,0 +1,46 @@
+/* =========================
+🧊 SKELETON UI SYSTEM
+========================= */
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    #eee 25%,
+    #f5f5f5 50%,
+    #eee 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.2s infinite;
+  border-radius: 8px;
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* TEXT SKELETON */
+.skeleton-text {
+  height: 14px;
+  margin: 6px 0;
+  width: 100%;
+}
+
+/* PROFILE SKELETON BOX */
+.skeleton-profile {
+  height: 20px;
+  width: 180px;
+}
+
+/* CARD SKELETON */
+.skeleton-card {
+  height: 80px;
+  border-radius: 10px;
+}
+
+/* BUTTON SKELETON */
+.skeleton-button {
+  height: 36px;
+  width: 120px;
+  border-radius: 8px;
+}
