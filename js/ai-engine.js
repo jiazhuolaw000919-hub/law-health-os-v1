@@ -1,11 +1,10 @@
 
-/* =========================
-🧠 AI ENGINE v12.1 STABLE UPGRADE
-(SAFE + NO BREAK + SKELETON READY)
-========================= */
+//////////////////////////////
+// 🧠 AI ENGINE v12.2 SAFE UPGRADE (NO BREAK + ENHANCED STABILITY)
+//////////////////////////////
 
 /* =========================
-📡 SUPABASE MEMORY LAYER (SAFE)
+📡 SUPABASE MEMORY LAYER (SAFE - IMPROVED)
 ========================= */
 async function getUserFoodHistory(userId, limit = 30){
 
@@ -39,7 +38,7 @@ return []
 }
 
 /* =========================
-🍜 NORMALIZATION
+🍜 NORMALIZATION (STABLE + SAFE)
 ========================= */
 function normalizeFoodAI(foodText){
 
@@ -68,7 +67,7 @@ return foodText
 }
 
 /* =========================
-🍜 PARSER (SAFE)
+🍜 PARSER (IMPROVED - SAFE SPLIT)
 ========================= */
 function parseFoodAI(text){
 
@@ -76,15 +75,15 @@ if(!text || typeof text !== "string") return []
 
 text = text.toLowerCase()
 
-let parts = text.split(/,|\+| and | with /)
+let parts = text.split(/,|\+| and | with /i)
 
 return parts
 .map(p => normalizeFoodAI(p.trim()))
-.filter(p => p && p !== "unknown food")
+.filter(p => p && p !== "unknown food" && p.length > 1)
 }
 
 /* =========================
-🌍 CUISINE
+🌍 CUISINE (UNCHANGED LOGIC)
 ========================= */
 function detectCuisine(food){
 
@@ -100,13 +99,14 @@ return "Mixed"
 }
 
 /* =========================
-⚖️ HEALTH SCORE (SAFE)
+⚖️ HEALTH SCORE (SAFE + NAN PROTECTION)
 ========================= */
 function calculateHealthScore(calories, bmi = 22){
 
 let score = 100
 
-if(!calories || isNaN(calories)) calories = 0
+calories = Number(calories || 0)
+bmi = Number(bmi || 22)
 
 if(calories < 1500) score -= 8
 else if(calories < 2000) score -= 12
@@ -119,11 +119,11 @@ if(bmi >= 30) score -= 20
 else if(bmi >= 27) score -= 12
 else if(bmi >= 25) score -= 6
 
-return Math.max(0, Math.min(100, score))
+return Math.max(0, Math.min(100, Number(score || 0)))
 }
 
 /* =========================
-⚠️ RISK ENGINE (100% SAFE OUTPUT)
+⚠️ RISK ENGINE (SAFE)
 ========================= */
 function getRiskLevel(calories, bmi){
 
@@ -135,8 +135,7 @@ score >= 80 ? "LOW"
 : "HIGH"
 
 return {
-level: level || "LOW",
-
+level: level,
 text:
 level === "LOW" ? "Low Risk"
 : level === "MEDIUM" ? "Medium Risk"
@@ -152,7 +151,7 @@ score: Number(score || 0)
 }
 
 /* =========================
-🍽 MEAL SCORE (SAFE)
+🍽 MEAL SCORE (SAFE + PROTECTION)
 ========================= */
 function calculateMealScore(items){
 
@@ -166,7 +165,7 @@ items.forEach(i=>{
 
 if(!i || !i.food) return
 
-if(i.calories > 800) score -= 10
+if((i.calories || 0) > 800) score -= 10
 if(i.cuisine === "Western") score -= 5
 if(i.cuisine === "Asian") score += 3
 
@@ -224,29 +223,39 @@ fatScore: Math.min(100, fat)
 }
 
 /* =========================
-🍜 SPLIT CALORIES (SAFE)
+🍜 SPLIT CALORIES (FIXED SAFE VERSION)
 ========================= */
 function splitCalories(foods, totalCalories){
 
 if(!Array.isArray(foods)) return []
 if(!foods.length) return []
 
+totalCalories = Number(totalCalories || 0)
+
 let avg = totalCalories / foods.length
+
+if(!isFinite(avg) || avg <= 0){
+avg = 300
+}
 
 return foods.map(f => ({
 food: f,
-calories: Math.round(avg || 0)
+calories: Math.round(avg)
 }))
 }
 
 /* =========================
-⚠️ ANOMALY DETECTION (SAFE)
+⚠️ ANOMALY DETECTION (SAFE FIX)
 ========================= */
 function detectAnomaly(calories, history = []){
 
 if(!Array.isArray(history) || history.length < 3) return "insufficient data"
 
-let avg = history.reduce((a,b)=>a+(Number(b)||0),0)/history.length
+let valid = history.map(h => Number(h || 0)).filter(n => !isNaN(n))
+
+if(valid.length < 3) return "insufficient data"
+
+let avg = valid.reduce((a,b)=>a+b,0)/valid.length
 
 if(calories > avg * 1.8) return "possible overeating detected"
 if(calories < avg * 0.5) return "unusually low intake detected"
@@ -277,7 +286,7 @@ return "Healthy pattern. Keep routine."
 }
 
 /* =========================
-🧠 MAIN AI ENGINE v12.1 SAFE OUTPUT
+🧠 MAIN AI ENGINE v12.2 SAFE OUTPUT (IMPROVED STABILITY)
 ========================= */
 async function getAIInsight(calories, bmi, history = [], foodText = "", userId = null){
 
@@ -308,7 +317,9 @@ let historyData = await getUserFoodHistory(userId)
 
 if(Array.isArray(historyData) && historyData.length > 3){
 
-let last7 = historyData.slice(0,7).map(x=>Number(x?.calories || 0))
+let last7 = historyData.slice(0,7).map(x=>Number(x?.calories || 0)).filter(n => !isNaN(n))
+
+if(last7.length > 0){
 
 let avg = last7.reduce((a,b)=>a+b,0)/last7.length
 
@@ -316,12 +327,13 @@ if(calories > avg * 1.2) memoryTrend = -5
 else if(calories < avg * 0.8) memoryTrend = +5
 else memoryTrend = +2
 }
+}
 }catch(e){
 memoryTrend = 0
 }
 }
 
-/* ================= FINAL SCORE (SAFE ALWAYS NUMBER) ================= */
+/* ================= FINAL SCORE (SAFE) ================= */
 let finalScore =
 (baseScore * 0.4) +
 (mealScore * 0.4) +
@@ -337,13 +349,8 @@ return {
 score: Math.round(finalScore || 0),
 baseScore: Number(baseScore || 0),
 mealScore: Number(mealScore || 0),
-macro: macro || {proteinScore:0,carbScore:0,fatScore:0},
-risk: risk || {
-level:"LOW",
-text:"Low Risk",
-color:"green",
-score:0
-},
+macro: macro,
+risk: risk,
 advice: getAdvice(calories, bmi, history),
 foods: Array.isArray(items) ? items : [],
 memoryTrend: Number(memoryTrend || 0)
