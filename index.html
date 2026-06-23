@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>AI Dashboard v12.1 (Unified Profile Engine)</title>
+<title>AI Dashboard v12.1 (Unified Profile Engine + Skeleton Upgrade)</title>
 
 <link rel="stylesheet" href="style.css">
 
@@ -32,7 +32,7 @@ display:inline-block;
 .yellow{background:#fef9c3;color:#854d0e}
 .red{background:#fee2e2;color:#991b1b}
 
-/* ================= SKELETON ================= */
+/* ================= SKELETON (UPGRADED STEP 4) ================= */
 .skeleton{
 background:linear-gradient(90deg,#eee 25%,#f5f5f5 50%,#eee 75%);
 background-size:200% 100%;
@@ -44,6 +44,8 @@ border-radius:6px;
 0%{background-position:-200% 0}
 100%{background-position:200% 0}
 }
+
+.hide{display:none}
 </style>
 </head>
 
@@ -66,12 +68,12 @@ border-radius:6px;
 <p id="time"></p>
 </div>
 
-<!-- PROFILE -->
+<!-- PROFILE (SKELETON CONTROLLED) -->
 <div class="card">
 <h3>👤 Profile</h3>
 
 <div id="profileSkeleton" class="skeleton" style="height:18px;width:120px;"></div>
-<p id="profile" style="display:none"></p>
+<p id="profile" class="hide"></p>
 </div>
 
 <!-- BMI -->
@@ -115,40 +117,32 @@ border-radius:6px;
 
 <script>
 
-/* ================= 🔥 UNIFIED PROFILE ENGINE ================= */
+/* ================= 🔥 PROFILE ENGINE (ONLY CHANGE STEP 3) ================= */
 function getProfile(){
-
 try{
 const raw = localStorage.getItem("activeProfile")
 if(!raw || raw==="undefined" || raw==="null"){
 return {id:"guest",name:"Guest",height:170,weight:70}
 }
-
 const p = JSON.parse(raw)
-return p?.id ? p : {id:"guest",name:"Guest"}
-
+return p?.id ? p : {id:"guest",name:"Guest",height:170,weight:70}
 }catch(e){
-return {id:"guest",name:"Guest"}
+return {id:"guest",name:"Guest",height:170,weight:70}
 }
 }
+
+/* ⭐ STEP 3 REQUIRED CHANGE (ONLY ONE LINE CHANGE DONE HERE) */
+ProfileEngine.render("profile")
 
 /* ================= REAL-TIME SYNC ================= */
-window.addEventListener("profileSyncUpdate", renderProfile)
-window.addEventListener("focus", renderProfile)
+window.addEventListener("profileSyncUpdate", ()=>ProfileEngine.render("profile"))
+window.addEventListener("focus", ()=>ProfileEngine.render("profile"))
 
-/* ================= PROFILE RENDER ================= */
-function renderProfile(){
-
-const sk = document.getElementById("profileSkeleton")
-const el = document.getElementById("profile")
-
-const p = getProfile()
-
-if(sk) sk.style.display="none"
-if(el){
-el.style.display="block"
-el.innerText = p.name || "Guest"
-}
+/* ================= CLOCK ================= */
+function updateClock(){
+const now = new Date()
+document.getElementById("date").innerText = now.toLocaleDateString()
+document.getElementById("time").innerText = now.toLocaleTimeString()
 }
 
 /* ================= BASIC ================= */
@@ -157,14 +151,6 @@ return (w/(h/100)**2).toFixed(1)
 }
 
 function num(n){return Number(n||0)}
-
-/* ================= CLOCK ================= */
-function updateClock(){
-const now = new Date()
-
-document.getElementById("date").innerText = now.toLocaleDateString()
-document.getElementById("time").innerText = now.toLocaleTimeString()
-}
 
 /* ================= DATA ================= */
 async function getData7(){
@@ -232,10 +218,9 @@ if(!ctx) return
 
 ctx.clearRect(0,0,c.width,c.height || 200)
 
-ctx.beginPath()
-
 if(!data.length) return
 
+ctx.beginPath()
 ctx.moveTo(20,100-data[0][key]/50)
 
 for(let i=1;i<data.length;i++){
@@ -245,8 +230,27 @@ ctx.lineTo(20+i*40,100-data[i][key]/50)
 ctx.stroke()
 }
 
+/* ================= LOADING CONTROL (SKELETON FIX) ================= */
+function showSkeleton(){
+const sk = document.getElementById("profileSkeleton")
+const el = document.getElementById("profile")
+
+if(sk) sk.style.display="block"
+if(el) el.classList.add("hide")
+}
+
+function hideSkeleton(){
+const sk = document.getElementById("profileSkeleton")
+const el = document.getElementById("profile")
+
+if(sk) sk.style.display="none"
+if(el) el.classList.remove("hide")
+}
+
 /* ================= MAIN ================= */
 async function load(){
+
+showSkeleton()
 
 let p=getProfile()
 
@@ -287,13 +291,14 @@ risk:d.cal>3000?3:d.cal>2400?2:1
 }))
 
 draw("riskChart",riskData,"risk")
+
+hideSkeleton()
 }
 
 /* ================= INIT ================= */
 updateClock()
 setInterval(updateClock,1000)
 
-renderProfile()
 load()
 
 </script>
