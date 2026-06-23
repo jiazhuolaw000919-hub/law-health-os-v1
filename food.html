@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Food AI v16.2 PRO SYSTEM (UPLOAD FIXED STABLE)</title>
+<title>Food AI v16.1 PRO SYSTEM (FULL FIX + DELETE)</title>
 
 <link rel="stylesheet" href="style.css">
 
@@ -65,20 +65,16 @@ font-size:12px;
 }
 
 .delete-btn{
-background:red;
-color:white;
-border:none;
-padding:3px 6px;
-border-radius:6px;
+background:#ffdddd;
+border:1px solid #ff8888;
 cursor:pointer;
-font-size:12px;
 }
 </style>
 </head>
 
 <body>
 
-<h2>🍽 Food AI v16.2 (UPLOAD + MODAL FIX STABLE)</h2>
+<h2>🍽 Food AI v16.1 (FULL FIX + DELETE + STABLE SAVE)</h2>
 
 <div class="card">
 <p id="activeProfile">Loading...</p>
@@ -93,13 +89,6 @@ font-size:12px;
 </div>
 
 <div class="card">
-<h3>⚙️ Mode</h3>
-<button onclick="setMode('normal')">Normal</button>
-<button onclick="setMode('deficit')">Fat Loss</button>
-<button onclick="setMode('bulk')">Bulk</button>
-</div>
-
-<div class="card">
 <input id="foodInput" placeholder="e.g. chicken rice + milo">
 
 <br><br>
@@ -111,7 +100,7 @@ font-size:12px;
 </div>
 
 <div class="card">
-<h3>AI Result</h3>
+<h3>AI Result (Saved List)</h3>
 <div id="foodList"></div>
 </div>
 
@@ -131,7 +120,9 @@ font-size:12px;
 
 <script>
 
+/* ================= GLOBAL DB FIX ================= */
 let foodDB = JSON.parse(localStorage.getItem("foodDB")) || []
+
 let pendingFood = null
 let mode = "normal"
 let multiList = []
@@ -140,28 +131,30 @@ let multiList = []
 document.getElementById("activeProfile").innerText =
 JSON.parse(localStorage.getItem("activeProfile"))?.name || "Guest"
 
-/* ================= AI ================= */
-function setAI(s){
-document.getElementById("aiStatus").innerText = "AI: " + s
+/* ================= AI STATUS ================= */
+function setAI(status){
+document.getElementById("aiStatus").innerText = "AI: " + status
 }
 
-/* ================= COMPONENT ================= */
-function extractComponents(t){
+/* ================= COMPONENT DETECTOR ================= */
+function extractComponents(text){
 
-t = (t || "").toLowerCase()
+let t = (text || "").toLowerCase()
+let components = []
 
-let c = []
+if(t.includes("rice")) components.push("rice")
+if(t.includes("chicken") || t.includes("meat")) components.push("meat")
+if(t.includes("egg")) components.push("egg")
+if(t.includes("veg")) components.push("vegetables")
+if(t.includes("fish")) components.push("fish")
+if(t.includes("noodle")) components.push("noodles")
+if(t.includes("coffee") || t.includes("kopi")) components.push("coffee/milk")
+if(t.includes("sandwich")) components.push("bread + filling")
+if(t.includes("burger")) components.push("bun + meat")
 
-if(t.includes("rice")) c.push("rice")
-if(t.includes("chicken")) c.push("meat")
-if(t.includes("egg")) c.push("egg")
-if(t.includes("veg")) c.push("vegetables")
-if(t.includes("coffee")) c.push("drink")
-if(t.includes("sandwich")) c.push("sandwich")
+if(components.length === 0) components = ["mixed ingredients"]
 
-if(c.length === 0) c = ["unknown meal"]
-
-return c
+return components
 }
 
 /* ================= AI WRAPPER ================= */
@@ -172,6 +165,7 @@ setAI("scanning...")
 try{
 if(window.analyzeFoodImage){
 const r = await window.analyzeFoodImage(base64)
+
 setAI("done")
 
 return {
@@ -227,6 +221,7 @@ fat: Math.round(base*0.04)
 function getDeficit(cal){
 let maintenance = 2200
 let diff = cal - maintenance
+
 return {
 status: diff > 0 ? "surplus" : "deficit",
 diff
@@ -240,6 +235,7 @@ let input = document.getElementById("foodInput").value.trim()
 if(!input) return alert("Enter food")
 
 pendingFood = {
+id: Date.now(),
 food: input,
 date: new Date().toISOString().split("T")[0],
 components: extractComponents(input),
@@ -250,34 +246,27 @@ showPreview(pendingFood)
 openMealModal()
 }
 
-/* ================= 🔥 FIXED UPLOAD (100% STABLE IOS + ANDROID) ================= */
-function openAIUpload(){
+/* ================= AI UPLOAD ================= */
+async function openAIUpload(){
 
-const input = document.createElement("input")
+let input = document.createElement("input")
 input.type = "file"
 input.accept = "image/*"
-input.style.display = "none"
 
-/* IMPORTANT: attach listener BEFORE click */
-input.addEventListener("change", async (e)=>{
+input.onchange = async ()=>{
 
-const file = e.target.files[0]
+let file = input.files[0]
 if(!file) return
 
-setAI("reading image...")
+let reader = new FileReader()
 
-const reader = new FileReader()
+reader.onload = async ()=>{
 
-reader.onload = async (evt)=>{
-
-const base64 = evt.target.result
-
-setAI("processing AI...")
-
+let base64 = reader.result
 let result = await analyzeImage(base64)
 
-/* ALWAYS BUILD OBJECT */
 pendingFood = {
+id: Date.now(),
 food: result.food,
 date: new Date().toISOString().split("T")[0],
 components: extractComponents(result.food),
@@ -285,30 +274,14 @@ components: extractComponents(result.food),
 image: base64
 }
 
-/* FORCE UI RENDER */
 showPreview(pendingFood)
-
-/* 🔥 CRITICAL FIX: double-frame modal open */
-requestAnimationFrame(()=>{
-setTimeout(()=>{
 openMealModal()
-}, 80)
-})
-
 }
 
 reader.readAsDataURL(file)
-})
+}
 
-/* MUST attach to DOM for Safari stability */
-document.body.appendChild(input)
-
-/* user gesture unlock */
 input.click()
-input.focus()
-
-/* cleanup */
-setTimeout(()=>input.remove(), 5000)
 }
 
 /* ================= BARCODE ================= */
@@ -317,6 +290,7 @@ function openBarcode(){
 let code = prompt("barcode/name")
 
 pendingFood = {
+id: Date.now(),
 food: code || "Unknown",
 date: new Date().toISOString().split("T")[0],
 components: extractComponents(code || ""),
@@ -358,21 +332,17 @@ if(mode==="bulk") adj.calories*=1.15
 
 document.getElementById("previewArea").innerHTML = `
 <div class="preview-box">
-
 <b>${adj.food}</b><br>
 🔥 ${Math.round(adj.calories)} kcal<br>
-🥩 P:${Math.round(adj.protein)}
-🍚 C:${Math.round(adj.carbs)}
-🥑 F:${Math.round(adj.fat)}<br><br>
+P:${Math.round(adj.protein)} C:${Math.round(adj.carbs)} F:${Math.round(adj.fat)}<br>
 
-<b>Components:</b><br>
+<br><b>Components:</b><br>
 ${(adj.components||[]).map(c=>`<span class="small-tag">${c}</span>`).join("")}
-
 </div>
 `
 }
 
-/* ================= SAVE ================= */
+/* ================= SAVE FIX ================= */
 function saveMeal(type){
 
 if(!pendingFood) return
@@ -389,68 +359,67 @@ window.saveFood(pendingFood)
 pendingFood = null
 
 closeMealModal()
-updateToday()
 renderFoodList()
+updateToday()
 
 alert("Saved!")
 }
 
-/* ================= DELETE ================= */
-function deleteFood(i){
+/* ================= DELETE FIX ================= */
+function deleteFood(id){
 
-foodDB.splice(i,1)
+foodDB = foodDB.filter(f => f.id !== id)
 localStorage.setItem("foodDB", JSON.stringify(foodDB))
 
 renderFoodList()
 updateToday()
 }
 
-/* ================= RENDER ================= */
+/* ================= RENDER LIST ================= */
 function renderFoodList(){
 
-let today = new Date().toISOString().split("T")[0]
-
-let list = foodDB.filter(f=>f.date===today)
-
 document.getElementById("foodList").innerHTML =
-list.length ? list.map((f,i)=>`
+foodDB.map(f=>`
 <div class="preview-box">
-<b>${f.food}</b> (${f.calories})
-<br>
-${(f.components||[]).map(c=>`<span class="small-tag">${c}</span>`).join("")}
-<br>
-<button class="delete-btn" onclick="deleteFood(${i})">Delete</button>
+<b>${f.food}</b> (${f.mealType || "?"})<br>
+🔥 ${f.calories} kcal
+
+<br><button class="delete-btn" onclick="deleteFood(${f.id})">Delete</button>
 </div>
 `).join("")
-:
-"<p>No food today</p>"
 }
 
-/* ================= TODAY ================= */
+/* ================= MODAL ================= */
+function openMealModal(){
+document.getElementById("mealModal").style.display="flex"
+}
+
+function closeMealModal(){
+document.getElementById("mealModal").style.display="none"
+document.getElementById("previewArea").innerHTML=""
+}
+
+/* ================= TODAY FIX ================= */
 function updateToday(){
 
 let today = new Date().toISOString().split("T")[0]
 
-let todayFoods = foodDB.filter(f=>f.date===today)
+let todayFoods = foodDB.filter(f => f.date === today)
 
-let cal = todayFoods.reduce((a,b)=>a+(b.calories||0),0)
+let cal = todayFoods.reduce((a,b)=>a + (b.calories||0),0)
 
 let def = getDeficit(cal)
 
-document.getElementById("todayCalories").innerText =
-"Calories: " + cal
-
+document.getElementById("todayCalories").innerText = "Calories: " + cal
 document.getElementById("deficitInfo").innerText =
 def.status + " (" + def.diff + ")"
-
-renderFoodList()
 }
 
 /* ================= INIT ================= */
 function loadDB(){
 foodDB = JSON.parse(localStorage.getItem("foodDB")) || []
-updateToday()
 renderFoodList()
+updateToday()
 }
 
 loadDB()
