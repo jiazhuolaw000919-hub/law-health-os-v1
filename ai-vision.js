@@ -1,9 +1,9 @@
 //////////////////////////////
-// 🧠 AI VISION v11.5 (PHASE 4)
+// 🧠 AI VISION v11.6 (UPGRADED + FIXED FOR v13)
 //////////////////////////////
 
 /* =========================
-IMAGE PREVIEW HELPER
+IMAGE PREVIEW HELPER (UNCHANGED)
 ========================= */
 function previewFoodImage(file, callback){
 
@@ -33,7 +33,24 @@ reader.readAsDataURL(file)
 }
 
 //////////////////////////////
-// 🧠 MAIN VISION ENGINE
+// 🧠 GLOBAL WRAPPER (FIX ADDED)
+//////////////////////////////
+
+window.analyzeFoodImage = async function(base64){
+
+try{
+const result = await analyzeFoodImage(base64)
+
+/* 🔥 FIX: ensure ALWAYS valid structure */
+return normalizeVision(result)
+}catch(e){
+console.log("window wrapper error:", e)
+return fallbackVision()
+}
+}
+
+//////////////////////////////
+// 🧠 MAIN VISION ENGINE (FIXED)
 //////////////////////////////
 async function analyzeFoodImage(base64Image){
 
@@ -53,18 +70,20 @@ messages:[
 role:"system",
 content:`
 You are a professional nutrition AI.
+
 Return STRICT JSON only.
 
-Detect ALL foods in the image.
+If multiple foods → return foods array.
+If single food → still wrap in foods array.
 
 Each food must include:
 - food name
-- calories estimate
-- protein (g)
-- carbs (g)
-- fat (g)
-- portion size estimate
-- cuisine type
+- calories
+- protein
+- carbs
+- fat
+- portion size
+- cuisine
 - confidence (0-1)
 
 Also return:
@@ -73,18 +92,10 @@ Also return:
 - totalCarbs
 - totalFat
 - mealScore (0-100)
-- healthRisk (low / medium / high)
+- healthRisk (low|medium|high)
 
-Output format:
-{
-foods: [...],
-totalCalories: number,
-totalProtein: number,
-totalCarbs: number,
-totalFat: number,
-mealScore: number,
-healthRisk: "low|medium|high"
-}
+IMPORTANT:
+If unsure → estimate reasonably. NEVER return null or empty.
 `
 },
 {
@@ -92,7 +103,7 @@ role:"user",
 content:[
 {
 type:"text",
-text:"Analyze this food image carefully and return structured nutrition JSON."
+text:"Analyze this food image and return nutrition JSON."
 },
 {
 type:"image_url",
@@ -113,16 +124,12 @@ if(!raw){
 return fallbackVision()
 }
 
-/* =========================
-SAFE PARSE (IMPORTANT FIX)
-========================= */
 let parsed = null
 
 try{
 parsed = JSON.parse(raw)
 }catch(e){
 
-// fallback clean parsing
 const cleaned = raw
 .replace(/```json/g,"")
 .replace(/```/g,"")
@@ -135,9 +142,6 @@ return fallbackVision()
 }
 }
 
-/* =========================
-NORMALIZE OUTPUT
-========================= */
 return normalizeVision(parsed)
 
 }catch(e){
@@ -147,38 +151,49 @@ return fallbackVision()
 }
 
 //////////////////////////////
-// 🧠 NORMALIZER (CRITICAL FIX)
+// 🧠 NORMALIZER (FIXED + SMART MERGE)
 //////////////////////////////
 function normalizeVision(data){
 
 if(!data) return fallbackVision()
 
-return {
-foods: (data.foods || []).map(f=>({
+/* support single food response */
+let foods = []
 
-food: f.food || "Unknown",
-calories: Number(f.calories || 0),
-protein: Number(f.protein || 0),
-carbs: Number(f.carbs || 0),
-fat: Number(f.fat || 0),
-portion: f.portion || "",
-cuisine: f.cuisine || "",
-confidence: Number(f.confidence || 0)
+if(Array.isArray(data.foods)){
+foods = data.foods
+}else if(data.food){
+foods = [data]
+}else{
+return fallbackVision()
+}
+
+return {
+foods: foods.map(f=>({
+
+food: f.food || "Unknown Food",
+calories: Number(f.calories) || 0,
+protein: Number(f.protein) || 0,
+carbs: Number(f.carbs) || 0,
+fat: Number(f.fat) || 0,
+portion: f.portion || "unknown",
+cuisine: f.cuisine || "unknown",
+confidence: Number(f.confidence) || 0.5
 
 })),
 
-totalCalories: Number(data.totalCalories || 0),
-totalProtein: Number(data.totalProtein || 0),
-totalCarbs: Number(data.totalCarbs || 0),
-totalFat: Number(data.totalFat || 0),
+totalCalories: Number(data.totalCalories) || foods.reduce((a,b)=>a+Number(b.calories||0),0),
+totalProtein: Number(data.totalProtein) || foods.reduce((a,b)=>a+Number(b.protein||0),0),
+totalCarbs: Number(data.totalCarbs) || foods.reduce((a,b)=>a+Number(b.carbs||0),0),
+totalFat: Number(data.totalFat) || foods.reduce((a,b)=>a+Number(b.fat||0),0),
 
-mealScore: Number(data.mealScore || 0),
+mealScore: Number(data.mealScore) || 70,
 healthRisk: data.healthRisk || "medium"
 }
 }
 
 //////////////////////////////
-// 🧠 FALLBACK (SAFE MODE)
+// 🧠 FALLBACK (SAFE MODE FIXED)
 //////////////////////////////
 function fallbackVision(){
 
@@ -186,26 +201,26 @@ return {
 foods:[
 {
 food:"Unknown Food",
-calories:500,
-protein:10,
-carbs:60,
+calories:450,
+protein:18,
+carbs:55,
 fat:15,
-portion:"unknown",
+portion:"estimated",
 cuisine:"unknown",
-confidence:0.3
+confidence:0.4
 }
 ],
-totalCalories:500,
-totalProtein:10,
-totalCarbs:60,
+totalCalories:450,
+totalProtein:18,
+totalCarbs:55,
 totalFat:15,
-mealScore:50,
+mealScore:60,
 healthRisk:"medium"
 }
 }
 
 //////////////////////////////
-// 🧠 SIMPLE WRAPPER (FOR FOOD.HTML)
+// 🧠 SIMPLE WRAPPER (SAFE FILE SCAN)
 //////////////////////////////
 async function scanFoodAI(file){
 
@@ -220,9 +235,12 @@ const reader = new FileReader()
 
 reader.onload = async function(){
 
+try{
 const result = await analyzeFoodImage(reader.result)
-resolve(result)
-
+resolve(normalizeVision(result))
+}catch(e){
+resolve(fallbackVision())
+}
 }
 
 reader.readAsDataURL(file)
