@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Food AI v11.6 System (FULL SYNC FIX)</title>
+<title>Food AI v11.7 System (Skeleton UX Upgrade)</title>
 
 <link rel="stylesheet" href="style.css">
 
@@ -27,6 +27,33 @@ box-shadow:0 1px 4px rgba(0,0,0,.05);
 .green{background:#dcfce7;color:#166534}
 .yellow{background:#fef9c3;color:#854d0e}
 .red{background:#fee2e2;color:#991b1b}
+
+/* ================= STEP 4: SKELETON UX ================= */
+.skeleton {
+background: linear-gradient(90deg,#eee 25%,#f5f5f5 50%,#eee 75%);
+background-size: 200% 100%;
+animation: shimmer 1.2s infinite;
+border-radius: 8px;
+}
+
+@keyframes shimmer {
+0% {background-position:-200% 0}
+100% {background-position:200% 0}
+}
+
+.skeleton-text{
+height:14px;
+width:160px;
+margin:5px 0;
+}
+
+.skeleton-box{
+height:18px;
+width:100%;
+margin:6px 0;
+}
+
+.hidden{display:none !important}
 </style>
 
 </head>
@@ -43,35 +70,49 @@ box-shadow:0 1px 4px rgba(0,0,0,.05);
 <a href="profile.html">Profile</a>
 </div>
 
-<h2 style="text-align:center">🍽 Food AI v11.6 (FULL SYNC FIX)</h2>
+<h2 style="text-align:center">🍽 Food AI v11.7 (Skeleton UX Upgrade)</h2>
 
 <!-- PROFILE -->
 <div class="card">
-<p id="activeProfile">Loading profile...</p>
+<div id="profileSkeleton" class="skeleton skeleton-text"></div>
+<p id="activeProfile" class="hidden">Loading profile...</p>
 </div>
 
 <!-- TODAY -->
 <div class="card">
 <h3>📊 Today Summary</h3>
 
-<p id="todayCalories">Calories: 0 kcal</p>
-<p id="todayProtein">Protein: 0 g</p>
-<p id="todayCarbs">Carbs: 0 g</p>
-<p id="todayFat">Fat: 0 g</p>
+<div id="todaySkeleton">
+<div class="skeleton skeleton-box"></div>
+<div class="skeleton skeleton-box"></div>
+<div class="skeleton skeleton-box"></div>
+<div class="skeleton skeleton-box"></div>
+</div>
 
-<p id="mealScore">Meal Score: --</p>
-<p id="riskSummary">Risk: --</p>
+<p id="todayCalories" class="hidden">Calories: 0 kcal</p>
+<p id="todayProtein" class="hidden">Protein: 0 g</p>
+<p id="todayCarbs" class="hidden">Carbs: 0 g</p>
+<p id="todayFat" class="hidden">Fat: 0 g</p>
 
-<p id="aiAdvice"></p>
-<p id="aiInsight"></p>
+<p id="mealScore" class="hidden">Meal Score: --</p>
+<p id="riskSummary" class="hidden">Risk: --</p>
+
+<p id="aiAdvice" class="hidden"></p>
+<p id="aiInsight" class="hidden"></p>
 </div>
 
 <!-- WEEK -->
 <div class="card">
 <h3>📈 7-Day Summary</h3>
-<p id="weekAvg">Avg: -- kcal</p>
-<p id="weekHigh">High: -- kcal</p>
-<p id="weekLow">Low: -- kcal</p>
+
+<div id="weekSkeleton">
+<div class="skeleton skeleton-box"></div>
+<div class="skeleton skeleton-box"></div>
+</div>
+
+<p id="weekAvg" class="hidden">Avg: -- kcal</p>
+<p id="weekHigh" class="hidden">High: -- kcal</p>
+<p id="weekLow" class="hidden">Low: -- kcal</p>
 </div>
 
 <!-- INPUT -->
@@ -111,7 +152,26 @@ setActive?.("food")
 let pendingFood = null
 let scanLock = false
 
-/* ================= PROFILE SAFE ================= */
+/* ================= STEP 3: PROFILE ENGINE (ONE-LINE CHANGE LOGIC) ================= */
+function renderProfile(){
+ProfileEngine.render("activeProfile")
+
+const sk = document.getElementById("profileSkeleton")
+const el = document.getElementById("activeProfile")
+
+// skeleton auto control
+if(sk) sk.classList.add("hidden")
+if(el) el.classList.remove("hidden")
+}
+
+/* ================= PROFILE SYNC ================= */
+window.addEventListener("profileSyncUpdate", renderProfile)
+window.addEventListener("focus", renderProfile)
+window.addEventListener("storage", (e)=>{
+if(e.key === "activeProfile") renderProfile()
+})
+
+/* ================= SAFE PROFILE ================= */
 function fallbackProfile(){
 return { id:"guest", name:"Guest" }
 }
@@ -126,22 +186,6 @@ return p?.id ? p : fallbackProfile()
 return fallbackProfile()
 }
 }
-
-/* ================= PROFILE SYNC (UPGRADED) ================= */
-function renderProfile(){
-const el = document.getElementById("activeProfile")
-if(!el) return
-
-const p = getActiveProfile()
-el.innerText = "👤 Active: " + (p.name || "Guest")
-}
-
-/* multi-device + supabase sync */
-window.addEventListener("profileSyncUpdate", renderProfile)
-window.addEventListener("focus", renderProfile)
-window.addEventListener("storage", (e)=>{
-if(e.key === "activeProfile") renderProfile()
-})
 
 /* ================= SAFE MATH ================= */
 function safeMacro(f){
@@ -163,8 +207,28 @@ reader.readAsDataURL(file)
 })
 }
 
-/* ================= TODAY (FIXED BUGS) ================= */
+/* ================= STEP 4: SKELETON CONTROL ENGINE ================= */
+function showSkeleton(id){
+const el = document.getElementById(id)
+if(el) el.classList.remove("hidden")
+}
+
+function hideSkeleton(id){
+const el = document.getElementById(id)
+if(el) el.classList.add("hidden")
+}
+
+function revealData(ids){
+ids.forEach(id=>{
+const el = document.getElementById(id)
+if(el) el.classList.remove("hidden")
+})
+}
+
+/* ================= TODAY ================= */
 async function calculateToday(){
+
+showSkeleton("todaySkeleton")
 
 const profile = getActiveProfile()
 const today = new Date().toISOString().split("T")[0]
@@ -193,6 +257,7 @@ let ai = typeof getAIInsight !== "undefined"
 ? getAIInsight(calories,22,[],foodText)
 : null
 
+// update UI
 document.getElementById("todayCalories").innerText = `Calories: ${calories} kcal`
 document.getElementById("todayProtein").innerText = `Protein: ${protein} g`
 document.getElementById("todayCarbs").innerText = `Carbs: ${carbs} g`
@@ -203,10 +268,25 @@ document.getElementById("riskSummary").innerText = `Risk: ${ai?.risk?.level||"�
 document.getElementById("aiAdvice").innerText = "AI Advice: " + (ai?.advice||"")
 document.getElementById("aiInsight").innerText =
 "AI Detected: " + (ai?.foods?.map(f=>f.food).join(", ")||"")
+
+// skeleton OFF → content ON
+hideSkeleton("todaySkeleton")
+revealData([
+"todayCalories",
+"todayProtein",
+"todayCarbs",
+"todayFat",
+"mealScore",
+"riskSummary",
+"aiAdvice",
+"aiInsight"
+])
 }
 
 /* ================= WEEK ================= */
 async function calculateWeek(){
+
+showSkeleton("weekSkeleton")
 
 let arr=[]
 
@@ -241,6 +321,9 @@ let low = arr.length?Math.min(...arr.map(x=>x.cal)):0
 document.getElementById("weekAvg").innerText = `Avg: ${avg.toFixed(0)} kcal`
 document.getElementById("weekHigh").innerText = `High: ${high} kcal`
 document.getElementById("weekLow").innerText = `Low: ${low} kcal`
+
+hideSkeleton("weekSkeleton")
+revealData(["weekAvg","weekHigh","weekLow"])
 }
 
 /* ================= MANUAL ================= */
@@ -314,7 +397,7 @@ btn.innerText = "Analyze Image"
 }
 }
 
-/* ================= RENDER (FIXED TEMPLATE BUG) ================= */
+/* ================= RENDER ================= */
 function renderAI(ai){
 
 if(!ai?.foods){
@@ -363,7 +446,7 @@ pendingFood=null
 document.getElementById("confirmBox").style.display="none"
 }
 
-/* ================= INIT (SAFE BOOT) ================= */
+/* ================= INIT ================= */
 async function init(){
 
 renderProfile()
