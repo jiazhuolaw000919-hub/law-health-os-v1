@@ -1,26 +1,16 @@
+import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm"
+
 const SUPABASE_URL = "https://jqevcfyhnlttzdiylfrh.supabase.co"
 const SUPABASE_KEY = "sb_publishable_GMM5PgeRzudbeh4aHK-1pw_lQ6TQnVe"
+
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY)
 
 // 🔥 DELETE GUARD
 const DELETE_GUARD_KEY = "deleted_items_v2"
 
-//////////////////////////////
-// SAFE FETCH CORE
-//////////////////////////////
-async function safeFetch(url, options){
-try{
-const res = await fetch(url, options)
-if(!res.ok) throw new Error("Network error")
-return await res.json()
-}catch(e){
-console.log("Supabase error:", e)
-return null
-}
-}
-
-//////////////////////////////
-// PROFILE CORE
-//////////////////////////////
+/* =========================
+PROFILE CORE
+========================= */
 function fallbackProfile(){
 return {
 id:"guest",
@@ -40,15 +30,15 @@ return fallbackProfile()
 }
 }
 
-//////////////////////////////
-// DELETE SYSTEM
-//////////////////////////////
+/* =========================
+DELETE SYSTEM
+========================= */
 function getDeletedSet(){
 return new Set(JSON.parse(localStorage.getItem(DELETE_GUARD_KEY)) || [])
 }
 
 function saveDeletedSet(set){
-localStorage.setItem(DELETE_GUARD_KEY, JSON.stringify(Array.from(set)))
+localStorage.setItem(DELETE_GUARD_KEY, JSON.stringify([...set]))
 }
 
 function markDeleted(id){
@@ -59,7 +49,6 @@ saveDeletedSet(set)
 }
 
 function isDeleted(id){
-if(!id) return false
 return getDeletedSet().has(id)
 }
 
@@ -68,35 +57,37 @@ if(!Array.isArray(list)) return []
 return list.filter(i => i && i.id && !isDeleted(i.id))
 }
 
-//////////////////////////////
-// 🍽 FOOD LOG READ
-//////////////////////////////
+/* =========================
+🍽 FOOD LOG READ (NEW SUPABASE CLIENT)
+========================= */
 async function getFoodLogs(date){
 
 const profile = getActiveProfile()
 
-const url =
-`${SUPABASE_URL}/rest/v1/food_logs?date=eq.${date}&userId=eq.${profile.id}`
+let { data, error } = await supabase
+.from("food_logs")
+.select("*")
+.eq("date", date)
+.eq("userId", profile.id)
 
-const data = await safeFetch(url,{
-method:"GET",
-headers:{
-apikey: SUPABASE_KEY,
-Authorization: "Bearer " + SUPABASE_KEY
+if(error){
+console.log("food log error:", error)
+return []
 }
-})
 
 return filterDeleted(data)
 }
 
-//////////////////////////////
-// 🍽 FOOD LOG WRITE
-//////////////////////////////
+/* =========================
+🍽 FOOD LOG WRITE
+========================= */
 async function saveFood(data){
 
 const profile = getActiveProfile()
 
-const payload = {
+let { data: result, error } = await supabase
+.from("food_logs")
+.insert([{
 userId: profile.id,
 food: data.food || "unknown",
 calories: Number(data.calories || 0),
@@ -105,23 +96,20 @@ carbs: Number(data.carbs || 0),
 fat: Number(data.fat || 0),
 date: data.date,
 createdAt: new Date().toISOString()
+}])
+.select()
+
+if(error){
+console.log("save error:", error)
+return null
 }
 
-return await safeFetch(`${SUPABASE_URL}/rest/v1/food_logs`,{
-method:"POST",
-headers:{
-apikey: SUPABASE_KEY,
-Authorization: "Bearer " + SUPABASE_KEY,
-"Content-Type":"application/json",
-Prefer:"return=representation"
-},
-body: JSON.stringify(payload)
-})
+return result
 }
 
-//////////////////////////////
-// 📊 7 DAY STATS
-//////////////////////////////
+/* =========================
+📊 7 DAY STATS
+========================= */
 async function getFoodStats7Days(){
 
 let arr = []
@@ -129,8 +117,8 @@ let arr = []
 for(let i=6;i>=0;i--){
 let d = new Date()
 d.setDate(d.getDate()-i)
-
 let date = d.toISOString().split("T")[0]
+
 let logs = await getFoodLogs(date)
 
 let total = 0
@@ -139,7 +127,7 @@ logs.forEach(l=> total += Number(l.calories || 0))
 arr.push(total)
 }
 
-let avg = arr.reduce((a,b)=>a+b,0) / arr.length
+let avg = arr.reduce((a,b)=>a+b,0)/arr.length
 let max = Math.max(...arr)
 let min = Math.min(...arr)
 
@@ -151,38 +139,38 @@ min
 }
 }
 
-//////////////////////////////
-// ❌ DELETE FOOD
-//////////////////////////////
+/* =========================
+❌ DELETE FOOD (NEW)
+========================= */
 async function deleteFood(foodId){
 
 const profile = getActiveProfile()
-if(!foodId) return null
+if(!foodId) return
 
 markDeleted(foodId)
 
-const url =
-`${SUPABASE_URL}/rest/v1/food_logs?id=eq.${foodId}&userId=eq.${profile.id}`
+let { error } = await supabase
+.from("food_logs")
+.delete()
+.eq("id", foodId)
+.eq("userId", profile.id)
 
-return await safeFetch(url,{
-method:"DELETE",
-headers:{
-apikey: SUPABASE_KEY,
-Authorization: "Bearer " + SUPABASE_KEY
+if(error){
+console.log("delete error:", error)
+return null
 }
-})
+
+return true
 }
 
-//////////////////////////////
-// =========================
-// 🧠 PROFILE CLOUD FUNCTIONS (NEW - PHASE B)
-// =========================
-//////////////////////////////
-
-// 1️⃣ UPSERT PROFILE (FIXED - REAL UPSERT)
+/* =========================
+PROFILE CLOUD
+========================= */
 async function upsertProfile(profile){
 
-const payload = {
+let { data, error } = await supabase
+.from("profiles")
+.upsert({
 id: profile.id,
 name: profile.name,
 height: Number(profile.height || 170),
@@ -191,73 +179,45 @@ goal: profile.goal || "maintain",
 bmi: Number(profile.bmi || 0),
 weightHistory: profile.weightHistory || [],
 updatedAt: new Date().toISOString()
-}
-
-return await safeFetch(`${SUPABASE_URL}/rest/v1/profiles`,{
-method:"POST",
-headers:{
-apikey: SUPABASE_KEY,
-Authorization: "Bearer " + SUPABASE_KEY,
-"Content-Type":"application/json",
-Prefer:"resolution=merge-duplicates"
-},
-body: JSON.stringify(payload)
 })
+.select()
+
+if(error){
+console.log("profile upsert error:", error)
+return null
 }
 
-// 2️⃣ FETCH ALL PROFILES
+return data
+}
+
 async function fetchProfiles(){
 
-const data = await safeFetch(`${SUPABASE_URL}/rest/v1/profiles`,{
-method:"GET",
-headers:{
-apikey: SUPABASE_KEY,
-Authorization: "Bearer " + SUPABASE_KEY
+let { data, error } = await supabase
+.from("profiles")
+.select("*")
+
+if(error){
+console.log(error)
+return []
 }
-})
 
 return filterDeleted(data)
 }
 
-// 3️⃣ FETCH SINGLE PROFILE
 async function fetchProfile(id){
 
-const data = await safeFetch(
-`${SUPABASE_URL}/rest/v1/profiles?id=eq.${id}`,
-{
-method:"GET",
-headers:{
-apikey: SUPABASE_KEY,
-Authorization: "Bearer " + SUPABASE_KEY
-}
-}
-)
+let { data, error } = await supabase
+.from("profiles")
+.select("*")
+.eq("id", id)
 
+if(error) return null
 return data?.[0] || null
 }
 
-// 4️⃣ DELETE PROFILE CLOUD
-async function deleteProfileCloud(id){
-
-if(!id) return null
-
-markDeleted(id)
-
-return await safeFetch(
-`${SUPABASE_URL}/rest/v1/profiles?id=eq.${id}`,
-{
-method:"DELETE",
-headers:{
-apikey: SUPABASE_KEY,
-Authorization: "Bearer " + SUPABASE_KEY
-}
-}
-)
-}
-
-//////////////////////////////
-// 🔄 SYNC ENGINE (FIXED)
-//////////////////////////////
+/* =========================
+SYNC ENGINE (SIMPLIFIED)
+========================= */
 async function syncProfiles(){
 
 try{
@@ -270,83 +230,44 @@ local = filterDeleted(local)
 
 let map = new Map()
 
-// merge strategy (cloud + local)
 ;[...local, ...cloud].forEach(p=>{
 if(!p || !p.id || isDeleted(p.id)) return
-
-map.set(p.id,{
-...(map.get(p.id) || {}),
-...p
-})
+map.set(p.id, {...(map.get(p.id)||{}), ...p})
 })
 
-let merged = Array.from(map.values())
+let merged = [...map.values()]
 
 localStorage.setItem("profiles", JSON.stringify(merged))
-
-let active = getActiveProfile()
-
-if(active?.id){
-
-let server = merged.find(p => p.id === active.id)
-
-if(server?.updatedAt && active?.updatedAt){
-
-if(new Date(server.updatedAt) > new Date(active.updatedAt)){
-localStorage.setItem("activeProfile", JSON.stringify(server))
-}
-
-}else if(server){
-localStorage.setItem("activeProfile", JSON.stringify(server))
-}
-}
 
 }catch(e){
 console.log("sync error:", e)
 }
 }
 
-//////////////////////////////
-// REALTIME ENGINE (FIXED)
-//////////////////////////////
-let realtimeChannel = null
-let realtimeCooldown = false
-
+/* =========================
+REALTIME (OPTIONAL)
+========================= */
 function initRealtime(){
 
-if(typeof supabase === "undefined"){
-console.log("Supabase missing")
-return
-}
+supabase
+.channel("health-realtime")
 
-realtimeChannel = supabase
-.channel('health-realtime')
-
-.on('postgres_changes',{
-event:'*',
-schema:'public',
-table:'food_logs'
+.on("postgres_changes",{
+event:"*",
+schema:"public",
+table:"food_logs"
 },()=>{
-
-if(realtimeCooldown) return
-realtimeCooldown = true
-
-setTimeout(()=> realtimeCooldown=false, 800)
-
 syncProfiles()
 window.dispatchEvent(new Event("foodSyncUpdate"))
-
 })
 
-.on('postgres_changes',{
-event:'*',
-schema:'public',
-table:'profiles'
+.on("postgres_changes",{
+event:"*",
+schema:"public",
+table:"profiles"
 },()=>{
-
 syncProfiles()
 window.dispatchEvent(new Event("profileSyncUpdate"))
-
 })
 
 .subscribe()
@@ -354,23 +275,8 @@ window.dispatchEvent(new Event("profileSyncUpdate"))
 
 initRealtime()
 
-//////////////////////////////
-// AUTO SYNC LOOP
-//////////////////////////////
-let syncLock = false
-
-async function safeSync(){
-if(syncLock) return
-syncLock = true
-
-await syncProfiles()
-
-syncLock = false
-}
-
-setInterval(safeSync, 10000)
-
-window.addEventListener("online", safeSync)
-window.addEventListener("focus", safeSync)
+setInterval(syncProfiles, 10000)
+window.addEventListener("online", syncProfiles)
+window.addEventListener("focus", syncProfiles)
 
 syncProfiles()
