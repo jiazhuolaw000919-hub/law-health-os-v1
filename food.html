@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Food AI v12.2 FULL FIX</title>
+<title>Food AI v12.3 FULL FIX</title>
 
 <link rel="stylesheet" href="style.css">
 
@@ -48,6 +48,8 @@ border:none;
 border-radius:8px;
 background:#f3f4f6;
 cursor:pointer;
+color:#000;
+font-weight:500;
 }
 
 .meal-btn:hover{
@@ -68,14 +70,12 @@ background:#e5e7eb;
 <a href="profile.html">Profile</a>
 </div>
 
-<h2 style="text-align:center">🍽 Food AI v12.2 FULL FIX</h2>
+<h2 style="text-align:center">🍽 Food AI v12.3 FULL FIX</h2>
 
-<!-- PROFILE -->
 <div class="card">
 <p id="activeProfile">Loading profile...</p>
 </div>
 
-<!-- TODAY -->
 <div class="card">
 <h3>📊 Today Summary</h3>
 <p id="todayCalories">Calories: --</p>
@@ -86,7 +86,6 @@ background:#e5e7eb;
 <p id="riskSummary">Risk: --</p>
 </div>
 
-<!-- WEEK -->
 <div class="card">
 <h3>📈 7-Day Summary</h3>
 <p id="weekAvg">Avg: --</p>
@@ -94,7 +93,6 @@ background:#e5e7eb;
 <p id="weekLow">Low: --</p>
 </div>
 
-<!-- INPUT -->
 <div class="card">
 <input id="foodInput" placeholder="e.g. chicken rice + milo + tomyam">
 <br><br>
@@ -104,17 +102,15 @@ background:#e5e7eb;
 
 </div>
 
-<!-- RESULT -->
 <div class="card">
 <h3>🍽 AI Result</h3>
 <div id="foodList"></div>
 </div>
 
-<!-- ================= MEAL MODAL ================= -->
 <div id="mealModal" class="modal">
 <div class="modal-content">
 
-<h3>Select Meal Type</h3>
+<h3 style="color:#000">Select Meal Type</h3>
 
 <button class="meal-btn" onclick="saveMeal('Breakfast')">🍳 Breakfast</button>
 <button class="meal-btn" onclick="saveMeal('Lunch')">🍱 Lunch</button>
@@ -132,7 +128,6 @@ background:#e5e7eb;
 let pendingFood = null
 let mode = null
 
-/* ================= PROFILE ================= */
 function getProfile(){
 return JSON.parse(localStorage.getItem("activeProfile")) || {id:"guest",name:"Guest"}
 }
@@ -142,7 +137,6 @@ document.getElementById("activeProfile").innerText = getProfile().name
 }
 init()
 
-/* ================= PLACEHOLDERS ================= */
 function calculateToday(){
 document.getElementById("todayCalories").innerText="Calories: --"
 document.getElementById("todayProtein").innerText="Protein: --"
@@ -158,7 +152,6 @@ document.getElementById("weekHigh").innerText="High: --"
 document.getElementById("weekLow").innerText="Low: --"
 }
 
-/* ================= MANUAL FLOW ================= */
 function startManualFlow(){
 
 const input = document.getElementById("foodInput").value.trim()
@@ -178,7 +171,6 @@ mode = "manual"
 openMealModal()
 }
 
-/* ================= AI UPLOAD + ANALYZE ================= */
 function openAIUpload(){
 
 mode = "ai"
@@ -194,13 +186,16 @@ if(!file) return
 
 const reader = new FileReader()
 
-reader.onload = () => {
+reader.onload = async () => {
 
 const base64 = reader.result
 
-// TRY REAL AI ENGINE FIRST
+let result = null
+
 if(typeof window.analyzeFoodImage === "function"){
-window.analyzeFoodImage(base64).then(result=>{
+result = await window.analyzeFoodImage(base64)
+}
+
 pendingFood = {
 food: result?.food || "AI detected meal",
 calories: result?.calories || 500,
@@ -213,23 +208,6 @@ date: new Date().toISOString().split("T")[0]
 
 renderAIResult(pendingFood)
 openMealModal()
-})
-}else{
-
-// fallback
-pendingFood = {
-food: "AI detected meal",
-calories: 500,
-protein: 20,
-carbs: 50,
-fat: 10,
-image: base64,
-date: new Date().toISOString().split("T")[0]
-}
-
-renderAIResult(pendingFood)
-openMealModal()
-}
 }
 
 reader.readAsDataURL(file)
@@ -238,7 +216,6 @@ reader.readAsDataURL(file)
 fileInput.click()
 }
 
-/* ================= AI RESULT ================= */
 function renderAIResult(data){
 document.getElementById("foodList").innerHTML = `
 <div class="card">
@@ -248,7 +225,6 @@ document.getElementById("foodList").innerHTML = `
 `
 }
 
-/* ================= MEAL MODAL ================= */
 function openMealModal(){
 document.getElementById("mealModal").style.display="flex"
 }
@@ -257,7 +233,6 @@ function closeMealModal(){
 document.getElementById("mealModal").style.display="none"
 }
 
-/* ================= SAVE ================= */
 function saveMeal(type){
 
 if(!pendingFood) return
@@ -267,8 +242,6 @@ pendingFood.mealType = type
 if(typeof saveFood === "function"){
 saveFood(pendingFood)
 }
-
-console.log("Saved:", pendingFood)
 
 pendingFood = null
 mode = null
