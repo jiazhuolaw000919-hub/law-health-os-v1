@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Food AI v14 FULL SYSTEM (PRO UPGRADE)</title>
+<title>Food AI v15 PRO SYSTEM</title>
 
 <link rel="stylesheet" href="style.css">
 
@@ -36,7 +36,7 @@ justify-content:center;
 background:white;
 padding:20px;
 border-radius:12px;
-width:320px;
+width:340px;
 text-align:center;
 }
 
@@ -88,67 +88,53 @@ color:#fff;
 <a href="profile.html">Profile</a>
 </div>
 
-<h2 style="text-align:center">🍽 Food AI v14 (AUTO DETECT + DEFICIT/BULK + SCANNER)</h2>
+<h2>🍽 Food AI v15 (DEFICIT + BARCODE + MULTI-CAPTURE)</h2>
 
 <div class="card">
-<p id="activeProfile">Loading profile...</p>
+<p id="activeProfile">Loading...</p>
 </div>
 
 <div class="card">
-<h3>📊 Today Summary</h3>
+<h3>📊 Today</h3>
 <p id="todayCalories">Calories: --</p>
-<p id="todayProtein">Protein: --</p>
-<p id="todayCarbs">Carbs: --</p>
-<p id="todayFat">Fat: --</p>
-<p id="mealScore">Meal Score: --</p>
-<p id="riskSummary">Risk: --</p>
-<p id="modeStatus">Mode: Normal</p>
+<p id="deficitInfo">Deficit: --</p>
+<p id="modeStatus">Mode: normal</p>
 </div>
 
 <div class="card">
-<h3>⚙️ Goal Mode</h3>
-<button class="mode-btn" onclick="setMode('normal')">Normal</button>
-<button class="mode-btn" onclick="setMode('deficit')">Fat Loss</button>
-<button class="mode-btn" onclick="setMode('bulk')">Muscle Gain</button>
+<h3>⚙️ Mode</h3>
+<button onclick="setMode('normal')">Normal</button>
+<button onclick="setMode('deficit')">Fat Loss</button>
+<button onclick="setMode('bulk')">Bulk</button>
 </div>
 
 <div class="card">
-<h3>📈 7-Day Summary</h3>
-<p id="weekAvg">Avg: --</p>
-<p id="weekHigh">High: --</p>
-<p id="weekLow">Low: --</p>
-</div>
-
-<div class="card">
-<input id="foodInput" placeholder="e.g. chicken rice + milo + tomyam">
+<input id="foodInput" placeholder="e.g. chicken rice + milo">
 
 <br><br>
 
 <button onclick="startManualFlow()">Add Food</button>
 <button onclick="openAIUpload()">AI Scan</button>
-<button onclick="openBarcodeScanner()">Barcode Scan</button>
-
+<button onclick="openBarcode()">Barcode Scan</button>
+<button onclick="startMultiCapture()">Multi Capture</button>
 </div>
 
 <div class="card">
-<h3>🍽 AI Result</h3>
+<h3>AI Result</h3>
 <div id="foodList"></div>
 </div>
 
 <div id="mealModal" class="modal">
 <div class="modal-content">
 
-<h3 style="color:#000">Select Meal Type</h3>
+<h3>Select Meal</h3>
 
 <div id="previewArea"></div>
 
-<button class="meal-btn" onclick="saveMeal('Breakfast')">🍳 Breakfast</button>
-<button class="meal-btn" onclick="saveMeal('Lunch')">🍱 Lunch</button>
-<button class="meal-btn" onclick="saveMeal('Tea Time')">☕ Tea Time</button>
-<button class="meal-btn" onclick="saveMeal('Dinner')">🍽 Dinner</button>
-<button class="meal-btn" onclick="saveMeal('Supper')">🌙 Supper</button>
-<button class="meal-btn" onclick="saveMeal('Snacks')">🍪 Snacks</button>
-<button class="meal-btn" onclick="saveMeal('Other')">🧾 Other</button>
+<button onclick="saveMeal('Breakfast')">Breakfast</button>
+<button onclick="saveMeal('Lunch')">Lunch</button>
+<button onclick="saveMeal('Dinner')">Dinner</button>
+<button onclick="saveMeal('Snack')">Snack</button>
 
 </div>
 </div>
@@ -157,203 +143,157 @@ color:#fff;
 
 let pendingFood = null
 let mode = "normal"
+let multiList = []
 
 /* ================= PROFILE ================= */
 function getProfile(){
-return JSON.parse(localStorage.getItem("activeProfile")) || {id:"guest",name:"Guest"}
+return JSON.parse(localStorage.getItem("activeProfile")) || {name:"Guest"}
 }
 
-function init(){
 document.getElementById("activeProfile").innerText = getProfile().name
-updateModeUI()
-}
-init()
 
-/* ================= MODE SYSTEM ================= */
-function setMode(m){
-mode = m
-updateModeUI()
-}
-
-function updateModeUI(){
-document.getElementById("modeStatus").innerText = "Mode: " + mode
+/* ================= BARCODE DB ================= */
+const barcodeDB = {
+"milo": {food:"Milo",calories:120,protein:3,carbs:22,fat:2},
+"coke": {food:"Coca Cola",calories:140,protein:0,carbs:39,fat:0},
+"maggie": {food:"Maggi Mee",calories:380,protein:8,carbs:52,fat:14},
+"mcd": {food:"McDonalds Meal",calories:650,protein:25,carbs:80,fat:28}
 }
 
-/* ================= AI FOOD TYPE DETECTOR ================= */
-function detectFoodType(text){
-
-text = text.toLowerCase()
-
-if(text.includes("chicken rice")) return "Chicken Rice"
-if(text.includes("mcd") || text.includes("burger")) return "Fast Food"
-if(text.includes("pizza")) return "Pizza"
-if(text.includes("noodle") || text.includes("mee")) return "Noodles"
-if(text.includes("rice")) return "Rice Meal"
-
+/* ================= DETECT FOOD ================= */
+function detectFoodType(t){
+t=t.toLowerCase()
+if(t.includes("rice")) return "Rice Meal"
+if(t.includes("burger")) return "Fast Food"
 return "Mixed Food"
 }
 
-/* ================= SMART NUTRITION ENGINE ================= */
+/* ================= NUTRITION ENGINE ================= */
 function estimateNutrition(food){
 
 let base = 450
 
-if(food.includes("chicken")) base += 100
-if(food.includes("rice")) base += 120
-if(food.includes("milo")) base += 150
-if(food.includes("burger")) base += 300
-if(food.includes("pizza")) base += 350
+if(food.includes("chicken")) base+=100
+if(food.includes("rice")) base+=120
+if(food.includes("milo")) base+=150
+if(food.includes("burger")) base+=300
 
 return {
-calories: base,
-protein: Math.round(base * 0.04),
-carbs: Math.round(base * 0.12),
-fat: Math.round(base * 0.05)
+calories:base,
+protein:Math.round(base*0.05),
+carbs:Math.round(base*0.12),
+fat:Math.round(base*0.04)
+}
+}
+
+/* ================= DEFICIT ENGINE ================= */
+function getDeficit(cal){
+
+let maintenance = 2200
+let diff = cal - maintenance
+
+return {
+maintenance,
+diff,
+status: diff>0?"surplus":"deficit"
 }
 }
 
 /* ================= AI CORE ================= */
 async function analyzeImage(base64){
 
-try{
-
 if(window.analyzeFoodImage){
-
-const result = await window.analyzeFoodImage(base64)
+const r = await window.analyzeFoodImage(base64)
 
 return {
-food: result?.food || "Unknown meal",
-calories: Number(result?.calories ?? 450),
-protein: Number(result?.protein ?? 18),
-carbs: Number(result?.carbs ?? 55),
-fat: Number(result?.fat ?? 12)
+food:r.food,
+calories:r.calories,
+protein:r.protein,
+carbs:r.carbs,
+fat:r.fat
 }
 }
 
-}catch(e){}
-
-/* fallback */
-return {
-food: "Unknown meal",
-calories: 450,
-protein: 18,
-carbs: 55,
-fat: 12
-}
+return {food:"Unknown",calories:450,protein:20,carbs:50,fat:10}
 }
 
-/* ================= MANUAL FLOW ================= */
+/* ================= MANUAL ================= */
 function startManualFlow(){
 
-const input = document.getElementById("foodInput").value.trim()
-if(!input) return alert("Enter food first")
-
-const nutrition = estimateNutrition(input)
+const input=document.getElementById("foodInput").value
+if(!input) return
 
 pendingFood = {
-food: detectFoodType(input),
-raw: input,
-...nutrition,
-date: new Date().toISOString().split("T")[0]
+food:detectFoodType(input),
+...estimateNutrition(input)
 }
 
 showPreview(pendingFood)
 openMealModal()
 }
 
-/* ================= AI UPLOAD ================= */
-function openAIUpload(){
+/* ================= BARCODE ================= */
+function openBarcode(){
 
-const fileInput = document.createElement("input")
-fileInput.type = "file"
-fileInput.accept = "image/*"
+let code = prompt("Enter barcode / name")
 
-fileInput.onchange = async () => {
+let item = barcodeDB[code?.toLowerCase()]
 
-const file = fileInput.files[0]
-if(!file) return
-
-const reader = new FileReader()
-
-reader.onload = async () => {
-
-const base64 = reader.result
-const result = await analyzeImage(base64)
-
-pendingFood = {
-food: detectFoodType(result.food),
-...result,
-image: base64,
-date: new Date().toISOString().split("T")[0]
-}
-
-showPreview(pendingFood)
-openMealModal()
-}
-
-reader.readAsDataURL(file)
-}
-
-fileInput.click()
-}
-
-/* ================= BARCODE SCANNER ================= */
-function openBarcodeScanner(){
-
-alert("Barcode scanner placeholder (connect ZXing / QuaggaJS here)")
-
-pendingFood = {
-food:"Barcode Food",
+pendingFood = item || {
+food:"Unknown item",
 calories:300,
 protein:10,
 carbs:40,
-fat:8,
-date:new Date().toISOString().split("T")[0]
+fat:10
 }
 
 showPreview(pendingFood)
 openMealModal()
 }
 
-/* ================= DEFICIT / BULK LOGIC ================= */
-function applyGoalAdjustment(food){
+/* ================= MULTI CAPTURE ================= */
+function startMultiCapture(){
 
-if(mode === "deficit"){
-food.calories *= 0.85
+multiList = []
+
+for(let i=0;i<3;i++){
+multiList.push({
+food:"Captured Meal "+(i+1),
+calories:400,
+protein:20,
+carbs:50,
+fat:12
+})
 }
 
-if(mode === "bulk"){
-food.calories *= 1.15
-food.protein *= 1.1
+renderMulti()
 }
 
-return food
+/* ================= MULTI RENDER ================= */
+function renderMulti(){
+
+document.getElementById("foodList").innerHTML =
+multiList.map(m=>`
+<div class="preview-box">
+${m.food} - ${m.calories} kcal
+</div>
+`).join("")
 }
 
 /* ================= PREVIEW ================= */
-function showPreview(data){
+function showPreview(d){
 
-const adjusted = applyGoalAdjustment({...data})
+let adj = {...d}
 
-document.getElementById("foodList").innerHTML = `
+if(mode==="deficit") adj.calories*=0.85
+if(mode==="bulk") adj.calories*=1.15
+
+document.getElementById("previewArea").innerHTML = `
 <div class="preview-box">
-<b>Detected:</b> ${adjusted.food}<br>
-🔥 ${Math.round(adjusted.calories)} kcal<br>
-🥩 Protein: ${Math.round(adjusted.protein)}g<br>
-🍚 Carbs: ${Math.round(adjusted.carbs)}g<br>
-🥑 Fat: ${Math.round(adjusted.fat)}g
+${adj.food}<br>
+${Math.round(adj.calories)} kcal
 </div>
 `
-}
-
-/* ================= MEAL MODAL ================= */
-function openMealModal(){
-document.getElementById("mealModal").style.display="flex"
-}
-
-function closeMealModal(){
-document.getElementById("mealModal").style.display="none"
-document.getElementById("previewArea").innerHTML=""
 }
 
 /* ================= SAVE ================= */
@@ -363,32 +303,43 @@ if(!pendingFood) return
 
 pendingFood.mealType = type
 
-pendingFood = applyGoalAdjustment(pendingFood)
+if(mode==="deficit") pendingFood.calories*=0.85
+if(mode==="bulk") pendingFood.calories*=1.15
 
-if(window.saveFood){
-window.saveFood(pendingFood)
-}
+if(window.saveFood) window.saveFood(pendingFood)
 
-console.log("Saved:", pendingFood)
-
-pendingFood = null
+pendingFood=null
 
 closeMealModal()
 
-calculateToday()
+updateToday()
+}
 
-alert("Saved successfully!")
+/* ================= MODAL ================= */
+function openMealModal(){
+document.getElementById("mealModal").style.display="flex"
+}
+
+function closeMealModal(){
+document.getElementById("mealModal").style.display="none"
+document.getElementById("previewArea").innerHTML=""
 }
 
 /* ================= TODAY ================= */
-function calculateToday(){
+function updateToday(){
 
-document.getElementById("todayCalories").innerText="Calories: --"
-document.getElementById("todayProtein").innerText="Protein: --"
-document.getElementById("todayCarbs").innerText="Carbs: --"
-document.getElementById("todayFat").innerText="Fat: --"
-document.getElementById("mealScore").innerText="Meal Score: --"
-document.getElementById("riskSummary").innerText="Risk: --"
+let cal = pendingFood?.calories || 0
+
+let def = getDeficit(cal)
+
+document.getElementById("todayCalories").innerText =
+"Calories: " + cal
+
+document.getElementById("deficitInfo").innerText =
+"Daily: " + def.status + " (" + def.diff + " kcal)"
+
+document.getElementById("modeStatus").innerText =
+"Mode: " + mode
 }
 
 </script>
