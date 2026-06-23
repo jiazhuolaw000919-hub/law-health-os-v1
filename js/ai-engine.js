@@ -1,10 +1,10 @@
 
 //////////////////////////////
-// 🧠 AI ENGINE v12.2 SAFE UPGRADE (NO BREAK + ENHANCED STABILITY)
+// 🧠 AI ENGINE v12.3 SAFE PRO UPGRADE (NO FEATURE REMOVED)
 //////////////////////////////
 
 /* =========================
-📡 SUPABASE MEMORY LAYER (SAFE - IMPROVED)
+📡 SUPABASE MEMORY LAYER (HARD SAFE)
 ========================= */
 async function getUserFoodHistory(userId, limit = 30){
 
@@ -13,6 +13,8 @@ try{
 if(typeof SUPABASE_URL === "undefined" || typeof SUPABASE_KEY === "undefined"){
 return []
 }
+
+if(!userId) return []
 
 const res = await fetch(
 `${SUPABASE_URL}/rest/v1/food_logs?userId=eq.${userId}&order=createdAt.desc&limit=${limit}`,
@@ -25,7 +27,7 @@ Authorization:"Bearer " + SUPABASE_KEY
 }
 )
 
-if(!res.ok) return []
+if(!res || !res.ok) return []
 
 const data = await res.json()
 
@@ -38,7 +40,7 @@ return []
 }
 
 /* =========================
-🍜 NORMALIZATION (STABLE + SAFE)
+🍜 NORMALIZATION (UNCHANGED CORE + SAFE CAST)
 ========================= */
 function normalizeFoodAI(foodText){
 
@@ -67,7 +69,7 @@ return foodText
 }
 
 /* =========================
-🍜 PARSER (IMPROVED - SAFE SPLIT)
+🍜 PARSER (SAFE + STRICT CLEAN)
 ========================= */
 function parseFoodAI(text){
 
@@ -83,7 +85,7 @@ return parts
 }
 
 /* =========================
-🌍 CUISINE (UNCHANGED LOGIC)
+🌍 CUISINE (UNCHANGED)
 ========================= */
 function detectCuisine(food){
 
@@ -99,14 +101,17 @@ return "Mixed"
 }
 
 /* =========================
-⚖️ HEALTH SCORE (SAFE + NAN PROTECTION)
+⚖️ HEALTH SCORE (ULTRA SAFE)
 ========================= */
 function calculateHealthScore(calories, bmi = 22){
 
 let score = 100
 
-calories = Number(calories || 0)
-bmi = Number(bmi || 22)
+calories = Number(calories)
+bmi = Number(bmi)
+
+if(!isFinite(calories)) calories = 0
+if(!isFinite(bmi)) bmi = 22
 
 if(calories < 1500) score -= 8
 else if(calories < 2000) score -= 12
@@ -119,11 +124,15 @@ if(bmi >= 30) score -= 20
 else if(bmi >= 27) score -= 12
 else if(bmi >= 25) score -= 6
 
-return Math.max(0, Math.min(100, Number(score || 0)))
+score = Number(score)
+
+if(!isFinite(score)) score = 0
+
+return Math.max(0, Math.min(100, score))
 }
 
 /* =========================
-⚠️ RISK ENGINE (SAFE)
+⚠️ RISK ENGINE (SAFE OUTPUT ALWAYS)
 ========================= */
 function getRiskLevel(calories, bmi){
 
@@ -135,7 +144,7 @@ score >= 80 ? "LOW"
 : "HIGH"
 
 return {
-level: level,
+level,
 text:
 level === "LOW" ? "Low Risk"
 : level === "MEDIUM" ? "Medium Risk"
@@ -151,7 +160,7 @@ score: Number(score || 0)
 }
 
 /* =========================
-🍽 MEAL SCORE (SAFE + PROTECTION)
+🍽 MEAL SCORE (SAFE STABLE)
 ========================= */
 function calculateMealScore(items){
 
@@ -165,7 +174,9 @@ items.forEach(i=>{
 
 if(!i || !i.food) return
 
-if((i.calories || 0) > 800) score -= 10
+let cal = Number(i.calories || 0)
+
+if(cal > 800) score -= 10
 if(i.cuisine === "Western") score -= 5
 if(i.cuisine === "Asian") score += 3
 
@@ -178,6 +189,9 @@ if(i.food.includes("fried") || i.food.includes("oil")) fat++
 if(protein === 0) score -= 10
 if(carbs > protein * 2) score -= 12
 if(fat > protein) score -= 15
+
+score = Number(score)
+if(!isFinite(score)) score = 0
 
 return Math.max(0, Math.min(100, score))
 }
@@ -223,14 +237,18 @@ fatScore: Math.min(100, fat)
 }
 
 /* =========================
-🍜 SPLIT CALORIES (FIXED SAFE VERSION)
+🍜 SPLIT CALORIES (HARD SAFE FIX)
 ========================= */
 function splitCalories(foods, totalCalories){
 
 if(!Array.isArray(foods)) return []
 if(!foods.length) return []
 
-totalCalories = Number(totalCalories || 0)
+totalCalories = Number(totalCalories)
+
+if(!isFinite(totalCalories) || totalCalories <= 0){
+totalCalories = 300
+}
 
 let avg = totalCalories / foods.length
 
@@ -249,11 +267,17 @@ calories: Math.round(avg)
 ========================= */
 function detectAnomaly(calories, history = []){
 
-if(!Array.isArray(history) || history.length < 3) return "insufficient data"
+if(!Array.isArray(history) || history.length < 3){
+return "insufficient data"
+}
 
-let valid = history.map(h => Number(h || 0)).filter(n => !isNaN(n))
+let valid = history
+.map(h => Number(h?.calories ?? h))
+.filter(n => isFinite(n))
 
-if(valid.length < 3) return "insufficient data"
+if(valid.length < 3){
+return "insufficient data"
+}
 
 let avg = valid.reduce((a,b)=>a+b,0)/valid.length
 
@@ -286,12 +310,15 @@ return "Healthy pattern. Keep routine."
 }
 
 /* =========================
-🧠 MAIN AI ENGINE v12.2 SAFE OUTPUT (IMPROVED STABILITY)
+🧠 MAIN ENGINE v12.3 SAFE OUTPUT (NO FEATURE LOSS)
 ========================= */
 async function getAIInsight(calories, bmi, history = [], foodText = "", userId = null){
 
-calories = Number(calories || 0)
-bmi = Number(bmi || 22)
+calories = Number(calories)
+bmi = Number(bmi)
+
+if(!isFinite(calories)) calories = 0
+if(!isFinite(bmi)) bmi = 22
 
 let foods = parseFoodAI(foodText)
 let split = splitCalories(foods, calories)
@@ -312,12 +339,17 @@ let mealScore = calculateMealScore(items)
 let memoryTrend = 0
 
 if(userId){
+
 try{
+
 let historyData = await getUserFoodHistory(userId)
 
 if(Array.isArray(historyData) && historyData.length > 3){
 
-let last7 = historyData.slice(0,7).map(x=>Number(x?.calories || 0)).filter(n => !isNaN(n))
+let last7 = historyData
+.slice(0,7)
+.map(x=>Number(x?.calories || 0))
+.filter(n => isFinite(n))
 
 if(last7.length > 0){
 
@@ -328,25 +360,31 @@ else if(calories < avg * 0.8) memoryTrend = +5
 else memoryTrend = +2
 }
 }
+
 }catch(e){
 memoryTrend = 0
 }
 }
 
-/* ================= FINAL SCORE (SAFE) ================= */
+/* ================= FINAL SCORE (SAFE + GUARANTEED NUMBER) ================= */
 let finalScore =
 (baseScore * 0.4) +
 (mealScore * 0.4) +
 ((macro.proteinScore + macro.carbScore + macro.fatScore)/3 * 0.2)
 
 finalScore += memoryTrend
-finalScore = Math.max(0, Math.min(100, Number(finalScore || 0)))
+
+finalScore = Number(finalScore)
+
+if(!isFinite(finalScore)) finalScore = 0
+
+finalScore = Math.max(0, Math.min(100, finalScore))
 
 let risk = getRiskLevel(calories, bmi)
 
-/* ================= FINAL SAFE RETURN ================= */
+/* ================= RETURN SAFE ================= */
 return {
-score: Math.round(finalScore || 0),
+score: Math.round(finalScore),
 baseScore: Number(baseScore || 0),
 mealScore: Number(mealScore || 0),
 macro: macro,
