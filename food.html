@@ -28,6 +28,7 @@ background:rgba(0,0,0,0.5);
 display:none;
 align-items:center;
 justify-content:center;
+z-index:9999; /* 🔥 FIX: modal被盖住问题 */
 }
 
 .modal-content{
@@ -136,20 +137,18 @@ function setAI(status){
 document.getElementById("aiStatus").innerText = "AI: " + status
 }
 
-/* ================= 🔥 SMART FOOD TYPE DETECTOR (NEW FIX) ================= */
+/* ================= SMART FOOD TYPE DETECTOR ================= */
 function detectFoodType(text){
 
 let t = (text || "").toLowerCase()
 
-// default fallback
 let type = "mixed meal"
 
-// MAIN TYPES
-if(t.includes("economy rice") || t.includes("mixed rice") || t.includes("杂饭")){
-type = "Economy Rice (Cai Fan)"
+if(t.includes("economy rice") || t.includes("杂饭") || t.includes("cai fan")){
+type = "Economy Rice"
 }
 else if(t.includes("coffee") || t.includes("kopi") || t.includes("milo")){
-type = "Drink (Coffee / Milo)"
+type = "Drink"
 }
 else if(t.includes("sandwich")){
 type = "Sandwich"
@@ -158,9 +157,9 @@ else if(t.includes("burger")){
 type = "Burger"
 }
 else if(t.includes("noodle")){
-type = "Noodle Dish"
+type = "Noodle"
 }
-else if(t.includes("rice") && t.includes("chicken")){
+else if(t.includes("chicken rice")){
 type = "Chicken Rice"
 }
 else if(t.includes("rice")){
@@ -173,7 +172,7 @@ type = "Salad"
 return type
 }
 
-/* ================= COMPONENT DETECTOR (IMPROVED) ================= */
+/* ================= COMPONENT DETECTOR ================= */
 function extractComponents(text){
 
 let t = (text || "").toLowerCase()
@@ -183,7 +182,7 @@ let components = []
 if(t.includes("rice")) components.push("rice")
 if(t.includes("chicken") || t.includes("meat")) components.push("meat")
 if(t.includes("egg")) components.push("egg")
-if(t.includes("vegetable") || t.includes("veg")) components.push("vegetables")
+if(t.includes("veg")) components.push("vegetables")
 if(t.includes("fish")) components.push("fish")
 if(t.includes("noodle")) components.push("noodles")
 if(t.includes("coffee") || t.includes("kopi")) components.push("coffee/milk")
@@ -272,18 +271,16 @@ diff
 }
 }
 
-/* ================= MANUAL ================= */
+/* ================= MANUAL FLOW ================= */
 function startManualFlow(){
 
 let input = document.getElementById("foodInput").value.trim()
 if(!input) return alert("Enter food")
 
-let type = detectFoodType(input)
-
 pendingFood = {
 id: Date.now(),
 food: input,
-type: type,
+type: detectFoodType(input),
 date: new Date().toISOString().split("T")[0],
 components: extractComponents(input),
 ...estimateNutrition(input)
@@ -293,7 +290,7 @@ showPreview(pendingFood)
 openMealModal()
 }
 
-/* ================= AI UPLOAD ================= */
+/* ================= AI UPLOAD (FIXED POPUP) ================= */
 async function openAIUpload(){
 
 let input = document.createElement("input")
@@ -310,6 +307,7 @@ let reader = new FileReader()
 reader.onload = async ()=>{
 
 let base64 = reader.result
+
 let result = await analyzeImage(base64)
 
 let type = detectFoodType(result.food)
@@ -324,8 +322,12 @@ components: extractComponents(result.food),
 image: base64
 }
 
+/* 🔥 FIX: force render before modal show (iOS SAFARI FIX) */
+setTimeout(()=>{
 showPreview(pendingFood)
 openMealModal()
+}, 50)
+
 }
 
 reader.readAsDataURL(file)
@@ -447,9 +449,19 @@ foodDB.map(f=>`
 `).join("")
 }
 
-/* ================= MODAL ================= */
+/* ================= MODAL FIX ================= */
 function openMealModal(){
-document.getElementById("mealModal").style.display="flex"
+
+const modal = document.getElementById("mealModal")
+
+modal.style.display = "flex"
+modal.style.opacity = "1"
+
+/* 🔥 FIX: Safari repaint fix */
+setTimeout(()=>{
+modal.style.transform = "translateZ(0)"
+},10)
+
 }
 
 function closeMealModal(){
