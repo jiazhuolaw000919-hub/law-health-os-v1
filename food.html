@@ -111,17 +111,49 @@ setActive?.("food")
 let pendingFood = null
 let scanLock = false
 
-/* ================= PROFILE ================= */
+/* ================= PROFILE (FIXED SAFE VERSION) ================= */
 function getActiveProfile(){
-return JSON.parse(localStorage.getItem("activeProfile")) || {
+
+try{
+const raw = localStorage.getItem("activeProfile")
+
+if(!raw || raw === "undefined" || raw === "null"){
+return fallbackProfile()
+}
+
+const parsed = JSON.parse(raw)
+
+if(!parsed || !parsed.id){
+return fallbackProfile()
+}
+
+return parsed
+
+}catch(e){
+console.log("profile error:", e)
+return fallbackProfile()
+}
+}
+
+/* fallback */
+function fallbackProfile(){
+return {
 id:"guest",
 name:"Guest"
 }
 }
 
+/* ================= PROFILE RENDER (FIXED + GUARANTEED LOAD) ================= */
 function renderProfile(){
-document.getElementById("activeProfile").innerText =
-"👤 Active: " + getActiveProfile().name
+
+const el = document.getElementById("activeProfile")
+if(!el) return
+
+const profile = getActiveProfile()
+
+el.innerText = "👤 Active: " + (profile.name || "Guest")
+
+console.log("Profile loaded:", profile)
 }
 
 /* ================= SAFE ================= */
@@ -134,7 +166,7 @@ fat: Number(f?.fat || 0)
 }
 }
 
-/* ================= FILE TO BASE64 (FIX) ================= */
+/* ================= FILE ================= */
 function fileToBase64(file){
 return new Promise((resolve,reject)=>{
 const reader = new FileReader()
@@ -151,11 +183,16 @@ const profile = getActiveProfile()
 const today = new Date().toISOString().split("T")[0]
 
 let foods = []
+
 try{
 foods = await getFoodLogs?.(today) || []
-}catch(e){ foods = [] }
+}catch(e){
+foods = []
+}
 
-foods = foods.filter(f => !f.userId || f.userId === profile.id)
+foods = foods.filter(f =>
+!f.userId || f.userId === profile.id
+)
 
 let calories=0, protein=0, carbs=0, fat=0
 let foodText = ""
@@ -203,9 +240,12 @@ d.setDate(d.getDate()-i)
 let date=d.toISOString().split("T")[0]
 
 let foods=[]
+
 try{
 foods = await getFoodLogs?.(date) || []
-}catch(e){foods=[]}
+}catch(e){
+foods=[]
+}
 
 let cal=0,p=0,c=0,f=0
 
@@ -219,9 +259,10 @@ f+=Number(x.fat||0)
 arr.push({cal,p,c,f})
 }
 
-let avg = arr.reduce((a,b)=>a+b.cal,0)/7
-let high = Math.max(...arr.map(x=>x.cal))
-let low = Math.min(...arr.map(x=>x.cal))
+/* FIX: avoid crash when empty */
+let avg = arr.length ? arr.reduce((a,b)=>a+b.cal,0)/arr.length : 0
+let high = arr.length ? Math.max(...arr.map(x=>x.cal)) : 0
+let low = arr.length ? Math.min(...arr.map(x=>x.cal)) : 0
 
 document.getElementById("weekAvg").innerText = `Avg: ${avg.toFixed(0)} kcal`
 document.getElementById("weekHigh").innerText = `High: ${high} kcal`
@@ -247,7 +288,7 @@ await calculateToday()
 await calculateWeek()
 }
 
-/* ================= AI SCAN (FULL FIXED) ================= */
+/* ================= SCAN ================= */
 async function scanFood(){
 
 if(scanLock) return
@@ -333,7 +374,7 @@ btn.innerText = "Analyze Image"
 }
 }
 
-/* ================= RENDER ================= */
+/* ================= RENDER AI ================= */
 function renderAI(ai){
 
 if(!ai || !ai.foods){
@@ -394,6 +435,9 @@ async function init(){
 renderProfile()
 await calculateToday()
 await calculateWeek()
+
+// extra safety retry (fix loading stuck bug)
+setTimeout(renderProfile, 300)
 }
 
 init()
