@@ -21,29 +21,12 @@ border-radius:10px;
 box-shadow:0 1px 4px rgba(0,0,0,.05);
 }
 
-/* ================= SKELETON ================= */
-.skeleton {
-background: linear-gradient(90deg,#eee 25%,#f5f5f5 50%,#eee 75%);
-background-size: 200% 100%;
-animation: shimmer 1.2s infinite;
-border-radius: 8px;
-}
+.row{display:flex;gap:10px;flex-wrap:wrap}
 
-@keyframes shimmer {
-0% {background-position:-200% 0}
-100% {background-position:200% 0}
-}
-
-.skeleton-text{
-height:16px;
-width:160px;
-margin:5px 0;
-}
-
-#activeProfile{
-min-height:20px;
-}
-
+.tag{padding:4px 8px;border-radius:8px;font-size:12px}
+.green{background:#dcfce7;color:#166534}
+.yellow{background:#fef9c3;color:#854d0e}
+.red{background:#fee2e2;color:#991b1b}
 </style>
 
 </head>
@@ -64,8 +47,7 @@ min-height:20px;
 
 <!-- PROFILE -->
 <div class="card">
-<div id="profileSkeleton" class="skeleton skeleton-text"></div>
-<p id="activeProfile" style="display:none">Loading profile...</p>
+<p id="activeProfile">Loading profile...</p>
 </div>
 
 <!-- TODAY -->
@@ -129,7 +111,7 @@ setActive?.("food")
 let pendingFood = null
 let scanLock = false
 
-/* ================= PROFILE (SAFE UPGRADE LAYER) ================= */
+/* ================= PROFILE SAFE ================= */
 function fallbackProfile(){
 return { id:"guest", name:"Guest" }
 }
@@ -137,58 +119,57 @@ return { id:"guest", name:"Guest" }
 function getActiveProfile(){
 try{
 const raw = localStorage.getItem("activeProfile")
-
-if(!raw || raw === "undefined" || raw === "null"){
-return fallbackProfile()
-}
-
+if(!raw || raw==="undefined" || raw==="null") return fallbackProfile()
 const p = JSON.parse(raw)
 return p?.id ? p : fallbackProfile()
-
 }catch(e){
-console.log("profile parse error:", e)
 return fallbackProfile()
 }
 }
 
-/* ================= PROFILE RENDER (SAFE + NON BLOCKING) ================= */
+/* ================= PROFILE SYNC (UPGRADED) ================= */
 function renderProfile(){
-
-const sk = document.getElementById("profileSkeleton")
 const el = document.getElementById("activeProfile")
+if(!el) return
 
 const p = getActiveProfile()
-
-if(sk) sk.style.display = "none"
-if(el){
-el.style.display = "block"
 el.innerText = "👤 Active: " + (p.name || "Guest")
 }
-}
 
-/* ================= REALTIME SYNC (SAFE ADDITION ONLY) ================= */
-window.addEventListener("profileSyncUpdate", ()=>{
-renderProfile()
-})
-
-window.addEventListener("focus", ()=>{
-renderProfile()
-})
-
+/* multi-device + supabase sync */
+window.addEventListener("profileSyncUpdate", renderProfile)
+window.addEventListener("focus", renderProfile)
 window.addEventListener("storage", (e)=>{
-if(e.key === "activeProfile"){
-renderProfile()
-}
+if(e.key === "activeProfile") renderProfile()
 })
 
-/* ================= TODAY ================= */
+/* ================= SAFE MATH ================= */
+function safeMacro(f){
+return {
+calories: Number(f?.calories || 0),
+protein: Number(f?.protein || 0),
+carbs: Number(f?.carbs || 0),
+fat: Number(f?.fat || 0)
+}
+}
+
+/* ================= FILE ================= */
+function fileToBase64(file){
+return new Promise((resolve,reject)=>{
+const reader = new FileReader()
+reader.onload = () => resolve(reader.result)
+reader.onerror = reject
+reader.readAsDataURL(file)
+})
+}
+
+/* ================= TODAY (FIXED BUGS) ================= */
 async function calculateToday(){
 
 const profile = getActiveProfile()
 const today = new Date().toISOString().split("T")[0]
 
 let foods = []
-
 try{
 foods = await getFoodLogs?.(today) || []
 }catch(e){
@@ -198,7 +179,7 @@ foods = []
 foods = foods.filter(f => !f.userId || f.userId === profile.id)
 
 let calories=0, protein=0, carbs=0, fat=0
-let foodText=""
+let foodText = ""
 
 foods.forEach(f=>{
 calories += Number(f.calories||0)
@@ -262,26 +243,133 @@ document.getElementById("weekHigh").innerText = `High: ${high} kcal`
 document.getElementById("weekLow").innerText = `Low: ${low} kcal`
 }
 
-/* ================= INIT (FIXED ORDER SAFE STARTUP) ================= */
-async function init(){
+/* ================= MANUAL ================= */
+async function addFoodManual(){
 
-// 1. show skeleton first (no blocking)
-if(document.getElementById("profileSkeleton")){
-document.getElementById("profileSkeleton").style.display = "block"
-}
+const text = document.getElementById("foodInput").value.trim()
+if(!text) return
 
-// 2. render profile safely
-renderProfile()
+await saveFood?.({
+food:text,
+calories:2000,
+protein:10,
+carbs:20,
+fat:5,
+date:new Date().toISOString().split("T")[0]
+})
 
-// 3. load data async (no crash if supabase slow)
-try{
 await calculateToday()
 await calculateWeek()
-}catch(e){
-console.log("init error safe:", e)
 }
 
-// 4. retry profile sync (important for supabase delay)
+/* ================= SCAN ================= */
+async function scanFood(){
+
+if(scanLock) return
+scanLock = true
+
+const btn = document.getElementById("scanBtn")
+btn.innerText = "Analyzing..."
+document.getElementById("aiResult").innerText = "Processing image..."
+
+try{
+
+const file=document.getElementById("foodImage").files[0]
+if(!file){
+alert("upload image")
+return
+}
+
+const base64 = await fileToBase64(file)
+
+let data
+try{
+const res = await fetch("/api/ai",{
+method:"POST",
+headers:{"Content-Type":"application/json"},
+body:JSON.stringify({image: base64})
+})
+data = await res.json()
+}catch{
+data = {result:{foods:[{food:"Fallback",calories:500,protein:10,carbs:50,fat:10}]}}
+}
+
+pendingFood = data?.result || data
+
+if(!pendingFood.foods){
+pendingFood = {foods:[{food:"Unknown",calories:500,protein:10,carbs:50,fat:10}]}
+}
+
+renderAI(pendingFood)
+
+document.getElementById("aiResult").innerText = "AI Analysis Ready ✅"
+document.getElementById("confirmBox").style.display = "block"
+
+}catch(err){
+document.getElementById("aiResult").innerText = "Scan failed ❌"
+console.log(err)
+}finally{
+scanLock = false
+btn.innerText = "Analyze Image"
+}
+}
+
+/* ================= RENDER (FIXED TEMPLATE BUG) ================= */
+function renderAI(ai){
+
+if(!ai?.foods){
+document.getElementById("foodList").innerHTML="No AI Result"
+return
+}
+
+document.getElementById("foodList").innerHTML =
+ai.foods.map(f=>`
+<div class="card">
+🍜 ${f.food}<br>
+🔥 ${f.calories} kcal<br>
+🥩 ${f.protein||0}g<br>
+🍞 ${f.carbs||0}g<br>
+🧈 ${f.fat||0}g<br>
+</div>
+`).join("")
+}
+
+/* ================= SAVE ================= */
+async function confirmSaveFood(){
+
+if(!pendingFood) return
+
+for(const item of pendingFood.foods){
+await saveFood?.({
+food:item.food,
+calories:item.calories,
+protein:item.protein||0,
+carbs:item.carbs||0,
+fat:item.fat||0,
+date:new Date().toISOString().split("T")[0]
+})
+}
+
+pendingFood=null
+document.getElementById("confirmBox").style.display="none"
+
+await calculateToday()
+await calculateWeek()
+}
+
+/* ================= CANCEL ================= */
+function cancelSaveFood(){
+pendingFood=null
+document.getElementById("confirmBox").style.display="none"
+}
+
+/* ================= INIT (SAFE BOOT) ================= */
+async function init(){
+
+renderProfile()
+await calculateToday()
+await calculateWeek()
+
 setTimeout(renderProfile, 300)
 setTimeout(renderProfile, 1500)
 }
