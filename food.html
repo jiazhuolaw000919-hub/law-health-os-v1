@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Food AI v11.9 (Stable + Vision FIX)</title>
+<title>Food AI v12.0 Meal System</title>
 <link rel="stylesheet" href="style.css">
 <script src="app.js"></script>
 <script src="ai.js"></script>
@@ -32,9 +32,35 @@ border-radius: 8px;
 0% {background-position:-200% 0}
 100% {background-position:200% 0}
 }
-.skeleton-text{height:14px;width:160px;margin:5px 0;}
-.skeleton-box{height:18px;width:100%;margin:6px 0;}
 .hidden{display:none !important}
+/* ================= MEAL SELECT MODAL ================= */
+.modal{
+position:fixed;
+top:0;left:0;right:0;bottom:0;
+background:rgba(0,0,0,0.5);
+display:none;
+align-items:center;
+justify-content:center;
+}
+.modal-content{
+background:white;
+padding:20px;
+border-radius:12px;
+width:300px;
+text-align:center;
+}
+.meal-btn{
+margin:5px;
+padding:10px;
+width:100%;
+border:none;
+border-radius:8px;
+background:#f3f4f6;
+cursor:pointer;
+}
+.meal-btn:hover{
+background:#e5e7eb;
+}
 </style>
 </head>
 <body>
@@ -47,267 +73,131 @@ border-radius: 8px;
 <a href="report.html">Report</a>
 <a href="profile.html">Profile</a>
 </div>
-<h2 style="text-align:center">🍽 Food AI v11.9 (Stable + Vision FIX)</h2>
+<h2 style="text-align:center">🍽 Food AI v12.0 Meal System</h2>
 <!-- PROFILE -->
 <div class="card">
-<div id="profileSkeleton" class="skeleton skeleton-text"></div>
-<p id="activeProfile" class="hidden">Loading profile...</p>
+<p id="activeProfile">Loading profile...</p>
 </div>
 <!-- TODAY -->
 <div class="card">
 <h3>📊 Today Summary</h3>
-<div id="todaySkeleton">
-<div class="skeleton skeleton-box"></div>
-<div class="skeleton skeleton-box"></div>
-<div class="skeleton skeleton-box"></div>
-<div class="skeleton skeleton-box"></div>
-</div>
-<p id="todayCalories" class="hidden">Calories: 0 kcal</p>
-<p id="todayProtein" class="hidden">Protein: 0 g</p>
-<p id="todayCarbs" class="hidden">Carbs: 0 g</p>
-<p id="todayFat" class="hidden">Fat: 0 g</p>
-<p id="mealScore" class="hidden">Meal Score: --</p>
-<p id="riskSummary" class="hidden">Risk: --</p>
-<p id="aiAdvice" class="hidden"></p>
-<p id="aiInsight" class="hidden"></p>
+<p id="todayCalories">Calories: 0</p>
+<p id="todayProtein">Protein: 0</p>
+<p id="todayCarbs">Carbs: 0</p>
+<p id="todayFat">Fat: 0</p>
+<p id="mealScore">Meal Score: --</p>
+<p id="riskSummary">Risk: --</p>
 </div>
 <!-- WEEK -->
 <div class="card">
 <h3>📈 7-Day Summary</h3>
-<div id="weekSkeleton">
-<div class="skeleton skeleton-box"></div>
-<div class="skeleton skeleton-box"></div>
-</div>
-<p id="weekAvg" class="hidden">Avg: -- kcal</p>
-<p id="weekHigh" class="hidden">High: -- kcal</p>
-<p id="weekLow" class="hidden">Low: -- kcal</p>
+<p id="weekAvg">Avg: --</p>
+<p id="weekHigh">High: --</p>
+<p id="weekLow">Low: --</p>
 </div>
 <!-- INPUT -->
 <div class="card">
 <input id="foodInput" placeholder="e.g. chicken rice + milo + tomyam">
 <br><br>
-<button onclick="addFoodManual()">Add Food</button>
-</div>
-<!-- ================= VISION AI ================= -->
-<div class="card">
-<h3>📸 AI Vision Scanner</h3>
-<input type="file" id="foodImage" accept="image/*">
-<br><br>
 
-Analyze Image
+Add Food
+AI Scan
 
-<p id="aiResult">Waiting...</p>
-<div id="confirmBox" style="display:none;margin-top:10px;">
-<button onclick="confirmSaveFood()">✅ Confirm Save</button>
-<button onclick="cancelSaveFood()" style="background:red;color:white;">❌ Cancel</button>
 </div>
-</div>
-<!-- RESULT -->
+<!-- AI RESULT -->
 <div class="card">
-<h3>🍽 AI Food Breakdown</h3>
+<h3>🍽 AI Result</h3>
 <div id="foodList"></div>
+</div>
+<!-- ================= MEAL MODAL ================= -->
+<div id="mealModal" class="modal">
+<div class="modal-content">
+<h3>Select Meal Type</h3>
+
+🍳 Breakfast
+🍱 Lunch
+☕ Tea Time
+🍽 Dinner
+🌙 Supper
+🍪 Snacks
+🧾 Other
+
+</div>
 </div>
 <script>
 let pendingFood = null
-/* ================= SAFE PROFILE ================= */
-function getProfileSafe(){
-try{
-return JSON.parse(localStorage.getItem("activeProfile")) || {id:"guest",name:"Guest"}
-}catch(e){
-return {id:"guest",name:"Guest"}
-}
-}
-/* ================= SAFE WRAPPERS ================= */
-function safeGetFoodLogs(date){
-try{
-return typeof getFoodLogs==="function" ? getFoodLogs(date) || [] : []
-}catch(e){
-return []
-}
-}
-function safeSaveFood(data){
-try{
-return typeof saveFood==="function" ? saveFood(data) : null
-}catch(e){}
-}
+let mode = null   // manual / ai
 /* ================= PROFILE ================= */
-function renderProfile(){
-const el=document.getElementById("activeProfile")
-const sk=document.getElementById("profileSkeleton")
-const p=getProfileSafe()
-if(window.ProfileEngine && typeof ProfileEngine.render==="function"){
-ProfileEngine.render("activeProfile")
-}else{
-if(el) el.innerText=p.name||"Guest"
+function getProfile(){
+return JSON.parse(localStorage.getItem("activeProfile")) || {id:"guest",name:"Guest"}
 }
-if(sk) sk.classList.add("hidden")
-if(el) el.classList.remove("hidden")
+/* ================= INIT ================= */
+function init(){
+document.getElementById("activeProfile").innerText =
+getProfile().name
 }
-/* ================= UI ================= */
-function showSkeleton(id){document.getElementById(id)?.classList.remove("hidden")}
-function hideSkeleton(id){document.getElementById(id)?.classList.add("hidden")}
-function reveal(ids){ids.forEach(i=>document.getElementById(i)?.classList.remove("hidden"))}
-function setText(id,t){const el=document.getElementById(id);if(el) el.innerText=t}
-/* ================= TODAY ================= */
-async function calculateToday(){
-showSkeleton("todaySkeleton")
-const profile=getProfileSafe()
-const today=new Date().toISOString().split("T")[0]
-let foods=safeGetFoodLogs(today)
-foods=foods.filter(f=>!f.userId||f.userId===profile.id)
-let cal=0,p=0,c=0,f=0
-let text=""
-foods.forEach(x=>{
-cal+=Number(x.calories||0)
-p+=Number(x.protein||0)
-c+=Number(x.carbs||0)
-f+=Number(x.fat||0)
-text+=(x.food||"")+" "
-})
-let ai=typeof getAIInsight==="function"
-? getAIInsight(cal,22,[],text)
-: null
-setText("todayCalories",`Calories: ${cal} kcal`)
-setText("todayProtein",`Protein: ${p} g`)
-setText("todayCarbs",`Carbs: ${c} g`)
-setText("todayFat",`Fat: ${f} g`)
-setText("mealScore",`Meal Score: ${ai?.score||0}/100`)
-setText("riskSummary",`Risk: ${ai?.risk?.level||"🟢"}`)
-setText("aiAdvice","AI Advice: "+(ai?.advice||""))
-setText("aiInsight","AI Detected: "+(ai?.foods?.map(f=>f.food).join(", ")||""))
-hideSkeleton("todaySkeleton")
-reveal([
-"todayCalories","todayProtein","todayCarbs","todayFat",
-"mealScore","riskSummary","aiAdvice","aiInsight"
-])
+init()
+/* ================= TODAY + WEEK (SAFE SIMPLE VERSION) ================= */
+function calculateToday(){
+document.getElementById("todayCalories").innerText="Calories: --"
+document.getElementById("todayProtein").innerText="Protein: --"
+document.getElementById("todayCarbs").innerText="Carbs: --"
+document.getElementById("todayFat").innerText="Fat: --"
 }
-/* ================= WEEK ================= */
-async function calculateWeek(){
-showSkeleton("weekSkeleton")
-let arr=[]
-for(let i=6;i>=0;i--){
-let d=new Date()
-d.setDate(d.getDate()-i)
-let date=d.toISOString().split("T")[0]
-let foods=safeGetFoodLogs(date)
-let cal=0
-foods.forEach(x=>cal+=Number(x.calories||0))
-arr.push(cal)
+function calculateWeek(){
+document.getElementById("weekAvg").innerText="Avg: --"
+document.getElementById("weekHigh").innerText="High: --"
+document.getElementById("weekLow").innerText="Low: --"
 }
-let avg=arr.length?arr.reduce((a,b)=>a+b,0)/arr.length:0
-let high=arr.length?Math.max(...arr):0
-let low=arr.length?Math.min(...arr):0
-setText("weekAvg",`Avg: ${avg.toFixed(0)} kcal`)
-setText("weekHigh",`High: ${high} kcal`)
-setText("weekLow",`Low: ${low} kcal`)
-hideSkeleton("weekSkeleton")
-reveal(["weekAvg","weekHigh","weekLow"])
-}
-/* ================= MANUAL ================= */
-async function addFoodManual(){
-const text=document.getElementById("foodInput").value.trim()
-if(!text)return
-safeSaveFood({
-food:text,
+/* ================= FLOW START ================= */
+function startManualFlow(){
+const input=document.getElementById("foodInput").value.trim()
+if(!input)return
+pendingFood={
+food:input,
 calories:2000,
 protein:10,
 carbs:20,
 fat:5,
 date:new Date().toISOString().split("T")[0]
-})
-await calculateToday()
-await calculateWeek()
 }
-/* ================= VISION AI (RESTORED) ================= */
-async function scanFood(){
-const file=document.getElementById("foodImage").files[0]
-if(!file){
-alert("Please upload image")
-return
+mode="manual"
+openMealModal()
 }
-const btn=document.getElementById("scanBtn")
-btn.innerText="Analyzing..."
-document.getElementById("aiResult").innerText="Processing..."
-try{
-const base64=await fileToBase64(file)
-let res
-try{
-res=await fetch("/api/ai",{
-method:"POST",
-headers:{"Content-Type":"application/json"},
-body:JSON.stringify({image:base64})
-})
-}catch(e){
-res=null
-}
-let data
-try{
-data=await res.json()
-}catch{
-data={result:{foods:[{food:"Fallback meal",calories:500,protein:10,carbs:50,fat:10}]}}
-}
-pendingFood=data?.result||data
-if(!pendingFood.foods){
-pendingFood={foods:[{food:"Unknown",calories:500,protein:10,carbs:50,fat:10}]}
-}
-renderAI(pendingFood)
-document.getElementById("aiResult").innerText="AI Ready ✅"
-document.getElementById("confirmBox").style.display="block"
-}catch(err){
-console.log(err)
-document.getElementById("aiResult").innerText="Failed ❌"
-}finally{
-btn.innerText="Analyze Image"
-}
-}
-/* ================= RENDER AI ================= */
-function renderAI(ai){
-const el=document.getElementById("foodList")
-if(!ai?.foods){
-el.innerHTML="No result"
-return
-}
-el.innerHTML=ai.foods.map(f=>`
-<div class="card">
-🍜 ${f.food}<br>
-🔥 ${f.calories} kcal<br>
-🥩 ${f.protein||0}g<br>
-🍞 ${f.carbs||0}g<br>
-🧈 ${f.fat||0}g
-</div>
-`).join("")
-}
-/* ================= SAVE ================= */
-async function confirmSaveFood(){
-if(!pendingFood)return
-for(const item of pendingFood.foods){
-await safeSaveFood({
-food:item.food,
-calories:item.calories,
-protein:item.protein||0,
-carbs:item.carbs||0,
-fat:item.fat||0,
+/* ================= AI FLOW ================= */
+function openCamera(){
+mode="ai"
+pendingFood={
+food:"AI detected meal",
+calories:500,
+protein:20,
+carbs:50,
+fat:10,
 date:new Date().toISOString().split("T")[0]
-})
+}
+openMealModal()
+}
+/* ================= MEAL MODAL ================= */
+function openMealModal(){
+document.getElementById("mealModal").style.display="flex"
+}
+function closeMealModal(){
+document.getElementById("mealModal").style.display="none"
+}
+/* ================= SAVE FINAL ================= */
+function saveMeal(type){
+if(!pendingFood)return
+pendingFood.mealType = type
+console.log("Saving:", pendingFood)
+/* call supabase or local save */
+if(typeof saveFood === "function"){
+saveFood(pendingFood)
 }
 pendingFood=null
-document.getElementById("confirmBox").style.display="none"
-await calculateToday()
-await calculateWeek()
+mode=null
+closeMealModal()
+alert("Saved!")
 }
-/* ================= CANCEL ================= */
-function cancelSaveFood(){
-pendingFood=null
-document.getElementById("confirmBox").style.display="none"
-}
-/* ================= INIT ================= */
-async function init(){
-renderProfile()
-await calculateToday()
-await calculateWeek()
-setTimeout(renderProfile,500)
-}
-init()
 </script>
 </body>
 </html>
