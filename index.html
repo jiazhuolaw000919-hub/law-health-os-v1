@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>AI Dashboard v12.1 (Unified Profile Engine + Skeleton Upgrade)</title>
+<title>AI Dashboard v12.2 </title>
 
 <link rel="stylesheet" href="style.css">
 
@@ -32,7 +32,7 @@ display:inline-block;
 .yellow{background:#fef9c3;color:#854d0e}
 .red{background:#fee2e2;color:#991b1b}
 
-/* ================= SKELETON (UPGRADED STEP 4) ================= */
+/* ================= SKELETON (V12.2 IMPROVED) ================= */
 .skeleton{
 background:linear-gradient(90deg,#eee 25%,#f5f5f5 50%,#eee 75%);
 background-size:200% 100%;
@@ -59,7 +59,7 @@ border-radius:6px;
 <a href="profile.html">Profile</a>
 </div>
 
-<h2 class="center">📊 AI Dashboard v12.1 (Unified Profile Engine)</h2>
+<h2 class="center">📊 AI Dashboard v12.2 (Safe Skeleton + Engine Fix)</h2>
 
 <!-- TIME -->
 <div class="card">
@@ -68,7 +68,7 @@ border-radius:6px;
 <p id="time"></p>
 </div>
 
-<!-- PROFILE (SKELETON CONTROLLED) -->
+<!-- PROFILE -->
 <div class="card">
 <h3>👤 Profile</h3>
 
@@ -117,7 +117,19 @@ border-radius:6px;
 
 <script>
 
-/* ================= 🔥 PROFILE ENGINE (ONLY CHANGE STEP 3) ================= */
+/* ================= SAFE PROFILE ENGINE CALL (FIXED V12.2) ================= */
+function safeProfileRender(){
+try{
+if(window.ProfileEngine && typeof ProfileEngine.render === "function"){
+ProfileEngine.render("profile")
+return
+}
+}catch(e){
+console.log("ProfileEngine not ready")
+}
+}
+
+/* ================= PROFILE ================= */
 function getProfile(){
 try{
 const raw = localStorage.getItem("activeProfile")
@@ -131,12 +143,10 @@ return {id:"guest",name:"Guest",height:170,weight:70}
 }
 }
 
-/* ⭐ STEP 3 REQUIRED CHANGE (ONLY ONE LINE CHANGE DONE HERE) */
-ProfileEngine.render("profile")
-
 /* ================= REAL-TIME SYNC ================= */
-window.addEventListener("profileSyncUpdate", ()=>ProfileEngine.render("profile"))
-window.addEventListener("focus", ()=>ProfileEngine.render("profile"))
+window.addEventListener("profileSyncUpdate", safeProfileRender)
+window.addEventListener("focus", safeProfileRender)
+window.addEventListener("storage", safeProfileRender)
 
 /* ================= CLOCK ================= */
 function updateClock(){
@@ -230,7 +240,7 @@ ctx.lineTo(20+i*40,100-data[i][key]/50)
 ctx.stroke()
 }
 
-/* ================= LOADING CONTROL (SKELETON FIX) ================= */
+/* ================= SKELETON CONTROL V12.2 ================= */
 function showSkeleton(){
 const sk = document.getElementById("profileSkeleton")
 const el = document.getElementById("profile")
@@ -283,7 +293,7 @@ learn.prefProtein
 ?"Tomorrow: chicken + eggs + fish"
 :"Tomorrow: balanced rice + veggies + protein"
 
-/* charts safe */
+/* charts */
 draw("chart",data,"cal")
 
 let riskData=data.map(d=>({
@@ -293,13 +303,24 @@ risk:d.cal>3000?3:d.cal>2400?2:1
 draw("riskChart",riskData,"risk")
 
 hideSkeleton()
+
+/* FINAL SAFE PROFILE RENDER */
+safeProfileRender()
 }
 
-/* ================= INIT ================= */
+/* ================= BOOT SAFE ================= */
+function init(){
 updateClock()
 setInterval(updateClock,1000)
 
+/* wait DOM stable */
+setTimeout(()=>{
+safeProfileRender()
 load()
+},0)
+}
+
+init()
 
 </script>
 
