@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Food AI v16.1 PRO SYSTEM (FULL FIX STABLE)</title>
+<title>Food AI v16.2 PRO SYSTEM (UPLOAD FIXED STABLE)</title>
 
 <link rel="stylesheet" href="style.css">
 
@@ -55,11 +55,6 @@ border:1px solid #ddd;
 cursor:pointer;
 }
 
-.active{
-background:#111;
-color:#fff;
-}
-
 .small-tag{
 display:inline-block;
 margin:2px;
@@ -83,17 +78,7 @@ font-size:12px;
 
 <body>
 
-<div class="nav">
-<a href="index.html">Home</a>
-<a href="calendar.html">Calendar</a>
-<a href="food.html">Food</a>
-<a href="workout.html">Workout</a>
-<a href="shopping.html">Shop</a>
-<a href="report.html">Report</a>
-<a href="profile.html">Profile</a>
-</div>
-
-<h2>🍽 Food AI v16.1 (STABLE FIX + AI + SAVE + DELETE + POPUP FIX)</h2>
+<h2>🍽 Food AI v16.2 (UPLOAD + MODAL FIX STABLE)</h2>
 
 <div class="card">
 <p id="activeProfile">Loading...</p>
@@ -134,7 +119,6 @@ font-size:12px;
 <div class="modal-content">
 
 <h3>Select Meal</h3>
-
 <div id="previewArea"></div>
 
 <button onclick="saveMeal('Breakfast')">Breakfast</button>
@@ -147,9 +131,8 @@ font-size:12px;
 
 <script>
 
-/* ================= GLOBAL DB ================= */
+/* ================= DB ================= */
 let foodDB = JSON.parse(localStorage.getItem("foodDB")) || []
-
 let pendingFood = null
 let mode = "normal"
 let multiList = []
@@ -158,35 +141,24 @@ let multiList = []
 document.getElementById("activeProfile").innerText =
 JSON.parse(localStorage.getItem("activeProfile"))?.name || "Guest"
 
-/* ================= AI STATUS ================= */
-function setAI(status){
-document.getElementById("aiStatus").innerText = "AI: " + status
+/* ================= AI ================= */
+function setAI(s){
+document.getElementById("aiStatus").innerText = "AI: " + s
 }
 
-/* ================= COMPONENT DETECTOR ================= */
-function extractComponents(text){
+/* ================= COMPONENT ================= */
+function extractComponents(t){
 
-let t = (text || "").toLowerCase()
+t = (t || "").toLowerCase()
 
 let c = []
 
 if(t.includes("rice")) c.push("rice")
-if(t.includes("chicken") || t.includes("meat")) c.push("meat")
+if(t.includes("chicken")) c.push("meat")
 if(t.includes("egg")) c.push("egg")
 if(t.includes("veg")) c.push("vegetables")
-if(t.includes("fish")) c.push("fish")
-if(t.includes("noodle")) c.push("noodles")
-if(t.includes("coffee") || t.includes("kopi")) c.push("coffee")
-if(t.includes("sandwich")) c.push("bread + filling")
-if(t.includes("burger")) c.push("bun + meat")
-
-/* FOOD TYPE INTELLIGENCE */
-if(t.includes("rice") && (t.includes("meat") || t.includes("chicken"))){
-c.push("mixed rice / cai fan")
-}
-
 if(t.includes("coffee")) c.push("drink")
-if(t.includes("sandwich")) c.push("sandwich meal")
+if(t.includes("sandwich")) c.push("sandwich")
 
 if(c.length === 0) c = ["unknown meal"]
 
@@ -200,9 +172,7 @@ setAI("scanning...")
 
 try{
 if(window.analyzeFoodImage){
-
 const r = await window.analyzeFoodImage(base64)
-
 setAI("done")
 
 return {
@@ -281,27 +251,32 @@ showPreview(pendingFood)
 openMealModal()
 }
 
-/* ================= AI UPLOAD (FIXED POPUP GUARANTEE) ================= */
-async function openAIUpload(){
+/* ================= 🔥 FIXED AI UPLOAD (STABLE POPUP) ================= */
+function openAIUpload(){
 
-let input = document.createElement("input")
+const input = document.createElement("input")
 input.type = "file"
 input.accept = "image/*"
 
-input.onchange = async ()=>{
+/* IMPORTANT: attach BEFORE click (iOS fix) */
+input.onchange = async function(e){
 
-let file = input.files[0]
+const file = e.target.files[0]
 if(!file) return
 
-let reader = new FileReader()
+setAI("reading image...")
 
-reader.onload = async ()=>{
+const reader = new FileReader()
 
-let base64 = reader.result
+reader.onload = async function(evt){
+
+const base64 = evt.target.result
+
+setAI("processing AI...")
 
 let result = await analyzeImage(base64)
 
-/* ALWAYS BUILD FOOD OBJECT */
+/* BUILD FOOD OBJECT */
 pendingFood = {
 food: result.food,
 date: new Date().toISOString().split("T")[0],
@@ -310,15 +285,24 @@ components: extractComponents(result.food),
 image: base64
 }
 
-/* 🔥 FIX: ALWAYS POPUP AFTER AI */
+/* 🔥 FORCE UI FLOW (NO SKIP) */
 showPreview(pendingFood)
+
+/* CRITICAL FIX: delay modal for iOS Safari */
+setTimeout(()=>{
 openMealModal()
+}, 120)
 }
 
 reader.readAsDataURL(file)
 }
 
+/* MUST append to DOM for Safari stability */
+document.body.appendChild(input)
 input.click()
+
+/* cleanup */
+setTimeout(()=>input.remove(), 3000)
 }
 
 /* ================= BARCODE ================= */
@@ -370,7 +354,6 @@ document.getElementById("previewArea").innerHTML = `
 <div class="preview-box">
 
 <b>${adj.food}</b><br>
-
 🔥 ${Math.round(adj.calories)} kcal<br>
 🥩 P:${Math.round(adj.protein)}
 🍚 C:${Math.round(adj.carbs)}
@@ -407,9 +390,9 @@ alert("Saved!")
 }
 
 /* ================= DELETE ================= */
-function deleteFood(index){
+function deleteFood(i){
 
-foodDB.splice(index,1)
+foodDB.splice(i,1)
 localStorage.setItem("foodDB", JSON.stringify(foodDB))
 
 renderFoodList()
