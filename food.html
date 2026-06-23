@@ -2,13 +2,16 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Food AI v12.1 FULL FIX</title>
+<title>Food AI v12.2 FULL FIX</title>
+
 <link rel="stylesheet" href="style.css">
+
 <script src="app.js"></script>
 <script src="ai.js"></script>
 <script src="ai-engine.js"></script>
 <script src="supabase.js"></script>
 <script src="ai-vision.js"></script>
+
 <style>
 .card{
 margin:10px;
@@ -17,7 +20,9 @@ background:#fff;
 border-radius:10px;
 box-shadow:0 1px 4px rgba(0,0,0,.05);
 }
+
 .hidden{display:none !important}
+
 .modal{
 position:fixed;
 top:0;left:0;right:0;bottom:0;
@@ -26,6 +31,7 @@ display:none;
 align-items:center;
 justify-content:center;
 }
+
 .modal-content{
 background:white;
 padding:20px;
@@ -33,6 +39,7 @@ border-radius:12px;
 width:300px;
 text-align:center;
 }
+
 .meal-btn{
 margin:5px;
 padding:10px;
@@ -42,12 +49,15 @@ border-radius:8px;
 background:#f3f4f6;
 cursor:pointer;
 }
+
 .meal-btn:hover{
 background:#e5e7eb;
 }
 </style>
 </head>
+
 <body>
+
 <div class="nav">
 <a href="index.html">Home</a>
 <a href="calendar.html">Calendar</a>
@@ -57,11 +67,14 @@ background:#e5e7eb;
 <a href="report.html">Report</a>
 <a href="profile.html">Profile</a>
 </div>
-<h2 style="text-align:center">🍽 Food AI v12.1 FULL FIX</h2>
+
+<h2 style="text-align:center">🍽 Food AI v12.2 FULL FIX</h2>
+
 <!-- PROFILE -->
 <div class="card">
 <p id="activeProfile">Loading profile...</p>
 </div>
+
 <!-- TODAY -->
 <div class="card">
 <h3>📊 Today Summary</h3>
@@ -72,6 +85,7 @@ background:#e5e7eb;
 <p id="mealScore">Meal Score: --</p>
 <p id="riskSummary">Risk: --</p>
 </div>
+
 <!-- WEEK -->
 <div class="card">
 <h3>📈 7-Day Summary</h3>
@@ -79,61 +93,77 @@ background:#e5e7eb;
 <p id="weekHigh">High: --</p>
 <p id="weekLow">Low: --</p>
 </div>
+
 <!-- INPUT -->
 <div class="card">
 <input id="foodInput" placeholder="e.g. chicken rice + milo + tomyam">
+<br><br>
 
-Add Food
-AI Scan
+<button onclick="startManualFlow()">Add Food</button>
+<button onclick="openAIUpload()">AI Scan</button>
 
 </div>
+
 <!-- RESULT -->
 <div class="card">
 <h3>🍽 AI Result</h3>
 <div id="foodList"></div>
 </div>
+
 <!-- ================= MEAL MODAL ================= -->
 <div id="mealModal" class="modal">
 <div class="modal-content">
+
 <h3>Select Meal Type</h3>
 
-🍳 Breakfast
-🍱 Lunch
-☕ Tea Time
-🍽 Dinner
-🌙 Supper
-🍪 Snacks
-🧾 Other
+<button class="meal-btn" onclick="saveMeal('Breakfast')">🍳 Breakfast</button>
+<button class="meal-btn" onclick="saveMeal('Lunch')">🍱 Lunch</button>
+<button class="meal-btn" onclick="saveMeal('Tea Time')">☕ Tea Time</button>
+<button class="meal-btn" onclick="saveMeal('Dinner')">🍽 Dinner</button>
+<button class="meal-btn" onclick="saveMeal('Supper')">🌙 Supper</button>
+<button class="meal-btn" onclick="saveMeal('Snacks')">🍪 Snacks</button>
+<button class="meal-btn" onclick="saveMeal('Other')">🧾 Other</button>
 
 </div>
 </div>
+
 <script>
+
 let pendingFood = null
 let mode = null
+
 /* ================= PROFILE ================= */
 function getProfile(){
 return JSON.parse(localStorage.getItem("activeProfile")) || {id:"guest",name:"Guest"}
 }
+
 function init(){
 document.getElementById("activeProfile").innerText = getProfile().name
 }
 init()
-/* ================= TODAY / WEEK PLACEHOLDER ================= */
+
+/* ================= PLACEHOLDERS ================= */
 function calculateToday(){
 document.getElementById("todayCalories").innerText="Calories: --"
 document.getElementById("todayProtein").innerText="Protein: --"
 document.getElementById("todayCarbs").innerText="Carbs: --"
 document.getElementById("todayFat").innerText="Fat: --"
+document.getElementById("mealScore").innerText="Meal Score: --"
+document.getElementById("riskSummary").innerText="Risk: --"
 }
+
 function calculateWeek(){
 document.getElementById("weekAvg").innerText="Avg: --"
 document.getElementById("weekHigh").innerText="High: --"
 document.getElementById("weekLow").innerText="Low: --"
 }
+
 /* ================= MANUAL FLOW ================= */
 function startManualFlow(){
+
 const input = document.getElementById("foodInput").value.trim()
 if(!input) return alert("Enter food first")
+
 pendingFood = {
 food: input,
 calories: 2000,
@@ -142,21 +172,51 @@ carbs: 20,
 fat: 5,
 date: new Date().toISOString().split("T")[0]
 }
+
 mode = "manual"
+
 openMealModal()
 }
-/* ================= AI UPLOAD (RESTORED FULL FUNCTION) ================= */
+
+/* ================= AI UPLOAD + ANALYZE ================= */
 function openAIUpload(){
+
 mode = "ai"
+
 const fileInput = document.createElement("input")
 fileInput.type = "file"
 fileInput.accept = "image/*"
+
 fileInput.onchange = async () => {
+
 const file = fileInput.files[0]
 if(!file) return
+
 const reader = new FileReader()
+
 reader.onload = () => {
+
 const base64 = reader.result
+
+// TRY REAL AI ENGINE FIRST
+if(typeof window.analyzeFoodImage === "function"){
+window.analyzeFoodImage(base64).then(result=>{
+pendingFood = {
+food: result?.food || "AI detected meal",
+calories: result?.calories || 500,
+protein: result?.protein || 20,
+carbs: result?.carbs || 50,
+fat: result?.fat || 10,
+image: base64,
+date: new Date().toISOString().split("T")[0]
+}
+
+renderAIResult(pendingFood)
+openMealModal()
+})
+}else{
+
+// fallback
 pendingFood = {
 food: "AI detected meal",
 calories: 500,
@@ -166,13 +226,18 @@ fat: 10,
 image: base64,
 date: new Date().toISOString().split("T")[0]
 }
+
 renderAIResult(pendingFood)
 openMealModal()
 }
+}
+
 reader.readAsDataURL(file)
 }
+
 fileInput.click()
 }
+
 /* ================= AI RESULT ================= */
 function renderAIResult(data){
 document.getElementById("foodList").innerHTML = `
@@ -182,28 +247,41 @@ document.getElementById("foodList").innerHTML = `
 </div>
 `
 }
+
 /* ================= MEAL MODAL ================= */
 function openMealModal(){
 document.getElementById("mealModal").style.display="flex"
 }
+
 function closeMealModal(){
 document.getElementById("mealModal").style.display="none"
 }
+
 /* ================= SAVE ================= */
 function saveMeal(type){
+
 if(!pendingFood) return
+
 pendingFood.mealType = type
+
 if(typeof saveFood === "function"){
 saveFood(pendingFood)
 }
+
 console.log("Saved:", pendingFood)
+
 pendingFood = null
 mode = null
+
 closeMealModal()
+
 calculateToday()
 calculateWeek()
+
 alert("Saved successfully!")
 }
+
 </script>
+
 </body>
 </html>
