@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Food AI v15 PRO SYSTEM</title>
+<title>Food AI v15.1 PRO FIX</title>
 
 <link rel="stylesheet" href="style.css">
 
@@ -21,8 +21,6 @@ border-radius:10px;
 box-shadow:0 1px 4px rgba(0,0,0,.05);
 }
 
-.hidden{display:none !important}
-
 .modal{
 position:fixed;
 top:0;left:0;right:0;bottom:0;
@@ -40,18 +38,6 @@ width:340px;
 text-align:center;
 }
 
-.meal-btn{
-margin:5px;
-padding:10px;
-width:100%;
-border:none;
-border-radius:8px;
-background:#f3f4f6;
-cursor:pointer;
-color:#000;
-font-weight:500;
-}
-
 .preview-box{
 background:#f9fafb;
 padding:10px;
@@ -61,7 +47,7 @@ text-align:left;
 font-size:14px;
 }
 
-.mode-btn{
+button{
 margin:5px;
 padding:6px 10px;
 border-radius:8px;
@@ -69,7 +55,7 @@ border:1px solid #ddd;
 cursor:pointer;
 }
 
-.active-mode{
+.active{
 background:#111;
 color:#fff;
 }
@@ -88,7 +74,7 @@ color:#fff;
 <a href="profile.html">Profile</a>
 </div>
 
-<h2>🍽 Food AI v15 (DEFICIT + BARCODE + MULTI-CAPTURE)</h2>
+<h2>🍽 Food AI v15.1 (FIXED AI SCAN + STABLE CORE)</h2>
 
 <div class="card">
 <p id="activeProfile">Loading...</p>
@@ -99,6 +85,7 @@ color:#fff;
 <p id="todayCalories">Calories: --</p>
 <p id="deficitInfo">Deficit: --</p>
 <p id="modeStatus">Mode: normal</p>
+<p id="aiStatus">AI: idle</p>
 </div>
 
 <div class="card">
@@ -146,85 +133,91 @@ let mode = "normal"
 let multiList = []
 
 /* ================= PROFILE ================= */
-function getProfile(){
-return JSON.parse(localStorage.getItem("activeProfile")) || {name:"Guest"}
-}
+document.getElementById("activeProfile").innerText =
+JSON.parse(localStorage.getItem("activeProfile"))?.name || "Guest"
 
-document.getElementById("activeProfile").innerText = getProfile().name
+/* ================= AI WRAPPER SAFE ================= */
+async function analyzeImage(base64){
 
-/* ================= BARCODE DB ================= */
-const barcodeDB = {
-"milo": {food:"Milo",calories:120,protein:3,carbs:22,fat:2},
-"coke": {food:"Coca Cola",calories:140,protein:0,carbs:39,fat:0},
-"maggie": {food:"Maggi Mee",calories:380,protein:8,carbs:52,fat:14},
-"mcd": {food:"McDonalds Meal",calories:650,protein:25,carbs:80,fat:28}
-}
+document.getElementById("aiStatus").innerText = "AI: scanning..."
 
-/* ================= DETECT FOOD ================= */
-function detectFoodType(t){
-t=t.toLowerCase()
-if(t.includes("rice")) return "Rice Meal"
-if(t.includes("burger")) return "Fast Food"
-return "Mixed Food"
-}
+try{
 
-/* ================= NUTRITION ENGINE ================= */
-function estimateNutrition(food){
+if(window.analyzeFoodImage){
 
-let base = 450
+const r = await window.analyzeFoodImage(base64)
 
-if(food.includes("chicken")) base+=100
-if(food.includes("rice")) base+=120
-if(food.includes("milo")) base+=150
-if(food.includes("burger")) base+=300
+document.getElementById("aiStatus").innerText = "AI: done"
 
 return {
-calories:base,
-protein:Math.round(base*0.05),
-carbs:Math.round(base*0.12),
-fat:Math.round(base*0.04)
+food: r?.food || "Unknown meal",
+calories: Number(r?.calories || 450),
+protein: Number(r?.protein || 18),
+carbs: Number(r?.carbs || 55),
+fat: Number(r?.fat || 12)
 }
 }
 
-/* ================= DEFICIT ENGINE ================= */
+}catch(e){
+console.log(e)
+}
+
+document.getElementById("aiStatus").innerText = "AI: fallback"
+
+return {
+food:"Unknown meal",
+calories:450,
+protein:18,
+carbs:55,
+fat:12
+}
+}
+
+/* ================= MODE ================= */
+function setMode(m){
+mode = m
+document.getElementById("modeStatus").innerText = "Mode: " + m
+}
+
+/* ================= NUTRITION ================= */
+function estimateNutrition(food){
+
+let base = 400
+food = food.toLowerCase()
+
+if(food.includes("chicken")) base += 120
+if(food.includes("rice")) base += 120
+if(food.includes("milo")) base += 150
+if(food.includes("burger")) base += 300
+
+return {
+calories: base,
+protein: Math.round(base*0.05),
+carbs: Math.round(base*0.12),
+fat: Math.round(base*0.04)
+}
+}
+
+/* ================= DEFICIT ================= */
 function getDeficit(cal){
 
 let maintenance = 2200
 let diff = cal - maintenance
 
 return {
-maintenance,
-diff,
-status: diff>0?"surplus":"deficit"
+status: diff > 0 ? "surplus" : "deficit",
+diff
 }
-}
-
-/* ================= AI CORE ================= */
-async function analyzeImage(base64){
-
-if(window.analyzeFoodImage){
-const r = await window.analyzeFoodImage(base64)
-
-return {
-food:r.food,
-calories:r.calories,
-protein:r.protein,
-carbs:r.carbs,
-fat:r.fat
-}
-}
-
-return {food:"Unknown",calories:450,protein:20,carbs:50,fat:10}
 }
 
 /* ================= MANUAL ================= */
 function startManualFlow(){
 
-const input=document.getElementById("foodInput").value
-if(!input) return
+let input = document.getElementById("foodInput").value.trim()
+if(!input) return alert("Enter food")
 
 pendingFood = {
-food:detectFoodType(input),
+food: input,
 ...estimateNutrition(input)
 }
 
@@ -232,52 +225,70 @@ showPreview(pendingFood)
 openMealModal()
 }
 
-/* ================= BARCODE ================= */
-function openBarcode(){
+/* ================= AI ================= */
+async function openAIUpload(){
 
-let code = prompt("Enter barcode / name")
+let input = document.createElement("input")
+input.type = "file"
+input.accept = "image/*"
 
-let item = barcodeDB[code?.toLowerCase()]
+input.onchange = async ()=>{
 
-pendingFood = item || {
-food:"Unknown item",
-calories:300,
-protein:10,
-carbs:40,
-fat:10
+let file = input.files[0]
+if(!file) return
+
+let reader = new FileReader()
+
+reader.onload = async ()=>{
+
+let base64 = reader.result
+
+let result = await analyzeImage(base64)
+
+pendingFood = {
+food: result.food,
+...result,
+image: base64
 }
 
 showPreview(pendingFood)
 openMealModal()
 }
 
-/* ================= MULTI CAPTURE ================= */
+reader.readAsDataURL(file)
+}
+
+input.click()
+}
+
+/* ================= BARCODE ================= */
+function openBarcode(){
+
+let code = prompt("barcode/name")
+
+pendingFood = {
+food: code || "Unknown",
+calories: 300,
+protein: 10,
+carbs: 40,
+fat: 10
+}
+
+showPreview(pendingFood)
+openMealModal()
+}
+
+/* ================= MULTI ================= */
 function startMultiCapture(){
 
-multiList = []
-
-for(let i=0;i<3;i++){
-multiList.push({
-food:"Captured Meal "+(i+1),
-calories:400,
-protein:20,
-carbs:50,
-fat:12
-})
-}
-
-renderMulti()
-}
-
-/* ================= MULTI RENDER ================= */
-function renderMulti(){
+multiList = [
+{food:"Meal 1",calories:400},
+{food:"Meal 2",calories:500},
+{food:"Meal 3",calories:600}
+]
 
 document.getElementById("foodList").innerHTML =
-multiList.map(m=>`
-<div class="preview-box">
-${m.food} - ${m.calories} kcal
-</div>
-`).join("")
+multiList.map(m=>`<div class="preview-box">${m.food} ${m.calories}</div>`).join("")
 }
 
 /* ================= PREVIEW ================= */
@@ -291,7 +302,8 @@ if(mode==="bulk") adj.calories*=1.15
 document.getElementById("previewArea").innerHTML = `
 <div class="preview-box">
 ${adj.food}<br>
-${Math.round(adj.calories)} kcal
+${Math.round(adj.calories)} kcal<br>
+P:${Math.round(adj.protein)} C:${Math.round(adj.carbs)} F:${Math.round(adj.fat)}
 </div>
 `
 }
@@ -303,16 +315,16 @@ if(!pendingFood) return
 
 pendingFood.mealType = type
 
-if(mode==="deficit") pendingFood.calories*=0.85
-if(mode==="bulk") pendingFood.calories*=1.15
+if(window.saveFood){
+window.saveFood(pendingFood)
+}
 
-if(window.saveFood) window.saveFood(pendingFood)
-
-pendingFood=null
+pendingFood = null
 
 closeMealModal()
-
 updateToday()
+
+alert("Saved!")
 }
 
 /* ================= MODAL ================= */
@@ -329,17 +341,10 @@ document.getElementById("previewArea").innerHTML=""
 function updateToday(){
 
 let cal = pendingFood?.calories || 0
-
 let def = getDeficit(cal)
 
-document.getElementById("todayCalories").innerText =
-"Calories: " + cal
-
-document.getElementById("deficitInfo").innerText =
-"Daily: " + def.status + " (" + def.diff + " kcal)"
-
-document.getElementById("modeStatus").innerText =
-"Mode: " + mode
+document.getElementById("todayCalories").innerText = "Calories: " + cal
+document.getElementById("deficitInfo").innerText = def.status + " (" + def.diff + ")"
 }
 
 </script>
