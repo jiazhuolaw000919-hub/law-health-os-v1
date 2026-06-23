@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>AI Calendar v12.3 Stable Pro (PROFILE FIXED)</title>
+<title>AI Calendar v12.3 Stable Pro (PROFILE + SKELETON UPGRADED)</title>
 
 <link rel="stylesheet" href="style.css">
 
@@ -19,6 +19,7 @@ margin:0;
 font-family:Arial;
 }
 
+/* ================= GRID ================= */
 .grid{
 display:grid;
 grid-template-columns:repeat(7,1fr);
@@ -84,6 +85,25 @@ justify-content:center;
 background:rgba(0,0,0,0.5);
 z-index:9999;
 }
+
+/* ================= SKELETON UI (NEW) ================= */
+.skeleton {
+background: linear-gradient(90deg,#eee 25%,#f5f5f5 50%,#eee 75%);
+background-size: 200% 100%;
+animation: shimmer 1.2s infinite;
+border-radius: 6px;
+}
+
+@keyframes shimmer {
+0% {background-position:-200% 0}
+100% {background-position:200% 0}
+}
+
+.skeleton-text{
+height:16px;
+width:140px;
+margin:5px 0;
+}
 </style>
 </head>
 
@@ -99,11 +119,15 @@ z-index:9999;
 <a href="profile.html">Profile</a>
 </div>
 
-<h2 class="center">📅 AI Calendar v12.3 Stable Pro (PROFILE FIXED)</h2>
+<h2 class="center">📅 AI Calendar v12.3 (SKELETON + SYNC UPGRADED)</h2>
 
 <div class="card">
 <p id="time"></p>
-<p id="profile">Loading profile...</p>
+
+<!-- PROFILE SKELETON WRAPPER -->
+<div id="profileSkeleton" class="skeleton skeleton-text"></div>
+<p id="profile" style="display:none">Loading profile...</p>
+
 <p id="bmi"></p>
 </div>
 
@@ -152,7 +176,7 @@ const grid = document.getElementById("grid")
 const monthSelect = document.getElementById("monthSelect")
 const yearSelect = document.getElementById("yearSelect")
 
-/* ================= SAFE PROFILE SYSTEM (FIXED) ================= */
+/* ================= SAFE PROFILE SYSTEM ================= */
 function fallbackProfile(){
 return {
 id:"guest",
@@ -166,15 +190,12 @@ function getActiveProfile(){
 try{
 const raw = localStorage.getItem("activeProfile")
 
-if(!raw || raw === "undefined" || raw === "null"){
+if(!raw || raw==="undefined" || raw==="null"){
 return fallbackProfile()
 }
 
 const parsed = JSON.parse(raw)
-
-if(!parsed || !parsed.id){
-return fallbackProfile()
-}
+if(!parsed?.id) return fallbackProfile()
 
 return parsed
 
@@ -184,17 +205,31 @@ return fallbackProfile()
 }
 }
 
-/* ================= PROFILE RENDER (NO FREEZE) ================= */
+/* ================= PROFILE RENDER (SKELETON FIX) ================= */
 function renderProfile(){
+
+const sk = document.getElementById("profileSkeleton")
 const el = document.getElementById("profile")
-if(!el) return
 
 const p = getActiveProfile()
-el.innerText = "👤 Active: " + (p.name || "Guest")
 
-// optional debug
+if(sk) sk.style.display = "none"
+if(el){
+el.style.display = "block"
+el.innerText = "👤 Active: " + (p.name || "Guest")
+}
+
 console.log("Profile loaded:", p)
 }
+
+/* ================= REALTIME SYNC ================= */
+window.addEventListener("profileSyncUpdate", ()=>{
+renderProfile()
+})
+
+window.addEventListener("focus", ()=>{
+renderProfile()
+})
 
 /* ================= SAFE FOOD ================= */
 async function safeFoodLogs(date){
@@ -247,12 +282,12 @@ risk: ai.risk
 }
 }
 
-/* ================= CHEAT DAY ================= */
+/* ================= CHEAT ================= */
 function isCheatDay(calories, risk){
 return calories >= 3200 || (risk==="HIGH" && calories >= 2800)
 }
 
-/* ================= WEEK SUMMARY ================= */
+/* ================= WEEK ================= */
 async function buildWeeklySummary(){
 
 let total=0,max=0
@@ -413,12 +448,16 @@ document.getElementById("time").innerText="🕒 "+new Date().toLocaleString()
 
 setInterval(updateTime,1000)
 
-/* FIX: ensure profile renders AFTER DOM ready */
+/* ================= INIT + SAFE LOAD ================= */
 window.addEventListener("DOMContentLoaded", () => {
 init()
 renderProfile()
 buildWeeklySummary()
 load()
+
+// extra safety (fix async profile delay)
+setTimeout(renderProfile, 300)
+setTimeout(renderProfile, 1500)
 })
 
 window.openModal=openModal
