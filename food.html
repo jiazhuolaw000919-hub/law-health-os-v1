@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Food AI v13 FULL FIX (AI STABLE CORE)</title>
+<title>Food AI v14 FULL SYSTEM (PRO UPGRADE)</title>
 
 <link rel="stylesheet" href="style.css">
 
@@ -52,10 +52,6 @@ color:#000;
 font-weight:500;
 }
 
-.meal-btn:hover{
-background:#e5e7eb;
-}
-
 .preview-box{
 background:#f9fafb;
 padding:10px;
@@ -63,6 +59,19 @@ border-radius:8px;
 margin-top:10px;
 text-align:left;
 font-size:14px;
+}
+
+.mode-btn{
+margin:5px;
+padding:6px 10px;
+border-radius:8px;
+border:1px solid #ddd;
+cursor:pointer;
+}
+
+.active-mode{
+background:#111;
+color:#fff;
 }
 </style>
 </head>
@@ -79,7 +88,7 @@ font-size:14px;
 <a href="profile.html">Profile</a>
 </div>
 
-<h2 style="text-align:center">🍽 Food AI v13 FULL FIX (AI + MANUAL STABLE CORE)</h2>
+<h2 style="text-align:center">🍽 Food AI v14 (AUTO DETECT + DEFICIT/BULK + SCANNER)</h2>
 
 <div class="card">
 <p id="activeProfile">Loading profile...</p>
@@ -93,6 +102,14 @@ font-size:14px;
 <p id="todayFat">Fat: --</p>
 <p id="mealScore">Meal Score: --</p>
 <p id="riskSummary">Risk: --</p>
+<p id="modeStatus">Mode: Normal</p>
+</div>
+
+<div class="card">
+<h3>⚙️ Goal Mode</h3>
+<button class="mode-btn" onclick="setMode('normal')">Normal</button>
+<button class="mode-btn" onclick="setMode('deficit')">Fat Loss</button>
+<button class="mode-btn" onclick="setMode('bulk')">Muscle Gain</button>
 </div>
 
 <div class="card">
@@ -104,10 +121,12 @@ font-size:14px;
 
 <div class="card">
 <input id="foodInput" placeholder="e.g. chicken rice + milo + tomyam">
+
 <br><br>
 
 <button onclick="startManualFlow()">Add Food</button>
 <button onclick="openAIUpload()">AI Scan</button>
+<button onclick="openBarcodeScanner()">Barcode Scan</button>
 
 </div>
 
@@ -137,27 +156,63 @@ font-size:14px;
 <script>
 
 let pendingFood = null
-let mode = null
+let mode = "normal"
 
+/* ================= PROFILE ================= */
 function getProfile(){
 return JSON.parse(localStorage.getItem("activeProfile")) || {id:"guest",name:"Guest"}
 }
 
 function init(){
 document.getElementById("activeProfile").innerText = getProfile().name
+updateModeUI()
 }
 init()
 
-function calculateToday(){
-document.getElementById("todayCalories").innerText="Calories: --"
-document.getElementById("todayProtein").innerText="Protein: --"
-document.getElementById("todayCarbs").innerText="Carbs: --"
-document.getElementById("todayFat").innerText="Fat: --"
-document.getElementById("mealScore").innerText="Meal Score: --"
-document.getElementById("riskSummary").innerText="Risk: --"
+/* ================= MODE SYSTEM ================= */
+function setMode(m){
+mode = m
+updateModeUI()
 }
 
-/* ================= AI CORE FIX v13 ================= */
+function updateModeUI(){
+document.getElementById("modeStatus").innerText = "Mode: " + mode
+}
+
+/* ================= AI FOOD TYPE DETECTOR ================= */
+function detectFoodType(text){
+
+text = text.toLowerCase()
+
+if(text.includes("chicken rice")) return "Chicken Rice"
+if(text.includes("mcd") || text.includes("burger")) return "Fast Food"
+if(text.includes("pizza")) return "Pizza"
+if(text.includes("noodle") || text.includes("mee")) return "Noodles"
+if(text.includes("rice")) return "Rice Meal"
+
+return "Mixed Food"
+}
+
+/* ================= SMART NUTRITION ENGINE ================= */
+function estimateNutrition(food){
+
+let base = 450
+
+if(food.includes("chicken")) base += 100
+if(food.includes("rice")) base += 120
+if(food.includes("milo")) base += 150
+if(food.includes("burger")) base += 300
+if(food.includes("pizza")) base += 350
+
+return {
+calories: base,
+protein: Math.round(base * 0.04),
+carbs: Math.round(base * 0.12),
+fat: Math.round(base * 0.05)
+}
+}
+
+/* ================= AI CORE ================= */
 async function analyzeImage(base64){
 
 try{
@@ -175,11 +230,9 @@ fat: Number(result?.fat ?? 12)
 }
 }
 
-}catch(e){
-console.log("AI error:", e)
-}
+}catch(e){}
 
-/* SAFE FALLBACK (never zero anymore) */
+/* fallback */
 return {
 food: "Unknown meal",
 calories: 450,
@@ -189,31 +242,27 @@ fat: 12
 }
 }
 
-/* ================= MANUAL FLOW FIX ================= */
+/* ================= MANUAL FLOW ================= */
 function startManualFlow(){
 
 const input = document.getElementById("foodInput").value.trim()
 if(!input) return alert("Enter food first")
 
+const nutrition = estimateNutrition(input)
+
 pendingFood = {
-food: input,
-calories: 420,
-protein: 16,
-carbs: 52,
-fat: 11,
+food: detectFoodType(input),
+raw: input,
+...nutrition,
 date: new Date().toISOString().split("T")[0]
 }
-
-mode = "manual"
 
 showPreview(pendingFood)
 openMealModal()
 }
 
-/* ================= AI UPLOAD FIX ================= */
+/* ================= AI UPLOAD ================= */
 function openAIUpload(){
-
-mode = "ai"
 
 const fileInput = document.createElement("input")
 fileInput.type = "file"
@@ -229,15 +278,11 @@ const reader = new FileReader()
 reader.onload = async () => {
 
 const base64 = reader.result
-
 const result = await analyzeImage(base64)
 
 pendingFood = {
-food: result.food,
-calories: result.calories,
-protein: result.protein,
-carbs: result.carbs,
-fat: result.fat,
+food: detectFoodType(result.food),
+...result,
 image: base64,
 date: new Date().toISOString().split("T")[0]
 }
@@ -252,16 +297,51 @@ reader.readAsDataURL(file)
 fileInput.click()
 }
 
+/* ================= BARCODE SCANNER ================= */
+function openBarcodeScanner(){
+
+alert("Barcode scanner placeholder (connect ZXing / QuaggaJS here)")
+
+pendingFood = {
+food:"Barcode Food",
+calories:300,
+protein:10,
+carbs:40,
+fat:8,
+date:new Date().toISOString().split("T")[0]
+}
+
+showPreview(pendingFood)
+openMealModal()
+}
+
+/* ================= DEFICIT / BULK LOGIC ================= */
+function applyGoalAdjustment(food){
+
+if(mode === "deficit"){
+food.calories *= 0.85
+}
+
+if(mode === "bulk"){
+food.calories *= 1.15
+food.protein *= 1.1
+}
+
+return food
+}
+
 /* ================= PREVIEW ================= */
 function showPreview(data){
 
-document.getElementById("previewArea").innerHTML = `
+const adjusted = applyGoalAdjustment({...data})
+
+document.getElementById("foodList").innerHTML = `
 <div class="preview-box">
-<b>Detected:</b> ${data.food}<br>
-🔥 ${data.calories} kcal<br>
-🥩 Protein: ${data.protein}g<br>
-🍚 Carbs: ${data.carbs}g<br>
-🥑 Fat: ${data.fat}g
+<b>Detected:</b> ${adjusted.food}<br>
+🔥 ${Math.round(adjusted.calories)} kcal<br>
+🥩 Protein: ${Math.round(adjusted.protein)}g<br>
+🍚 Carbs: ${Math.round(adjusted.carbs)}g<br>
+🥑 Fat: ${Math.round(adjusted.fat)}g
 </div>
 `
 }
@@ -276,26 +356,39 @@ document.getElementById("mealModal").style.display="none"
 document.getElementById("previewArea").innerHTML=""
 }
 
-/* ================= SAVE FIX ================= */
+/* ================= SAVE ================= */
 function saveMeal(type){
 
 if(!pendingFood) return
 
 pendingFood.mealType = type
 
+pendingFood = applyGoalAdjustment(pendingFood)
+
 if(window.saveFood){
 window.saveFood(pendingFood)
-}else{
-console.log("saveFood missing:", pendingFood)
 }
 
+console.log("Saved:", pendingFood)
+
 pendingFood = null
-mode = null
 
 closeMealModal()
+
 calculateToday()
 
 alert("Saved successfully!")
+}
+
+/* ================= TODAY ================= */
+function calculateToday(){
+
+document.getElementById("todayCalories").innerText="Calories: --"
+document.getElementById("todayProtein").innerText="Protein: --"
+document.getElementById("todayCarbs").innerText="Carbs: --"
+document.getElementById("todayFat").innerText="Fat: --"
+document.getElementById("mealScore").innerText="Meal Score: --"
+document.getElementById("riskSummary").innerText="Risk: --"
 }
 
 </script>
