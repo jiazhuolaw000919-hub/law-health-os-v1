@@ -3,13 +3,10 @@ import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 const SUPABASE_URL = "https://jqevcfyhnlttzdiylfrh.supabase.co"
 const SUPABASE_KEY = "sb_publishable_GMM5PgeRzudbeh4aHK-1pw_lQ6TQnVe"
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_KEY)
-
-// 🔥 DELETE GUARD
-const DELETE_GUARD_KEY = "deleted_items_v2"
+export const supabase = createClient(SUPABASE_URL, SUPABASE_KEY)
 
 /* =========================
-PROFILE CORE
+🔥 SAFE PROFILE CORE
 ========================= */
 function fallbackProfile(){
 return {
@@ -22,7 +19,7 @@ updatedAt: new Date().toISOString()
 }
 }
 
-function getActiveProfile(){
+export function getActiveProfile(){
 try{
 return JSON.parse(localStorage.getItem("activeProfile")) || fallbackProfile()
 }catch(e){
@@ -31,8 +28,10 @@ return fallbackProfile()
 }
 
 /* =========================
-DELETE SYSTEM
+🧹 DELETE SYSTEM (LOCAL ONLY)
 ========================= */
+const DELETE_GUARD_KEY = "deleted_items_v2"
+
 function getDeletedSet(){
 return new Set(JSON.parse(localStorage.getItem(DELETE_GUARD_KEY)) || [])
 }
@@ -43,7 +42,7 @@ localStorage.setItem(DELETE_GUARD_KEY, JSON.stringify([...set]))
 
 function markDeleted(id){
 if(!id) return
-let set = getDeletedSet()
+const set = getDeletedSet()
 set.add(id)
 saveDeletedSet(set)
 }
@@ -58,13 +57,13 @@ return list.filter(i => i && i.id && !isDeleted(i.id))
 }
 
 /* =========================
-🍽 FOOD LOG READ (NEW SUPABASE CLIENT)
+🍽 FOOD READ (FIXED SAFE)
 ========================= */
-async function getFoodLogs(date){
+export async function getFoodLogs(date){
 
 const profile = getActiveProfile()
 
-let { data, error } = await supabase
+const { data, error } = await supabase
 .from("food_logs")
 .select("*")
 .eq("date", date)
@@ -75,17 +74,17 @@ console.log("food log error:", error)
 return []
 }
 
-return filterDeleted(data)
+return filterDeleted(data || [])
 }
 
 /* =========================
-🍽 FOOD LOG WRITE
+🍽 FOOD WRITE
 ========================= */
-async function saveFood(data){
+export async function saveFood(data){
 
 const profile = getActiveProfile()
 
-let { data: result, error } = await supabase
+const { data: result, error } = await supabase
 .from("food_logs")
 .insert([{
 userId: profile.id,
@@ -110,15 +109,15 @@ return result
 /* =========================
 📊 7 DAY STATS
 ========================= */
-async function getFoodStats7Days(){
+export async function getFoodStats7Days(){
 
 let arr = []
 
 for(let i=6;i>=0;i--){
 let d = new Date()
 d.setDate(d.getDate()-i)
-let date = d.toISOString().split("T")[0]
 
+let date = d.toISOString().split("T")[0]
 let logs = await getFoodLogs(date)
 
 let total = 0
@@ -127,29 +126,25 @@ logs.forEach(l=> total += Number(l.calories || 0))
 arr.push(total)
 }
 
-let avg = arr.reduce((a,b)=>a+b,0)/arr.length
-let max = Math.max(...arr)
-let min = Math.min(...arr)
-
 return {
 days: arr,
-avg: Math.round(avg),
-max,
-min
+avg: Math.round(arr.reduce((a,b)=>a+b,0)/arr.length),
+max: Math.max(...arr),
+min: Math.min(...arr)
 }
 }
 
 /* =========================
-❌ DELETE FOOD (NEW)
+❌ DELETE FOOD (FIXED)
 ========================= */
-async function deleteFood(foodId){
+export async function deleteFood(foodId){
 
 const profile = getActiveProfile()
-if(!foodId) return
+if(!foodId) return false
 
 markDeleted(foodId)
 
-let { error } = await supabase
+const { error } = await supabase
 .from("food_logs")
 .delete()
 .eq("id", foodId)
@@ -157,18 +152,18 @@ let { error } = await supabase
 
 if(error){
 console.log("delete error:", error)
-return null
+return false
 }
 
 return true
 }
 
 /* =========================
-PROFILE CLOUD
+👤 PROFILE SYSTEM
 ========================= */
-async function upsertProfile(profile){
+export async function upsertProfile(profile){
 
-let { data, error } = await supabase
+const { data, error } = await supabase
 .from("profiles")
 .upsert({
 id: profile.id,
@@ -190,23 +185,23 @@ return null
 return data
 }
 
-async function fetchProfiles(){
+export async function fetchProfiles(){
 
-let { data, error } = await supabase
+const { data, error } = await supabase
 .from("profiles")
 .select("*")
 
 if(error){
-console.log(error)
+console.log("fetch profiles error:", error)
 return []
 }
 
-return filterDeleted(data)
+return filterDeleted(data || [])
 }
 
-async function fetchProfile(id){
+export async function fetchProfile(id){
 
-let { data, error } = await supabase
+const { data, error } = await supabase
 .from("profiles")
 .select("*")
 .eq("id", id)
@@ -216,28 +211,23 @@ return data?.[0] || null
 }
 
 /* =========================
-SYNC ENGINE (SIMPLIFIED)
+🔄 SYNC ENGINE (SAFE VERSION)
 ========================= */
-async function syncProfiles(){
+export async function syncProfiles(){
 
 try{
 
-let cloud = await fetchProfiles()
-let local = JSON.parse(localStorage.getItem("profiles")) || []
+const cloud = await fetchProfiles()
+const local = JSON.parse(localStorage.getItem("profiles")) || []
 
-cloud = filterDeleted(cloud)
-local = filterDeleted(local)
-
-let map = new Map()
+const map = new Map()
 
 ;[...local, ...cloud].forEach(p=>{
 if(!p || !p.id || isDeleted(p.id)) return
 map.set(p.id, {...(map.get(p.id)||{}), ...p})
 })
 
-let merged = [...map.values()]
-
-localStorage.setItem("profiles", JSON.stringify(merged))
+localStorage.setItem("profiles", JSON.stringify([...map.values()]))
 
 }catch(e){
 console.log("sync error:", e)
@@ -245,9 +235,11 @@ console.log("sync error:", e)
 }
 
 /* =========================
-REALTIME (OPTIONAL)
+⚡ REALTIME (SAFE GUARD)
 ========================= */
-function initRealtime(){
+export function initRealtime(){
+
+if(!supabase) return
 
 supabase
 .channel("health-realtime")
@@ -275,7 +267,11 @@ window.dispatchEvent(new Event("profileSyncUpdate"))
 
 initRealtime()
 
+/* =========================
+AUTO SYNC
+========================= */
 setInterval(syncProfiles, 10000)
+
 window.addEventListener("online", syncProfiles)
 window.addEventListener("focus", syncProfiles)
 
