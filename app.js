@@ -1,6 +1,5 @@
 /* =========================
-GLOBAL PROFILE ENGINE v10.7
-Backward Compatible Version
+GLOBAL PROFILE ENGINE v10.6 (FIXED + COMPAT LAYER)
 ========================= */
 
 const STORAGE_KEYS = {
@@ -8,39 +7,35 @@ profiles: “profiles”,
 activeProfile: “activeProfile”
 }
 
-/* ––––– GET ––––– */
-function getProfiles(){
+/* =========================
+SAFE GET
+========================= */
 
+function getProfiles(){
 try{
-return JSON.parse(
-localStorage.getItem(STORAGE_KEYS.profiles)
-) || []
+return JSON.parse(localStorage.getItem(STORAGE_KEYS.profiles)) || []
 }catch(e){
 return []
 }
-
 }
 
 function getActiveProfile(){
-
 try{
-return JSON.parse(
-localStorage.getItem(STORAGE_KEYS.activeProfile)
-) || null
+return JSON.parse(localStorage.getItem(STORAGE_KEYS.activeProfile)) || null
 }catch(e){
 return null
 }
-
 }
 
-/* ––––– SET ––––– */
-function setProfiles(profiles){
+/* =========================
+SAFE SET
+========================= */
 
+function setProfiles(profiles){
 localStorage.setItem(
 STORAGE_KEYS.profiles,
 JSON.stringify(profiles)
 )
-
 }
 
 function setActiveProfile(profile){
@@ -50,19 +45,22 @@ STORAGE_KEYS.activeProfile,
 JSON.stringify(profile)
 )
 
-/* realtime update */
+/* 🔥 FIX: notify all pages */
 window.dispatchEvent(
 new Event(“profileSyncUpdate”)
 )
 
 }
 
-/* ––––– INIT ––––– */
+/* =========================
+INIT SYSTEM
+========================= */
+
 function ensureProfileSystem(){
 
 let profiles = getProfiles()
 
-if(profiles.length === 0){
+if(!profiles || profiles.length === 0){
 
 const defaultProfile = {
 id:“guest”,
@@ -71,7 +69,7 @@ height:170,
 weight:70
 }
 
-profiles.push(defaultProfile)
+profiles = [defaultProfile]
 
 setProfiles(profiles)
 setActiveProfile(defaultProfile)
@@ -86,7 +84,10 @@ setActiveProfile(profiles[0])
 
 }
 
-/* ––––– CREATE ––––– */
+/* =========================
+CREATE PROFILE
+========================= */
+
 function createProfile(profile){
 
 let profiles = getProfiles()
@@ -102,17 +103,20 @@ profiles.push(newProfile)
 
 setProfiles(profiles)
 
+setActiveProfile(newProfile)
+
 return newProfile
 
 }
 
-/* ––––– DELETE ––––– */
+/* =========================
+DELETE PROFILE
+========================= */
+
 function deleteProfile(id){
 
 let profiles =
-getProfiles().filter(
-p => p.id !== id
-)
+getProfiles().filter(p => p.id !== id)
 
 setProfiles(profiles)
 
@@ -133,13 +137,14 @@ weight:70
 
 }
 
-/* ––––– SWITCH ––––– */
+/* =========================
+SWITCH PROFILE
+========================= */
+
 function switchProfile(id){
 
 let profile =
-getProfiles().find(
-p => p.id === id
-)
+getProfiles().find(p => p.id === id)
 
 if(profile){
 setActiveProfile(profile)
@@ -148,10 +153,26 @@ setActiveProfile(profile)
 }
 
 /* =========================
-NEW PROFILE ENGINE
-v12 Compatible
+UI COMPAT LAYER (CRITICAL FIX)
 ========================= */
 
+/* 🔥 FIX 1: app.js now supports setActive() used in food.html */
+function setActive(page){
+
+try{
+localStorage.setItem(“activePage”, page)
+
+window.dispatchEvent(
+new Event(“pageChange”)
+)
+
+}catch(e){
+console.log(e)
+}
+
+}
+
+/* 🔥 FIX 2: ProfileEngine compatibility (dashboard + food pages) */
 const ProfileEngine = {
 
 render(targetId){
@@ -161,8 +182,7 @@ document.getElementById(targetId)
 
 if(!el) return
 
-const p =
-getActiveProfile()
+const p = getActiveProfile()
 
 if(!p){
 el.innerText = “Guest”
@@ -172,8 +192,7 @@ return
 if(targetId === “activeProfile”){
 
 el.innerText =
-“👤 Active: “ +
-(p.name || “Guest”)
+“👤 Active: “ + (p.name || “Guest”)
 
 }else{
 
@@ -193,32 +212,20 @@ createProfile
 }
 
 /* =========================
-GLOBAL EXPORT
+GLOBAL EXPORTS (IMPORTANT)
 ========================= */
 
-window.ProfileEngine =
-ProfileEngine
+window.getProfiles = getProfiles
+window.getActiveProfile = getActiveProfile
+window.setProfiles = setProfiles
+window.setActiveProfile = setActiveProfile
 
-window.getProfiles =
-getProfiles
+window.createProfile = createProfile
+window.deleteProfile = deleteProfile
+window.switchProfile = switchProfile
 
-window.getActiveProfile =
-getActiveProfile
-
-window.setProfiles =
-setProfiles
-
-window.setActiveProfile =
-setActiveProfile
-
-window.switchProfile =
-switchProfile
-
-window.createProfile =
-createProfile
-
-window.deleteProfile =
-deleteProfile
+window.ProfileEngine = ProfileEngine
+window.setActive = setActive
 
 /* =========================
 AUTO INIT
