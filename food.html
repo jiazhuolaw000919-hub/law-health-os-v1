@@ -37,6 +37,8 @@ padding:20px;
 border-radius:12px;
 width:340px;
 text-align:center;
+max-height:90vh;
+overflow-y:auto;
 }
 
 .preview-box{
@@ -69,6 +71,20 @@ font-size:12px;
 background:#ffdddd;
 border:1px solid #ff8888;
 cursor:pointer;
+}
+
+.upload-preview-img{
+max-width:100%;
+max-height:150px;
+border-radius:8px;
+margin:10px 0;
+}
+
+.editable-field{
+width:100%;
+padding:6px;
+margin:4px 0;
+box-sizing:border-box;
 }
 </style>
 </head>
@@ -105,16 +121,35 @@ cursor:pointer;
 <div id="foodList"></div>
 </div>
 
+<!-- 重构后的 Meal Modal，支持图片预览 + 手动修正 -->
 <div id="mealModal" class="modal">
 <div class="modal-content">
 
-<h3>Select Meal</h3>
-<div id="previewArea"></div>
+<h3>🍽️ Confirm & Save</h3>
 
-<button onclick="saveMeal('Breakfast')">Breakfast</button>
-<button onclick="saveMeal('Lunch')">Lunch</button>
-<button onclick="saveMeal('Dinner')">Dinner</button>
-<button onclick="saveMeal('Snack')">Snack</button>
+<!-- 图片预览区 -->
+<div id="modalImagePreview" style="display:none;"></div>
+
+<!-- 可编辑的食物名称 -->
+<label>Food Name:</label>
+<input type="text" id="modalFoodName" class="editable-field" placeholder="Enter food name">
+
+<!-- 显示估算营养值 -->
+<div id="modalNutritionPreview" class="preview-box"></div>
+
+<!-- 重新估算按钮 -->
+<button onclick="reEstimateFromName()">🔄 Re-estimate from name</button>
+
+<br><br>
+
+<div style="display:flex; flex-wrap:wrap; justify-content:center;">
+<button onclick="saveMeal('Breakfast')">🌅 Breakfast</button>
+<button onclick="saveMeal('Lunch')">🌞 Lunch</button>
+<button onclick="saveMeal('Dinner')">🌙 Dinner</button>
+<button onclick="saveMeal('Snack')">🍪 Snack</button>
+</div>
+
+<button onclick="closeMealModal()" style="margin-top:10px;">Cancel</button>
 
 </div>
 </div>
@@ -196,7 +231,7 @@ components = ["mixed ingredients"]
 return components
 }
 
-/* ================= AI WRAPPER ================= */
+/* ================= AI WRAPPER (保留原样，但即使失败我们也能手动修正) ================= */
 async function analyzeImage(base64){
 
 setAI("scanning...")
@@ -283,15 +318,10 @@ components: extractComponents(input),
 ...estimateNutrition(input)
 }
 
-/* FIXED ORDER */
 openMealModal()
-
-requestAnimationFrame(()=>{
-showPreview(pendingFood)
-})
 }
 
-/* ================= AI UPLOAD (FIXED STABLE POPUP) ================= */
+/* ================= AI UPLOAD (现在会弹出可编辑的确认框) ================= */
 async function openAIUpload(){
 
 let input = document.createElement("input")
@@ -310,9 +340,10 @@ reader.onload = async ()=>{
 let base64 = reader.result
 let result = await analyzeImage(base64)
 
+// 构建 pendingFood，但 food 名称会被放入模态框供编辑
 pendingFood = {
 id: Date.now(),
-food: result.food,
+food: result.food,            // 可能是 Unknown meal
 type: detectFoodType(result.food),
 date: new Date().toISOString().split("T")[0],
 components: extractComponents(result.food),
@@ -320,19 +351,13 @@ components: extractComponents(result.food),
 image: base64
 }
 
-/* FIXED SAFARI SAFE RENDER */
 openMealModal()
-
-requestAnimationFrame(()=>{
-showPreview(pendingFood)
-})
-
 }
 
 reader.readAsDataURL(file)
 }
 
-/* FIX: iOS safe click */
+// iOS safe click
 setTimeout(()=>{
 input.click()
 },0)
@@ -356,9 +381,6 @@ fat: 10
 }
 
 openMealModal()
-requestAnimationFrame(()=>{
-showPreview(pendingFood)
-})
 }
 
 /* ================= MULTI ================= */
@@ -379,28 +401,82 @@ ${m.calories} kcal
 `).join("")
 }
 
-/* ================= PREVIEW ================= */
-function showPreview(d){
+/* ================= 新的 Meal Modal 逻辑 ================= */
+function openMealModal(){
+if(!pendingFood) return;
 
-let adj = {...d}
+const modal = document.getElementById("mealModal")
+modal.style.display = "flex"
 
-if(mode==="deficit") adj.calories*=0.85
-if(mode==="bulk") adj.calories*=1.15
+// 图片预览
+const imgDiv = document.getElementById("modalImagePreview")
+if(pendingFood.image){
+imgDiv.style.display = "block"
+imgDiv.innerHTML = `<img src="${pendingFood.image}" class="upload-preview-img" />`
+} else {
+imgDiv.style.display = "none"
+imgDiv.innerHTML = ""
+}
 
-document.getElementById("previewArea").innerHTML = `
-<div class="preview-box">
+// 食物名称输入框
+document.getElementById("modalFoodName").value = pendingFood.food
 
+// 显示当前营养数值
+updateModalNutritionPreview()
+}
+
+function updateModalNutritionPreview(){
+if(!pendingFood) return;
+
+let adj = {...pendingFood}
+if(mode==="deficit") adj.calories = Math.round(adj.calories * 0.85)
+if(mode==="bulk") adj.calories = Math.round(adj.calories * 1.15)
+
+document.getElementById("modalNutritionPreview").innerHTML = `
 <b>${adj.food}</b><br>
 <span class="small-tag">${adj.type}</span><br><br>
-
 🔥 ${Math.round(adj.calories)} kcal<br>
 P:${Math.round(adj.protein)} C:${Math.round(adj.carbs)} F:${Math.round(adj.fat)}<br>
-
 <br><b>Components:</b><br>
 ${(adj.components||[]).map(c=>`<span class="small-tag">${c}</span>`).join("")}
-
-</div>
 `
+}
+
+// 当用户在输入框修改名字时，实时更新 pendingFood 并重算
+document.getElementById("modalFoodName").addEventListener("input", function(e){
+if(!pendingFood) return;
+let newName = e.target.value.trim() || "Unknown meal"
+pendingFood.food = newName
+pendingFood.type = detectFoodType(newName)
+pendingFood.components = extractComponents(newName)
+
+// 是否自动重算营养？这里提供手动按钮，但也可以自动：
+// 为了不过度覆盖AI的结果，我们只在用户点击"Re-estimate"时才重算
+// 但我们可以更新预览中的 food 名称
+updateModalNutritionPreview()
+})
+
+// 重新估算按钮：根据当前输入框的名字重新生成营养值（覆盖AI结果）
+function reEstimateFromName(){
+if(!pendingFood) return;
+let name = document.getElementById("modalFoodName").value.trim() || "Unknown meal"
+let est = estimateNutrition(name)
+pendingFood.food = name
+pendingFood.type = detectFoodType(name)
+pendingFood.components = extractComponents(name)
+pendingFood.calories = est.calories
+pendingFood.protein = est.protein
+pendingFood.carbs = est.carbs
+pendingFood.fat = est.fat
+updateModalNutritionPreview()
+}
+
+// 让 reEstimateFromName 全局可访问
+window.reEstimateFromName = reEstimateFromName
+
+function closeMealModal(){
+document.getElementById("mealModal").style.display="none"
+pendingFood = null
 }
 
 /* ================= SAVE ================= */
@@ -408,6 +484,8 @@ function saveMeal(type){
 
 if(!pendingFood) return
 
+// 保存前确保 food 名称是输入框里的最终值
+pendingFood.food = document.getElementById("modalFoodName").value.trim() || pendingFood.food
 pendingFood.mealType = type
 
 foodDB.push(pendingFood)
@@ -449,28 +527,6 @@ foodDB.map(f=>`
 <br><button class="delete-btn" onclick="deleteFood(${f.id})">Delete</button>
 </div>
 `).join("")
-}
-
-/* ================= MODAL FIX ================= */
-function openMealModal(){
-
-const modal = document.getElementById("mealModal")
-
-modal.style.display = "flex"
-modal.style.opacity = "1"
-
-/* FORCE REPAINT */
-modal.offsetHeight
-
-setTimeout(()=>{
-modal.style.transform = "translateZ(0)"
-},10)
-
-}
-
-function closeMealModal(){
-document.getElementById("mealModal").style.display="none"
-document.getElementById("previewArea").innerHTML=""
 }
 
 /* ================= TODAY ================= */
