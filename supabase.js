@@ -1,25 +1,30 @@
 /* =========================
-GLOBAL PROFILE ENGINE v10.8 (CLOUD MERGE + SYNC)
-========================= */
+ SUPABASE CONFIG v17 (SYNC LOAD + SAVE)
+ ========================= */
 
-const STORAGE_KEYS = {
-  profiles: "profiles",
-  activeProfile: "activeProfile"
+const SUPABASE_URL = "https://jqevcfyhnlttzdiylfrh.supabase.co"
+const SUPABASE_KEY = "sb_publishable_GMM5PgeRzudbeh4aHK-1pw_lQ6TQnVe"
+
+if (typeof window.supabase === "undefined") {
+  console.error("❌ Supabase CDN not loaded.")
 }
 
-// 安全读取
-function getProfiles() {
-  try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEYS.profiles)) || []
-  } catch (e) {
-    return []
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY)
+
+function fallbackProfile() {
+  return {
+    id: "guest",
+    name: "Guest",
+    height: 170,
+    weight: 70,
+    weightHistory: []
   }
 }
 
 function getActiveProfile() {
   try {
-    const raw = localStorage.getItem(STORAGE_KEYS.activeProfile)
-    if (!raw || raw === "undefined" || raw === "null") return fallbackProfile()
+    const raw = localStorage.getItem("activeProfile")
+    if (!raw) return fallbackProfile()
     const p = JSON.parse(raw)
     return p?.id ? p : fallbackProfile()
   } catch (e) {
@@ -27,199 +32,148 @@ function getActiveProfile() {
   }
 }
 
-// 安全写入
-function setProfiles(profiles) {
-  localStorage.setItem(STORAGE_KEYS.profiles, JSON.stringify(profiles))
-}
-
-function setActiveProfile(profile) {
-  localStorage.setItem(STORAGE_KEYS.activeProfile, JSON.stringify(profile))
-  window.dispatchEvent(new Event("profileSyncUpdate"))
-}
-
-// 默认 profile
-function fallbackProfile() {
-  return {
-    id: "guest",
-    name: "Guest",
-    height: 170,
-    weight: 70
-  }
-}
-
-/* =========================
- 云端合并（拉取远端 profiles，与本地合并）
- ========================= */
-async function syncProfilesFromCloud() {
-  if (typeof supabaseClient === "undefined" || typeof fetchProfiles !== "function") return false
+async function getFoodLogs(date) {
   try {
-    const cloudProfiles = await fetchProfiles()
-    if (!cloudProfiles || cloudProfiles.length === 0) return false
-
-    // 标准化云端数据
-    const normalizedCloud = cloudProfiles.map(p => ({
-      id: p.id,
-      name: p.name || "Unnamed",
-      height: Number(p.height || 170),
-      weight: Number(p.weight || 70),
-      email: p.email || "",
-      phone: p.phone || "",
-      gender: p.gender || "",
-      age: Number(p.age || 0),
-      country: p.country || "",
-      occupation: p.occupation || "",
-      target_weight: Number(p.target_weight || 70),
-      body_fat_percentage: Number(p.body_fat_percentage || 0),
-      muscle_mass: Number(p.muscle_mass || 0),
-      primary_goal: p.primary_goal || "maintenance",
-      bmi: p.bmi || null,
-      created_at: p.created_at || new Date().toISOString(),
-      updated_at: p.updated_at || new Date().toISOString()
-    }))
-
-    // 获取本地 profiles
-    let localProfiles = getProfiles()
-
-    // 构建云端 id 映射
-    const cloudMap = Object.fromEntries(normalizedCloud.map(p => [p.id, p]))
-
-    // 1. 更新本地：用云端版本覆盖同 id 的 profile
-    localProfiles = localProfiles.map(lp => cloudMap[lp.id] || lp)
-
-    // 2. 添加云端有而本地没有的 profile
-    const localIds = new Set(localProfiles.map(p => p.id))
-    normalizedCloud.forEach(cp => {
-      if (!localIds.has(cp.id)) {
-        localProfiles.push(cp)
-      }
-    })
-
-    // 3. 确保存在 guest（如果全都删光了）
-    if (!localProfiles.find(p => p.id === "guest")) {
-      localProfiles.unshift(fallbackProfile())
-    }
-
-    // 存储合并后的列表
-    setProfiles(localProfiles)
-
-    // 确保 active 有效
-    const active = getActiveProfile()
-    if (!active || !localProfiles.find(p => p.id === active.id)) {
-      setActiveProfile(localProfiles[0])
-    }
-
-    window.dispatchEvent(new Event("profileSyncUpdate"))
-    return true
+    const profile = getActiveProfile()
+    if (!profile?.id || profile.id === "guest") return []
+    const { data, error } = await supabaseClient
+      .from("food_logs")
+      .select("*")
+      .eq("date", date)
+      .eq("userId", profile.id)
+    if (error) return []
+    return Array.isArray(data) ? data : []
   } catch (e) {
-    console.warn("Profile cloud merge failed:", e)
-    return false
+    return []
   }
 }
 
-/* =========================
- 初始化系统（本地 + 云端合并）
- ========================= */
-async function ensureProfileSystem() {
-  // 先尝试云端合并（如果可用）
-  await syncProfilesFromCloud()
-
-  // 如果合并后仍无数据（极端情况），创建 guest
-  let profiles = getProfiles()
-  if (!profiles || profiles.length === 0) {
-    const defaultProfile = {
-      id: "guest",
-      name: "Guest",
-      height: 170,
-      weight: 70
-    }
-    profiles = [defaultProfile]
-    setProfiles(profiles)
-    setActiveProfile(defaultProfile)
-  }
-}
-
-// 创建 profile
-function createProfile(profile) {
-  let profiles = getProfiles()
-  const newProfile = {
-    id: Date.now().toString(),
-    height: 170,
-    weight: 70,
-    ...profile
-  }
-  profiles.push(newProfile)
-  setProfiles(profiles)
-  setActiveProfile(newProfile)
-  return newProfile
-}
-
-// 删除 profile
-function deleteProfile(id) {
-  let profiles = getProfiles().filter(p => p.id !== id)
-  setProfiles(profiles)
-  let active = getActiveProfile()
-  if (active && active.id === id) {
-    setActiveProfile(profiles[0] || fallbackProfile())
-  }
-}
-
-// 切换 profile
-function switchProfile(id) {
-  let profile = getProfiles().find(p => p.id === id)
-  if (profile) setActiveProfile(profile)
-}
-
-// 兼容旧版 setActive
-function setActive(page) {
+// 拉取当前用户的所有食物记录（用于多设备同步）
+async function loadAllMyFoodLogs() {
   try {
-    localStorage.setItem("activePage", page)
-    window.dispatchEvent(new Event("pageChange"))
+    const profile = getActiveProfile()
+    if (!profile?.id || profile.id === "guest") return []
+    const { data, error } = await supabaseClient
+      .from("food_logs")
+      .select("*")
+      .eq("userId", profile.id)
+      .order("date", { ascending: false })
+    if (error) throw error
+    return data || []
   } catch (e) {
-    console.log(e)
+    console.error("Failed to load all food logs:", e)
+    return []
   }
 }
 
-// ProfileEngine 兼容层
-const ProfileEngine = {
-  render(targetId) {
-    const el = document.getElementById(targetId)
-    if (!el) return
-    const p = getActiveProfile()
-    if (!p) {
-      el.innerText = "Guest"
-      return
+async function saveFood(food) {
+  try {
+    const profile = getActiveProfile()
+    if (!profile?.id || profile.id === "guest") {
+      console.warn("⚠️ Guest user, skipping sync")
+      return null
     }
-    if (targetId === "activeProfile") {
-      el.innerText = "👤 Active: " + (p.name || "Guest")
-    } else {
-      el.innerText = p.name || "Guest"
+
+    const fullPayload = {
+      userId: profile.id,
+      food: food.food || "unknown",
+      calories: Number(food.calories || 0),
+      protein: Number(food.protein || 0),
+      carbs: Number(food.carbs || 0),
+      fat: Number(food.fat || 0),
+      meal_type: food.mealType || "snack",
+      components: food.components || [],
+      image_url: food.image || null,
+      date: food.date || new Date().toISOString().split("T")[0]
     }
-  },
-  getActiveProfile,
-  getProfiles,
-  switchProfile,
-  deleteProfile,
-  createProfile
+
+    let { data, error } = await supabaseClient
+      .from("food_logs")
+      .insert([fullPayload])
+      .select()
+
+    if (!error) {
+      console.log("✅ Synced to Supabase (full):", data)
+      return data
+    }
+
+    console.warn("Full insert failed, trying base with userId:", error.message)
+    const basePayload = {
+      userId: profile.id,
+      food: food.food || "unknown",
+      calories: Number(food.calories || 0),
+      date: food.date || new Date().toISOString().split("T")[0]
+    }
+
+    const result = await supabaseClient
+      .from("food_logs")
+      .insert([basePayload])
+      .select()
+
+    if (result.error) {
+      console.error("❌ Save failed:", JSON.stringify(result.error, null, 2))
+      return null
+    }
+
+    console.log("✅ Synced to Supabase (base):", result.data)
+    return result.data
+  } catch (e) {
+    console.error("saveFood crash:", e)
+    return null
+  }
 }
 
-// 导出
-window.getProfiles = getProfiles
+async function fetchProfiles() {
+  try {
+    const { data, error } = await supabaseClient
+      .from("profiles")
+      .select("*")
+    if (error) return []
+    return Array.isArray(data) ? data : []
+  } catch (e) {
+    return []
+  }
+}
+
+async function upsertProfile(profile) {
+  try {
+    const { data, error } = await supabaseClient
+      .from("profiles")
+      .upsert(profile)
+      .select()
+    if (error) return null
+    return data
+  } catch (e) {
+    return null
+  }
+}
+
+function initRealtime() {
+  try {
+    supabaseClient
+      .channel("health")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "food_logs" },
+        () => window.dispatchEvent(new Event("foodSyncUpdate"))
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "profiles" },
+        () => window.dispatchEvent(new Event("profileSyncUpdate"))
+      )
+      .subscribe()
+  } catch (e) {
+    console.log("realtime init failed:", e)
+  }
+}
+
+initRealtime()
+
+window.supabaseClient = supabaseClient
+window.getFoodLogs = getFoodLogs
+window.loadAllMyFoodLogs = loadAllMyFoodLogs
+window.saveFood = saveFood
+window.fetchProfiles = fetchProfiles
+window.upsertProfile = upsertProfile
 window.getActiveProfile = getActiveProfile
-window.setProfiles = setProfiles
-window.setActiveProfile = setActiveProfile
-window.createProfile = createProfile
-window.deleteProfile = deleteProfile
-window.switchProfile = switchProfile
-window.ProfileEngine = ProfileEngine
-window.setActive = setActive
-
-// 启动时异步初始化
-window.addEventListener("DOMContentLoaded", async () => {
-  await ensureProfileSystem()
-  window.dispatchEvent(new Event("profileSyncUpdate"))
-})
-
-// 立刻初始化（以防 DOMContentLoaded 已过）
-ensureProfileSystem().then(() => {
-  window.dispatchEvent(new Event("profileSyncUpdate"))
-})
