@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Food AI v16.2 PRO SYSTEM (FIXED STABLE VERSION)</title>
+<title>Food AI v16.2 PRO SYSTEM (SILENT FALLBACK)</title>
 
 <link rel="stylesheet" href="style.css">
 
@@ -13,98 +13,25 @@
 <script src="ai-vision.js"></script>
 
 <style>
-.card{
-margin:10px;
-padding:12px;
-background:#fff;
-border-radius:10px;
-box-shadow:0 1px 4px rgba(0,0,0,.05);
-}
-
-.modal{
-position:fixed;
-top:0;left:0;right:0;bottom:0;
-background:rgba(0,0,0,0.5);
-display:none;
-align-items:center;
-justify-content:center;
-z-index:9999;
-}
-
-.modal-content{
-background:white;
-padding:20px;
-border-radius:12px;
-width:340px;
-text-align:center;
-max-height:90vh;
-overflow-y:auto;
-}
-
-.preview-box{
-background:#f9fafb;
-padding:10px;
-border-radius:8px;
-margin-top:10px;
-text-align:left;
-font-size:14px;
-}
-
-button{
-margin:5px;
-padding:6px 10px;
-border-radius:8px;
-border:1px solid #ddd;
-cursor:pointer;
-}
-
-.small-tag{
-display:inline-block;
-margin:2px;
-padding:2px 6px;
-background:#e5e7eb;
-border-radius:6px;
-font-size:12px;
-}
-
-.delete-btn{
-background:#ffdddd;
-border:1px solid #ff8888;
-cursor:pointer;
-}
-
-.upload-preview-img{
-max-width:100%;
-max-height:150px;
-border-radius:8px;
-margin:10px 0;
-}
-
-.editable-field{
-width:100%;
-padding:6px;
-margin:4px 0;
-box-sizing:border-box;
-}
-
-.dish-list {
-  text-align:left;
-  margin: 8px 0;
-  padding:0;
-  list-style:none;
-}
-
-.dish-list li {
-  padding:3px 0;
-  border-bottom:1px solid #eee;
-  font-size:13px;
-}
+/* 所有样式保持不变 */
+.card{ margin:10px; padding:12px; background:#fff; border-radius:10px; box-shadow:0 1px 4px rgba(0,0,0,.05); }
+.modal{ position:fixed; top:0;left:0;right:0;bottom:0; background:rgba(0,0,0,0.5); display:none; align-items:center; justify-content:center; z-index:9999; }
+.modal-content{ background:white; padding:20px; border-radius:12px; width:340px; text-align:center; max-height:90vh; overflow-y:auto; }
+.preview-box{ background:#f9fafb; padding:10px; border-radius:8px; margin-top:10px; text-align:left; font-size:14px; }
+button{ margin:5px; padding:6px 10px; border-radius:8px; border:1px solid #ddd; cursor:pointer; }
+.small-tag{ display:inline-block; margin:2px; padding:2px 6px; background:#e5e7eb; border-radius:6px; font-size:12px; }
+.delete-btn{ background:#ffdddd; border:1px solid #ff8888; cursor:pointer; }
+.upload-preview-img{ max-width:100%; max-height:150px; border-radius:8px; margin:10px 0; }
+.editable-field{ width:100%; padding:6px; margin:4px 0; box-sizing:border-box; }
+.dish-list { text-align:left; margin:8px 0; padding:0; list-style:none; }
+.dish-list li { padding:3px 0; border-bottom:1px solid #eee; font-size:13px; }
+.hint { color:#888; font-size:13px; margin:6px 0; }
 </style>
 </head>
 
 <body>
 
-<h2>🍽 Food AI v16.2 (FIXED STABLE VERSION)</h2>
+<h2>🍽 Food AI v16.2 (Silent Fallback)</h2>
 
 <div class="card">
 <p id="activeProfile">Loading...</p>
@@ -120,9 +47,7 @@ box-sizing:border-box;
 
 <div class="card">
 <input id="foodInput" placeholder="e.g. chicken rice + milo">
-
 <br><br>
-
 <button onclick="startManualFlow()">Add Food</button>
 <button onclick="openAIUpload()">AI Scan</button>
 <button onclick="openBarcode()">Barcode Scan</button>
@@ -138,7 +63,6 @@ box-sizing:border-box;
 <!-- Meal Modal -->
 <div id="mealModal" class="modal">
 <div class="modal-content">
-
 <h3>🍽️ Confirm & Save</h3>
 
 <div id="modalImagePreview" style="display:none;"></div>
@@ -147,11 +71,11 @@ box-sizing:border-box;
 <input type="text" id="modalFoodName" class="editable-field" placeholder="Enter food name">
 
 <div id="modalDishList" class="preview-box" style="display:none;"></div>
+<div id="manualHint" class="hint" style="display:none;">⚠️ AI couldn't identify the food. Please type the name manually.</div>
 
 <div id="modalNutritionPreview" class="preview-box"></div>
 
 <button onclick="reEstimateFromName()">🔄 Re-estimate from name</button>
-
 <br><br>
 
 <div style="display:flex; flex-wrap:wrap; justify-content:center;">
@@ -162,7 +86,6 @@ box-sizing:border-box;
 </div>
 
 <button onclick="closeMealModal()" style="margin-top:10px;">Cancel</button>
-
 </div>
 </div>
 
@@ -170,30 +93,22 @@ box-sizing:border-box;
 <div id="customEntryModal" class="modal">
 <div class="modal-content">
 <h3>✍️ Custom Food Entry</h3>
-
 <label>Food Name:</label>
 <input type="text" id="customFoodName" class="editable-field" placeholder="e.g. Chicken rice">
-
 <label>Calories (kcal):</label>
 <input type="number" id="customCalories" class="editable-field" placeholder="500" min="0">
-
 <label>Protein (g):</label>
 <input type="number" id="customProtein" class="editable-field" placeholder="20" min="0">
-
 <label>Carbs (g):</label>
 <input type="number" id="customCarbs" class="editable-field" placeholder="50" min="0">
-
 <label>Fat (g):</label>
 <input type="number" id="customFat" class="editable-field" placeholder="15" min="0">
-
 <br>
 <label>Photo (optional):</label>
 <input type="file" id="customPhotoInput" accept="image/*" onchange="previewCustomPhoto()">
-
 <div id="customPhotoPreview" style="display:none; margin:10px 0;">
   <img id="customPhotoImg" class="upload-preview-img" />
 </div>
-
 <br>
 <button onclick="confirmCustomEntry()">Continue to Meal Select</button>
 <button onclick="closeCustomEntry()">Cancel</button>
@@ -250,12 +165,12 @@ function extractComponents(text){
   return components
 }
 
-/* ================= AI WRAPPER ================= */
+/* ================= AI WRAPPER (SILENT FALLBACK) ================= */
 async function analyzeImage(base64){
   setAI("scanning...")
   try {
     if (!window.analyzeFoodImage) {
-      throw new Error("analyzeFoodImage function not found. Check ai-vision.js loading.")
+      throw new Error("analyzeFoodImage not available")
     }
     const r = await window.analyzeFoodImage(base64)
     console.log("Raw AI response:", r)
@@ -291,13 +206,14 @@ async function analyzeImage(base64){
       }
     }
 
-    throw new Error("AI returned unrecognized format")
+    throw new Error("Unrecognized format")
   } catch(e) {
-    console.error("AI scan error:", e)
-    alert("AI scan failed. Check console (F12) or your API key.")
+    // 🔥 静默降级：不弹窗，只是控制台记录
+    console.warn("AI scan failed, falling back:", e.message)
+    setAI("fallback")
   }
 
-  setAI("fallback")
+  // 返回默认值，让用户手动修改
   return {
     food: "Unknown meal",
     calories: 450,
@@ -480,6 +396,14 @@ function openMealModal(){
 
   document.getElementById("modalFoodName").value = pendingFood.food
 
+  // 显示/隐藏手动输入提示
+  const hint = document.getElementById("manualHint")
+  if(pendingFood.food === "Unknown meal" || pendingFood.food === "Unknown Food"){
+    hint.style.display = "block"
+  } else {
+    hint.style.display = "none"
+  }
+
   const dishListDiv = document.getElementById("modalDishList")
   if(pendingFood.dishes && pendingFood.dishes.length > 1){
     let dishHtml = "<b>Identified dishes:</b><ul class='dish-list'>"
@@ -516,6 +440,8 @@ document.getElementById("modalFoodName").addEventListener("input", function(e){
   pendingFood.food = newName
   pendingFood.type = detectFoodType(newName)
   pendingFood.components = extractComponents(newName)
+  // 隐藏提示
+  document.getElementById("manualHint").style.display = "none"
   updateModalNutritionPreview()
 })
 
@@ -531,6 +457,7 @@ function reEstimateFromName(){
   pendingFood.carbs = est.carbs
   pendingFood.fat = est.fat
   pendingFood.dishes = []
+  document.getElementById("manualHint").style.display = "none"
   updateModalNutritionPreview()
   document.getElementById("modalDishList").style.display = "none"
 }
