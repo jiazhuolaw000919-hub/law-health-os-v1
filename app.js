@@ -1,5 +1,5 @@
 /* =========================
-GLOBAL PROFILE ENGINE v10.7 (CLOUD RESTORE + SAFE)
+GLOBAL PROFILE ENGINE v10.8 (CLOUD MERGE + SYNC)
 ========================= */
 
 const STORAGE_KEYS = {
@@ -48,56 +48,83 @@ function fallbackProfile() {
 }
 
 /* =========================
- 云端恢复（从 Supabase 拉取所有 profiles）
+ 云端合并（拉取远端 profiles，与本地合并）
  ========================= */
-async function loadProfilesFromCloud() {
+async function syncProfilesFromCloud() {
   if (typeof supabaseClient === "undefined" || typeof fetchProfiles !== "function") return false
   try {
     const cloudProfiles = await fetchProfiles()
-    if (cloudProfiles && cloudProfiles.length > 0) {
-      // 标准化数据（防止某些字段缺失）
-      const normalized = cloudProfiles.map(p => ({
-        id: p.id,
-        name: p.name || p.food_name || "Unnamed",
-        height: Number(p.height || 170),
-        weight: Number(p.weight || 70),
-        email: p.email || "",
-        phone: p.phone || "",
-        gender: p.gender || "",
-        age: Number(p.age || 0),
-        country: p.country || "",
-        occupation: p.occupation || "",
-        target_weight: Number(p.target_weight || 70),
-        body_fat_percentage: Number(p.body_fat_percentage || 0),
-        muscle_mass: Number(p.muscle_mass || 0),
-        primary_goal: p.primary_goal || "maintenance",
-        bmi: p.bmi || null,
-        created_at: p.created_at || new Date().toISOString(),
-        updated_at: p.updated_at || new Date().toISOString()
-      }))
-      localStorage.setItem(STORAGE_KEYS.profiles, JSON.stringify(normalized))
-      return true
+    if (!cloudProfiles || cloudProfiles.length === 0) return false
+
+    // 标准化云端数据
+    const normalizedCloud = cloudProfiles.map(p => ({
+      id: p.id,
+      name: p.name || "Unnamed",
+      height: Number(p.height || 170),
+      weight: Number(p.weight || 70),
+      email: p.email || "",
+      phone: p.phone || "",
+      gender: p.gender || "",
+      age: Number(p.age || 0),
+      country: p.country || "",
+      occupation: p.occupation || "",
+      target_weight: Number(p.target_weight || 70),
+      body_fat_percentage: Number(p.body_fat_percentage || 0),
+      muscle_mass: Number(p.muscle_mass || 0),
+      primary_goal: p.primary_goal || "maintenance",
+      bmi: p.bmi || null,
+      created_at: p.created_at || new Date().toISOString(),
+      updated_at: p.updated_at || new Date().toISOString()
+    }))
+
+    // 获取本地 profiles
+    let localProfiles = getProfiles()
+
+    // 构建云端 id 映射
+    const cloudMap = Object.fromEntries(normalizedCloud.map(p => [p.id, p]))
+
+    // 1. 更新本地：用云端版本覆盖同 id 的 profile
+    localProfiles = localProfiles.map(lp => cloudMap[lp.id] || lp)
+
+    // 2. 添加云端有而本地没有的 profile
+    const localIds = new Set(localProfiles.map(p => p.id))
+    normalizedCloud.forEach(cp => {
+      if (!localIds.has(cp.id)) {
+        localProfiles.push(cp)
+      }
+    })
+
+    // 3. 确保存在 guest（如果全都删光了）
+    if (!localProfiles.find(p => p.id === "guest")) {
+      localProfiles.unshift(fallbackProfile())
     }
+
+    // 存储合并后的列表
+    setProfiles(localProfiles)
+
+    // 确保 active 有效
+    const active = getActiveProfile()
+    if (!active || !localProfiles.find(p => p.id === active.id)) {
+      setActiveProfile(localProfiles[0])
+    }
+
+    window.dispatchEvent(new Event("profileSyncUpdate"))
+    return true
   } catch (e) {
-    console.warn("Cloud profiles restore failed:", e)
+    console.warn("Profile cloud merge failed:", e)
+    return false
   }
-  return false
 }
 
 /* =========================
- 初始化系统（确保至少有一个 profile）
+ 初始化系统（本地 + 云端合并）
  ========================= */
 async function ensureProfileSystem() {
+  // 先尝试云端合并（如果可用）
+  await syncProfilesFromCloud()
+
+  // 如果合并后仍无数据（极端情况），创建 guest
   let profiles = getProfiles()
-  let restoredFromCloud = false
-
-  // 如果本地没有任何 profile（或解析出错），尝试从云端恢复
-  if (!profiles || profiles.length === 0) {
-    restoredFromCloud = await loadProfilesFromCloud()
-    profiles = getProfiles() // 重新读取
-  }
-
-  // 如果云端也没有，创建默认 guest
   if (!profiles || profiles.length === 0) {
     const defaultProfile = {
       id: "guest",
@@ -108,12 +135,6 @@ async function ensureProfileSystem() {
     profiles = [defaultProfile]
     setProfiles(profiles)
     setActiveProfile(defaultProfile)
-  }
-
-  // 确保 activeProfile 存在且有效
-  const active = getActiveProfile()
-  if (!active || !profiles.find(p => p.id === active.id)) {
-    setActiveProfile(profiles[0])
   }
 }
 
@@ -192,14 +213,13 @@ window.switchProfile = switchProfile
 window.ProfileEngine = ProfileEngine
 window.setActive = setActive
 
-// 启动时异步初始化（确保 cloud restore 完成）
+// 启动时异步初始化
 window.addEventListener("DOMContentLoaded", async () => {
   await ensureProfileSystem()
-  // 通知其他页面已经准备好
   window.dispatchEvent(new Event("profileSyncUpdate"))
 })
 
-// 立即初始化一次（以防 DOMContentLoaded 已经触发）
+// 立刻初始化
 ensureProfileSystem().then(() => {
   window.dispatchEvent(new Event("profileSyncUpdate"))
 })
