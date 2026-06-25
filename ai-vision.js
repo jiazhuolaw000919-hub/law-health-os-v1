@@ -35,7 +35,7 @@ window.analyzeFoodImage = async function(base64) {
 
 async function callOpenAIVision(base64Image) {
   // 🔥 在这里粘贴你的新 key
-  const OPENAI_API_KEY = "sk-YOUR_NEW_KEY_HERE";
+  const OPENAI_API_KEY = "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";
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 25000);
