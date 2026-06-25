@@ -2,7 +2,8 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>AI Calendar v12.3 Stable Pro (FIXED SCRIPTS)</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Calendar v12.3 Stable Pro (MOBILE READY)</title>
 
 <link rel="stylesheet" href="style.css">
 
@@ -12,95 +13,48 @@
 <script src="supabase.js"></script>
 
 <style>
-body{
-margin:0;
-font-family:Arial;
-}
-
-/* ================= GRID ================= */
-.grid{
-display:grid;
-grid-template-columns:repeat(7,1fr);
-gap:8px;
-padding:10px;
-}
-
-.day{
-background:#fff;
-border-radius:10px;
-padding:10px;
-min-height:70px;
-font-size:12px;
-cursor:pointer;
-box-shadow:0 1px 3px rgba(0,0,0,.05);
-transition:0.2s;
-position:relative;
-}
-.day:hover{transform:scale(1.05)}
-
-.card{
-margin:10px;
-padding:12px;
-background:#fff;
-border-radius:10px;
-box-shadow:0 1px 4px rgba(0,0,0,.05);
-}
-
-.badge{
-display:inline-block;
-padding:4px 8px;
-border-radius:6px;
-font-size:12px;
-margin-top:5px;
-}
-
-.green{background:#dcfce7;color:#166534}
-.yellow{background:#fef9c3;color:#854d0e}
-.red{background:#fee2e2;color:#991b1b}
-
+/* 日历特有的微调（全局 style.css 已包含基础样式，这里仅保留特殊部分） */
 .cheat{
-position:absolute;
-top:6px;
-right:8px;
-font-size:16px;
-color:#ef4444;
-font-weight:bold;
+  position:absolute;
+  top:6px;
+  right:8px;
+  font-size:16px;
+  color:#ef4444;
+  font-weight:bold;
 }
 
 .warn{
-position:absolute;
-top:6px;
-left:8px;
-font-size:14px;
+  position:absolute;
+  top:6px;
+  left:8px;
+  font-size:14px;
 }
 
-#modal{
-position:fixed;
-inset:0;
-display:none;
-align-items:center;
-justify-content:center;
-background:rgba(0,0,0,0.5);
-z-index:9999;
-}
-
-/* ================= SKELETON UI ================= */
+/* 骨骼屏 */
 .skeleton {
-background: linear-gradient(90deg,#eee 25%,#f5f5f5 50%,#eee 75%);
-background-size: 200% 100%;
-animation: shimmer 1.2s infinite;
-border-radius: 6px;
+  background: linear-gradient(90deg,#eee 25%,#f5f5f5 50%,#eee 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.2s infinite;
+  border-radius: 6px;
 }
-
 @keyframes shimmer {
-0% {background-position:-200% 0}
-100% {background-position:200% 0}
+  0% {background-position:-200% 0}
+  100% {background-position:200% 0}
+}
+.skeleton-text{
+  height:16px;
+  width:140px;
+  margin:5px 0;
 }
 
-.skeleton-text{
-height:16px;
-width:140px;
-margin:5px 0;
+/* 弹窗内联样式（确保不被全局覆盖） */
+#modal > div {
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 360px;
+  text-align: left;
 }
 </style>
 </head>
@@ -108,64 +62,55 @@ margin:5px 0;
 <body>
 
 <div class="nav">
-<a href="index.html">Home</a>
-<a href="calendar.html">Calendar</a>
-<a href="food.html">Food</a>
-<a href="workout.html">Workout</a>
-<a href="shopping.html">Shop</a>
-<a href="report.html">Report</a>
-<a href="profile.html">Profile</a>
+  <a href="index.html">Home</a>
+  <a href="calendar.html" class="active">Calendar</a>
+  <a href="food.html">Food</a>
+  <a href="workout.html">Workout</a>
+  <a href="shopping.html">Shop</a>
+  <a href="report.html">Report</a>
+  <a href="profile.html">Profile</a>
 </div>
 
-<h2 class="center">📅 AI Calendar v12.3 (FIXED)</h2>
+<h2 class="center">📅 AI Calendar v12.3 (Mobile Optimized)</h2>
 
 <div class="card">
-<p id="time"></p>
-
-<!-- PROFILE SKELETON WRAPPER -->
-<div id="profileSkeleton" class="skeleton skeleton-text"></div>
-<p id="profile" style="display:none">Loading profile...</p>
-
-<p id="bmi"></p>
+  <p id="time"></p>
+  <div id="profileSkeleton" class="skeleton skeleton-text"></div>
+  <p id="profile" style="display:none">Loading profile...</p>
+  <p id="bmi"></p>
 </div>
 
 <div class="card">
-<h3>🧠 AI Weekly Intelligence</h3>
-<p id="summary">Loading...</p>
-<div id="riskSummary"></div>
+  <h3>🧠 AI Weekly Intelligence</h3>
+  <p id="summary">Loading...</p>
+  <div id="riskSummary"></div>
 </div>
 
 <div class="card">
-<div class="month-bar">
-<button onclick="load()">‹</button>
-
-<select id="monthSelect"></select>
-<select id="yearSelect"></select>
-
-<button onclick="load()">›</button>
-</div>
+  <div class="month-bar">
+    <button onclick="load()">‹</button>
+    <select id="monthSelect"></select>
+    <select id="yearSelect"></select>
+    <button onclick="load()">›</button>
+  </div>
 </div>
 
 <div class="grid" id="grid"></div>
 
 <!-- MODAL -->
 <div id="modal">
-<div style="background:white;padding:20px;border-radius:12px;width:360px;">
-<h3 id="modalDate"></h3>
-
-<p id="modalCalories"></p>
-<p id="modalProtein"></p>
-<p id="modalCarbs"></p>
-<p id="modalFat"></p>
-
-<div id="mealBreakdown"></div>
-<p id="miniAI"></p>
-
-<br>
-
-<button onclick="openDayPage()">📄 View Full Day</button>
-<button onclick="closeModal()">Close</button>
-</div>
+  <div>
+    <h3 id="modalDate"></h3>
+    <p id="modalCalories"></p>
+    <p id="modalProtein"></p>
+    <p id="modalCarbs"></p>
+    <p id="modalFat"></p>
+    <div id="mealBreakdown"></div>
+    <p id="miniAI"></p>
+    <br>
+    <button onclick="openDayPage()">📄 View Full Day</button>
+    <button onclick="closeModal()">Close</button>
+  </div>
 </div>
 
 <script>
@@ -176,285 +121,270 @@ const yearSelect = document.getElementById("yearSelect")
 
 /* ================= SAFE PROFILE SYSTEM ================= */
 function fallbackProfile(){
-return {
-id:"guest",
-name:"Guest",
-height:170,
-weight:70
-}
+  return {
+    id:"guest",
+    name:"Guest",
+    height:170,
+    weight:70
+  }
 }
 
 function getActiveProfile(){
-try{
-const raw = localStorage.getItem("activeProfile")
-
-if(!raw || raw==="undefined" || raw==="null"){
-return fallbackProfile()
-}
-
-const parsed = JSON.parse(raw)
-if(!parsed?.id) return fallbackProfile()
-
-return parsed
-
-}catch(e){
-console.log("profile parse error:", e)
-return fallbackProfile()
-}
+  try{
+    const raw = localStorage.getItem("activeProfile")
+    if(!raw || raw==="undefined" || raw==="null"){
+      return fallbackProfile()
+    }
+    const parsed = JSON.parse(raw)
+    if(!parsed?.id) return fallbackProfile()
+    return parsed
+  }catch(e){
+    console.log("profile parse error:", e)
+    return fallbackProfile()
+  }
 }
 
 /* ================= PROFILE RENDER ================= */
 function renderProfile(){
+  const sk = document.getElementById("profileSkeleton")
+  const el = document.getElementById("profile")
+  const p = getActiveProfile()
 
-const sk = document.getElementById("profileSkeleton")
-const el = document.getElementById("profile")
+  if(sk) sk.style.display = "none"
+  if(el){
+    el.style.display = "block"
+    el.innerText = "👤 Active: " + (p.name || "Guest")
+  }
 
-const p = getActiveProfile()
+  // 显示 BMI
+  const bmiEl = document.getElementById("bmi")
+  if(bmiEl){
+    const bmi = (p.weight / ((p.height/100)**2)).toFixed(1)
+    bmiEl.innerText = "BMI: " + bmi
+  }
 
-if(sk) sk.style.display = "none"
-if(el){
-el.style.display = "block"
-el.innerText = "👤 Active: " + (p.name || "Guest")
-}
-
-console.log("Profile loaded:", p)
+  console.log("Profile loaded:", p)
 }
 
 /* ================= REALTIME SYNC ================= */
 window.addEventListener("profileSyncUpdate", ()=>{
-renderProfile()
+  renderProfile()
 })
-
 window.addEventListener("focus", ()=>{
-renderProfile()
+  renderProfile()
 })
 
 /* ================= SAFE FOOD ================= */
 async function safeFoodLogs(date){
-try{
-if(typeof getFoodLogs !== "function") return []
-const p = getActiveProfile()
-const logs = await getFoodLogs(date) || []
-return logs.filter(f => !f.userId || f.userId === p.id)
-}catch(e){
-return []
-}
+  try{
+    if(typeof getFoodLogs !== "function") return []
+    const p = getActiveProfile()
+    const logs = await getFoodLogs(date) || []
+    return logs.filter(f => !f.userId || f.userId === p.id)
+  }catch(e){
+    return []
+  }
 }
 
 /* ================= DAILY ================= */
 async function getDailyMacro(date){
+  let foods = await safeFoodLogs(date)
+  let calories=0, protein=0, carbs=0, fat=0
 
-let foods = await safeFoodLogs(date)
+  foods.forEach(f=>{
+    calories += Number(f.calories||0)
+    protein += Number(f.protein||0)
+    carbs += Number(f.carbs||0)
+    fat += Number(f.fat||0)
+  })
 
-let calories=0, protein=0, carbs=0, fat=0
+  let aiRaw = null
+  if(typeof getAIInsight === "function"){
+    try{
+      aiRaw = await getAIInsight(calories, 22)
+    }catch(e){
+      aiRaw = null
+    }
+  }
 
-foods.forEach(f=>{
-calories += Number(f.calories||0)
-protein += Number(f.protein||0)
-carbs += Number(f.carbs||0)
-fat += Number(f.fat||0)
-})
+  let ai = {
+    score: aiRaw?.score ?? 50,
+    risk: aiRaw?.risk?.level ?? "LOW"
+  }
 
-let aiRaw = null
-
-if(typeof getAIInsight === "function"){
-try{
-aiRaw = await getAIInsight(calories, 22)
-}catch(e){
-aiRaw = null
-}
-}
-
-let ai = {
-score: aiRaw?.score ?? 50,
-risk: aiRaw?.risk?.level ?? "LOW"
-}
-
-return {
-calories,
-protein,
-carbs,
-fat,
-score: ai.score,
-risk: ai.risk
-}
+  return {
+    calories,
+    protein,
+    carbs,
+    fat,
+    score: ai.score,
+    risk: ai.risk
+  }
 }
 
 /* ================= CHEAT ================= */
 function isCheatDay(calories, risk){
-return calories >= 3200 || (risk==="HIGH" && calories >= 2800)
+  return calories >= 3200 || (risk==="HIGH" && calories >= 2800)
 }
 
 /* ================= WEEK ================= */
 async function buildWeeklySummary(){
+  let total=0,max=0
+  let macroP=0,macroC=0,macroF=0
 
-let total=0,max=0
-let macroP=0,macroC=0,macroF=0
+  for(let i=0;i<7;i++){
+    let d=new Date()
+    d.setDate(d.getDate()-i)
+    let date=d.toISOString().split("T")[0]
 
-for(let i=0;i<7;i++){
-let d=new Date()
-d.setDate(d.getDate()-i)
-let date=d.toISOString().split("T")[0]
+    let data = await getDailyMacro(date)
 
-let data = await getDailyMacro(date)
+    total += data.calories
+    macroP += data.protein
+    macroC += data.carbs
+    macroF += data.fat
 
-total += data.calories
-macroP += data.protein
-macroC += data.carbs
-macroF += data.fat
+    if(data.calories>max) max=data.calories
+  }
 
-if(data.calories>max) max=data.calories
-}
+  let avg = total/7
 
-let avg = total/7
+  let p = getActiveProfile()
+  let bmi = (p.weight/((p.height/100)**2)).toFixed(1)
 
-let p = getActiveProfile()
-let bmi = (p.weight/((p.height/100)**2)).toFixed(1)
+  let risk =
+    (bmi>28 || avg>2500) ? "HIGH"
+    : avg>2200 ? "MEDIUM"
+    : "LOW"
 
-let risk =
-(bmi>28 || avg>2500) ? "HIGH"
-: avg>2200 ? "MEDIUM"
-: "LOW"
+  let color =
+    risk==="HIGH"?"red"
+    :risk==="MEDIUM"?"yellow"
+    :"green"
 
-let color =
-risk==="HIGH"?"red"
-:risk==="MEDIUM"?"yellow"
-:"green"
+  document.getElementById("summary").innerText =
+    `Avg ${avg.toFixed(0)} kcal | Max ${max} kcal`
 
-document.getElementById("summary").innerText =
-`Avg ${avg.toFixed(0)} kcal | Max ${max} kcal`
-
-document.getElementById("riskSummary").innerHTML =
-`<span class="badge ${color}">${risk} RISK</span>
-<p>Protein: ${macroP}g | Carbs: ${macroC}g | Fat: ${macroF}g</p>`
+  document.getElementById("riskSummary").innerHTML =
+    `<span class="badge ${color}">${risk} RISK</span>
+    <p>Protein: ${macroP}g | Carbs: ${macroC}g | Fat: ${macroF}g</p>`
 }
 
 /* ================= LOAD ================= */
 async function load(){
+  grid.innerHTML=""
 
-grid.innerHTML=""
+  let y = Number(yearSelect.value || new Date().getFullYear())
+  let m = Number(monthSelect.value || new Date().getMonth())
 
-let y = Number(yearSelect.value || new Date().getFullYear())
-let m = Number(monthSelect.value || new Date().getMonth())
+  let first = new Date(y,m,1).getDay()
+  let days = new Date(y,m+1,0).getDate()
 
-let first = new Date(y,m,1).getDay()
-let days = new Date(y,m+1,0).getDate()
+  for(let i=0;i<first;i++){
+    grid.innerHTML += "<div></div>"
+  }
 
-for(let i=0;i<first;i++){
-grid.innerHTML += "<div></div>"
-}
+  let tasks = []
+  for(let d=1; d<=days; d++){
+    let date = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`
+    tasks.push(renderDay(date,d))
+  }
 
-let tasks = []
-
-for(let d=1; d<=days; d++){
-let date = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`
-tasks.push(renderDay(date,d))
-}
-
-await Promise.all(tasks)
+  await Promise.all(tasks)
 }
 
 /* ================= RENDER DAY ================= */
 async function renderDay(date,d){
+  try{
+    let data = await getDailyMacro(date)
 
-try{
+    let cheat = isCheatDay(data.calories, data.risk)
+    let icon = cheat ? "❗" : data.risk==="HIGH" ? "⚠" : data.risk==="MEDIUM" ? "▲" : ""
 
-let data = await getDailyMacro(date)
+    let div = document.createElement("div")
+    div.className="day"
 
-let cheat = isCheatDay(data.calories, data.risk)
+    div.innerHTML=`
+      <div class="warn">${icon}</div>
+      <b>${d}</b><br>
+      ${data.calories} kcal<br>
+      <span class="badge ${data.risk==="HIGH"?"red":data.risk==="MEDIUM"?"yellow":"green"}">
+        ${data.risk}
+      </span>
+    `
 
-let icon = cheat ? "❗" : data.risk==="HIGH" ? "⚠" : data.risk==="MEDIUM" ? "▲" : ""
+    if(cheat){
+      let mark=document.createElement("div")
+      mark.className="cheat"
+      mark.innerText="!"
+      div.appendChild(mark)
+    }
 
-let div = document.createElement("div")
-div.className="day"
-
-div.innerHTML=`
-<div class="warn">${icon}</div>
-<b>${d}</b><br>
-${data.calories} kcal<br>
-<span class="badge ${data.risk==="HIGH"?"red":data.risk==="MEDIUM"?"yellow":"green"}">
-${data.risk}
-</span>
-`
-
-if(cheat){
-let mark=document.createElement("div")
-mark.className="cheat"
-mark.innerText="!"
-div.appendChild(mark)
-}
-
-div.onclick=()=>openModal(date,data)
-
-grid.appendChild(div)
-
-}catch(e){
-console.log(e)
-}
+    div.onclick=()=>openModal(date,data)
+    grid.appendChild(div)
+  }catch(e){
+    console.log(e)
+  }
 }
 
 /* ================= MODAL ================= */
 function openModal(date,data){
+  document.getElementById("modal").style.display="flex"
+  document.getElementById("modalDate").innerText=date
 
-document.getElementById("modal").style.display="flex"
-document.getElementById("modalDate").innerText=date
+  document.getElementById("modalCalories").innerText=`Calories: ${data.calories}`
+  document.getElementById("modalProtein").innerText=`Protein: ${data.protein}g`
+  document.getElementById("modalCarbs").innerText=`Carbs: ${data.carbs}g`
+  document.getElementById("modalFat").innerText=`Fat: ${data.fat}g`
 
-document.getElementById("modalCalories").innerText=`Calories: ${data.calories}`
-document.getElementById("modalProtein").innerText=`Protein: ${data.protein}`
-document.getElementById("modalCarbs").innerText=`Carbs: ${data.carbs}`
-document.getElementById("modalFat").innerText=`Fat: ${data.fat}`
+  document.getElementById("mealBreakdown").innerHTML=
+    `<p>AI Score: ${data.score}/100</p><p>Risk: ${data.risk}</p>`
 
-document.getElementById("mealBreakdown").innerHTML=
-`<p>AI Score: ${data.score}/100</p><p>Risk: ${data.risk}</p>`
-
-document.getElementById("miniAI").innerText=
-data.score>80?"🟢 Excellent":data.score>60?"🟡 Balanced":"🔴 Needs improvement"
+  document.getElementById("miniAI").innerText=
+    data.score>80?"🟢 Excellent":data.score>60?"🟡 Balanced":"🔴 Needs improvement"
 }
 
 function closeModal(){
-document.getElementById("modal").style.display="none"
+  document.getElementById("modal").style.display="none"
 }
 
 function openDayPage(){
-let date=document.getElementById("modalDate").innerText
-window.location.href=`day.html?date=${date}`
+  let date=document.getElementById("modalDate").innerText
+  window.location.href=`day.html?date=${date}`
 }
 
 /* ================= INIT ================= */
 function init(){
+  monthSelect.innerHTML=""
+  yearSelect.innerHTML=""
 
-monthSelect.innerHTML=""
-yearSelect.innerHTML=""
+  for(let i=0;i<12;i++){
+    monthSelect.innerHTML+=`<option value="${i}">${i+1}</option>`
+  }
 
-for(let i=0;i<12;i++){
-monthSelect.innerHTML+=`<option value="${i}">${i+1}</option>`
-}
+  let y=new Date().getFullYear()
+  for(let i=y-3;i<=y+3;i++){
+    yearSelect.innerHTML+=`<option value="${i}">${i}</option>`
+  }
 
-let y=new Date().getFullYear()
-
-for(let i=y-3;i<=y+3;i++){
-yearSelect.innerHTML+=`<option value="${i}">${i}</option>`
-}
-
-monthSelect.value=new Date().getMonth()
-yearSelect.value=y
+  monthSelect.value=new Date().getMonth()
+  yearSelect.value=y
 }
 
 function updateTime(){
-document.getElementById("time").innerText="🕒 "+new Date().toLocaleString()
+  document.getElementById("time").innerText="🕒 "+new Date().toLocaleString()
 }
 
 setInterval(updateTime,1000)
 
-/* ================= INIT + SAFE LOAD ================= */
 window.addEventListener("DOMContentLoaded", () => {
-init()
-renderProfile()
-buildWeeklySummary()
-load()
+  init()
+  renderProfile()
+  buildWeeklySummary()
+  load()
 
-setTimeout(renderProfile, 300)
-setTimeout(renderProfile, 1500)
+  setTimeout(renderProfile, 300)
+  setTimeout(renderProfile, 1500)
 })
 
 window.openModal=openModal
