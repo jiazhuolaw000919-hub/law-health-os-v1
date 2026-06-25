@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AI Dashboard v12.3 (MOBILE + BMI TAG)</title>
+<title>AI Dashboard v12.3 (Mobile + Sleep)</title>
 
 <link rel="stylesheet" href="style.css">
 
@@ -24,7 +24,7 @@ box-shadow:0 1px 4px rgba(0,0,0,.05);
 
 canvas{
 max-width:100%;
-min-width:280px; /* 防止移动端过窄 */
+min-width:280px;
 }
 
 .tag{
@@ -52,6 +52,25 @@ border-radius:6px;
 }
 
 .hide{display:none}
+
+/* 睡眠统计 */
+.sleep-summary {
+  display: flex;
+  justify-content: space-around;
+  margin: 8px 0;
+}
+.sleep-stat {
+  text-align: center;
+}
+.sleep-stat .value {
+  font-size: 22px;
+  font-weight: bold;
+  color: #3b82f6;
+}
+.sleep-stat .label {
+  font-size: 11px;
+  color: #6b7280;
+}
 </style>
 </head>
 
@@ -65,7 +84,7 @@ border-radius:6px;
 <a href="profile.html">Profile</a>
 </div>
 
-<h2 class="center">📊 AI Dashboard v12.3 (Mobile Optimized)</h2>
+<h2 class="center">📊 AI Dashboard v12.3 (Sleep Ready)</h2>
 
 <!-- TIME -->
 <div class="card">
@@ -104,6 +123,18 @@ border-radius:6px;
 <h3>🧠 AI Insight</h3>
 <p id="insight"></p>
 <p id="recommend"></p>
+</div>
+
+<!-- SLEEP (NEW) -->
+<div class="card">
+<h3>😴 Sleep (7-Day)</h3>
+<canvas id="sleepChart" width="320" height="140"></canvas>
+<div class="sleep-summary">
+  <div class="sleep-stat"><div class="value" id="avgSleep">--</div><div class="label">Avg hrs</div></div>
+  <div class="sleep-stat"><div class="value" id="sleepScore">--</div><div class="label">AI Score</div></div>
+  <div class="sleep-stat"><div class="value" id="sleepQuality">--</div><div class="label">Quality</div></div>
+</div>
+<button onclick="location.href='sleep.html'" style="margin-top:8px;">📝 Log Sleep</button>
 </div>
 
 <!-- TREND -->
@@ -256,13 +287,94 @@ if(sk) sk.style.display="none"
 if(el) el.classList.remove("hide")
 }
 
+/* ================= SLEEP FUNCTIONS ================= */
+function getSleepLogs() {
+  const profile = getProfile();
+  const key = `sleep_${profile.id}`;
+  return JSON.parse(localStorage.getItem(key)) || [];
+}
+
+function analyzeSleep(sleepLogs) {
+  if (!sleepLogs || sleepLogs.length === 0) {
+    return { avgHrs: 0, score: 0, quality: "No data" };
+  }
+
+  let totalHrs = 0;
+  let consistencyScore = 0;
+  let prevWake = null;
+
+  sleepLogs.forEach(log => {
+    const bed = new Date(log.bedTime);
+    const wake = new Date(log.wakeTime);
+    let hrs = (wake - bed) / (1000 * 60 * 60);
+    if (hrs < 0) hrs += 24;
+    totalHrs += hrs;
+
+    if (prevWake) {
+      const diff = Math.abs((bed - prevWake) / (1000 * 60 * 60));
+      if (diff <= 1) consistencyScore += 10;
+      else if (diff <= 2) consistencyScore += 5;
+    }
+    prevWake = wake;
+  });
+
+  const avg = totalHrs / sleepLogs.length;
+  let score = Math.min(100, Math.round(
+    (avg >= 7 && avg <= 9 ? 40 : avg >= 6 ? 25 : 10) +
+    (consistencyScore / sleepLogs.length * 5) +
+    (sleepLogs.length >= 5 ? 20 : 0)
+  ));
+
+  let quality;
+  if (avg >= 7 && avg <= 9 && score >= 70) quality = "Good";
+  else if (avg >= 6 && score >= 50) quality = "Fair";
+  else quality = "Poor";
+
+  return { avgHrs: avg.toFixed(1), score, quality };
+}
+
+function drawSleepChart(logs) {
+  const canvas = document.getElementById("sleepChart");
+  if (!canvas) return;
+  const ctx = canvas.getContext("2d");
+  ctx.clearRect(0, 0, canvas.width, canvas.height || 140);
+
+  const days = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    days.push(d.toISOString().split("T")[0]);
+  }
+
+  const data = days.map(day => {
+    const log = logs.find(l => l.date === day);
+    if (!log) return 0;
+    const bed = new Date(log.bedTime);
+    const wake = new Date(log.wakeTime);
+    let hrs = (wake - bed) / (1000 * 60 * 60);
+    if (hrs < 0) hrs += 24;
+    return hrs;
+  });
+
+  ctx.fillStyle = "#f3f4f6";
+  ctx.fillRect(0, 0, canvas.width, 140);
+
+  const maxHrs = 12;
+  data.forEach((hrs, i) => {
+    ctx.fillStyle = "#818cf8";
+    const height = (hrs / maxHrs) * 120;
+    ctx.fillRect(20 + i * 40, 130 - height, 20, height);
+    ctx.fillStyle = "#111827";
+    ctx.fillText(hrs ? hrs.toFixed(1) + "h" : "0", 18 + i * 40, 125 - height);
+  });
+}
+
 /* ================= MAIN ================= */
 async function load(){
 showSkeleton()
 
 let p=getProfile()
 
-// 计算并显示 BMI
 let bmiVal = bmi(p.height, p.weight)
 document.getElementById("bmi").innerText = bmiVal
 let bmiTag = document.getElementById("bmiTag")
@@ -287,7 +399,6 @@ let score=(num(today.p)+num(today.c)+num(today.f))/3
 document.getElementById("mealScore").innerText="Score " + score
 document.getElementById("risk").innerText=riskLevel(today.cal)
 
-/* AI INSIGHT SAFE */
 let learn=learnPattern(data)
 
 document.getElementById("insight").innerText =
@@ -304,6 +415,14 @@ learn.prefProtein
 draw("chart",data,"cal")
 let riskData=data.map(d=>({ cal: d.cal }))
 draw("riskChart",riskData,"cal")
+
+/* sleep */
+const sleepLogs = getSleepLogs();
+const analysis = analyzeSleep(sleepLogs);
+document.getElementById("avgSleep").innerText = analysis.avgHrs + "h";
+document.getElementById("sleepScore").innerText = analysis.score;
+document.getElementById("sleepQuality").innerText = analysis.quality;
+drawSleepChart(sleepLogs);
 
 hideSkeleton()
 safeProfileRender()
