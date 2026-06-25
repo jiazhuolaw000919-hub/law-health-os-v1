@@ -137,9 +137,7 @@ async function getDailyMacro(date){
     carbs += Number(f.carbs||0);
     fat += Number(f.fat||0);
   });
-
   var sleepHrs = getSleepForDate(date);
-
   return { calories, protein, carbs, fat, sleep: sleepHrs, score: 50, risk: "LOW" };
 }
 
@@ -165,6 +163,7 @@ async function buildWeeklySummary(){
   document.getElementById("riskSummary").innerHTML = '<span class="badge ' + color + '">' + risk + ' RISK</span><p>Protein: ' + macroP + 'g | Carbs: ' + macroC + 'g | Fat: ' + macroF + 'g</p>';
 }
 
+// ✅ 修复：按日期顺序逐个渲染，不再跳动
 async function load(){
   grid.innerHTML = "";
 
@@ -173,17 +172,19 @@ async function load(){
   var first = new Date(y,m,1).getDay();
   var days = new Date(y,m+1,0).getDate();
 
+  // 星期一偏移
   var mondayOffset = first === 0 ? 6 : first - 1;
   for(var i=0; i<mondayOffset; i++){
-    grid.innerHTML += "<div></div>";
+    var emptyDiv = document.createElement("div");
+    emptyDiv.style.minHeight = "70px";
+    grid.appendChild(emptyDiv);
   }
 
-  var tasks = [];
+  // ✅ 关键修复：用 for 循环按顺序 await，确保格子依次添加
   for(var d=1; d<=days; d++){
     var date = y + "-" + String(m+1).padStart(2,'0') + "-" + String(d).padStart(2,'0');
-    tasks.push(renderDay(date, d));
+    await renderDay(date, d);  // 等待这个格子渲染完再继续下一个
   }
-  await Promise.all(tasks);
 }
 
 async function renderDay(date, d){
@@ -209,7 +210,7 @@ async function renderDay(date, d){
     }
 
     div.onclick = function(){ openModal(date, data); };
-    grid.appendChild(div);
+    grid.appendChild(div);  // ✅ 按顺序添加
   }catch(e){ console.log(e); }
 }
 
