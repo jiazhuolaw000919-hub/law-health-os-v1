@@ -1,5 +1,5 @@
 /* =========================
- SUPABASE CONFIG (ULTRA-FALLBACK)
+ SUPABASE CONFIG (MINIMAL GUARANTEE)
  ========================= */
 
 const SUPABASE_URL = "https://jqevcfyhnlttzdiylfrh.supabase.co"
@@ -56,61 +56,25 @@ async function saveFood(food) {
       return null
     }
 
-    // 三级 payload
-    const fullPayload = {
-      userId: profile.id,
-      food: food.food || "unknown",
-      calories: Number(food.calories || 0),
-      protein: Number(food.protein || 0),
-      carbs: Number(food.carbs || 0),
-      fat: Number(food.fat || 0),
-      meal_type: food.mealType || "snack",
-      components: food.components || [],
-      image_url: food.image || null,
-      date: food.date || new Date().toISOString().split("T")[0],
-      created_at: new Date().toISOString()
-    }
-
-    const basePayload = {
-      userId: profile.id,
-      food: food.food || "unknown",
-      calories: Number(food.calories || 0),
-      date: food.date || new Date().toISOString().split("T")[0],
-      created_at: new Date().toISOString()
-    }
-
-    const minimalPayload = {
+    // 🔥 仅使用绝对不会缺少的三个字段
+    const payload = {
       food: food.food || "unknown",
       calories: Number(food.calories || 0),
       date: food.date || new Date().toISOString().split("T")[0]
     }
 
-    // 尝试完整插入
-    let result = await supabaseClient.from("food_logs").insert([fullPayload]).select()
-    if (!result.error) {
-      console.log("✅ Synced to Supabase (full):", result.data)
-      return result.data
-    }
-    console.warn("Full insert failed:", result.error.message)
+    const { data, error } = await supabaseClient
+      .from("food_logs")
+      .insert([payload])
+      .select()
 
-    // 尝试基础插入（带 userId）
-    result = await supabaseClient.from("food_logs").insert([basePayload]).select()
-    if (!result.error) {
-      console.log("✅ Synced to Supabase (base):", result.data)
-      return result.data
-    }
-    console.warn("Base insert failed:", result.error.message)
-
-    // 最后尝试最小插入（连 userId 都不要了，表结构一定缺这些列）
-    result = await supabaseClient.from("food_logs").insert([minimalPayload]).select()
-    if (!result.error) {
-      console.warn("⚠️ Synced with minimal columns (no userId). Run SQL to fix table.")
-      return result.data
+    if (error) {
+      console.error("❌ Save failed. Please create the table in Supabase:", error)
+      return null
     }
 
-    // 彻底失败，说明表都不存在或结构完全不兼容
-    console.error("❌ All inserts failed. Please create the food_logs table in Supabase.")
-    return null
+    console.log("✅ Synced to Supabase (minimal):", data)
+    return data
   } catch (e) {
     console.error("saveFood crash:", e)
     return null
