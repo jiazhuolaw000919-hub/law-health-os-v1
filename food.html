@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Food AI v16.2 PRO SYSTEM (SILENT FALLBACK)</title>
+<title>Food AI v16.2 PRO SYSTEM (FALLBACK + ALERT)</title>
 
 <link rel="stylesheet" href="style.css">
 
@@ -13,25 +13,145 @@
 <script src="ai-vision.js"></script>
 
 <style>
-/* 所有样式保持不变 */
-.card{ margin:10px; padding:12px; background:#fff; border-radius:10px; box-shadow:0 1px 4px rgba(0,0,0,.05); }
-.modal{ position:fixed; top:0;left:0;right:0;bottom:0; background:rgba(0,0,0,0.5); display:none; align-items:center; justify-content:center; z-index:9999; }
-.modal-content{ background:white; padding:20px; border-radius:12px; width:340px; text-align:center; max-height:90vh; overflow-y:auto; }
-.preview-box{ background:#f9fafb; padding:10px; border-radius:8px; margin-top:10px; text-align:left; font-size:14px; }
-button{ margin:5px; padding:6px 10px; border-radius:8px; border:1px solid #ddd; cursor:pointer; }
-.small-tag{ display:inline-block; margin:2px; padding:2px 6px; background:#e5e7eb; border-radius:6px; font-size:12px; }
-.delete-btn{ background:#ffdddd; border:1px solid #ff8888; cursor:pointer; }
-.upload-preview-img{ max-width:100%; max-height:150px; border-radius:8px; margin:10px 0; }
-.editable-field{ width:100%; padding:6px; margin:4px 0; box-sizing:border-box; }
-.dish-list { text-align:left; margin:8px 0; padding:0; list-style:none; }
-.dish-list li { padding:3px 0; border-bottom:1px solid #eee; font-size:13px; }
-.hint { color:#888; font-size:13px; margin:6px 0; }
+/* 导航栏样式 */
+.nav {
+  background: #f8fafc;
+  padding: 10px;
+  border-radius: 8px;
+  margin: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+.nav a {
+  text-decoration: none;
+  color: #333;
+  padding: 6px 12px;
+  border-radius: 6px;
+  background: #e2e8f0;
+  font-weight: 500;
+  transition: background 0.2s;
+}
+.nav a:hover {
+  background: #cbd5e1;
+}
+.nav a.active {
+  background: #3b82f6;
+  color: white;
+}
+
+/* 原有样式 */
+.card{
+margin:10px;
+padding:12px;
+background:#fff;
+border-radius:10px;
+box-shadow:0 1px 4px rgba(0,0,0,.05);
+}
+
+.modal{
+position:fixed;
+top:0;left:0;right:0;bottom:0;
+background:rgba(0,0,0,0.5);
+display:none;
+align-items:center;
+justify-content:center;
+z-index:9999;
+}
+
+.modal-content{
+background:white;
+padding:20px;
+border-radius:12px;
+width:340px;
+text-align:center;
+max-height:90vh;
+overflow-y:auto;
+}
+
+.preview-box{
+background:#f9fafb;
+padding:10px;
+border-radius:8px;
+margin-top:10px;
+text-align:left;
+font-size:14px;
+}
+
+button{
+margin:5px;
+padding:6px 10px;
+border-radius:8px;
+border:1px solid #ddd;
+cursor:pointer;
+}
+
+.small-tag{
+display:inline-block;
+margin:2px;
+padding:2px 6px;
+background:#e5e7eb;
+border-radius:6px;
+font-size:12px;
+}
+
+.delete-btn{
+background:#ffdddd;
+border:1px solid #ff8888;
+cursor:pointer;
+}
+
+.upload-preview-img{
+max-width:100%;
+max-height:150px;
+border-radius:8px;
+margin:10px 0;
+}
+
+.editable-field{
+width:100%;
+padding:6px;
+margin:4px 0;
+box-sizing:border-box;
+}
+
+.dish-list {
+  text-align:left;
+  margin: 8px 0;
+  padding:0;
+  list-style:none;
+}
+
+.dish-list li {
+  padding:3px 0;
+  border-bottom:1px solid #eee;
+  font-size:13px;
+}
+
+.hint {
+  color:#888;
+  font-size:13px;
+  margin:6px 0;
+}
 </style>
 </head>
 
 <body>
 
-<h2>🍽 Food AI v16.2 (Silent Fallback)</h2>
+<h2>🍽 Food AI v16.2 (Alert on Fallback)</h2>
+
+<!-- 导航栏 -->
+<div class="nav">
+  <a href="index.html">Home</a>
+  <a href="calendar.html">Calendar</a>
+  <a href="food.html" class="active">Food</a>
+  <a href="workout.html">Workout</a>
+  <a href="shopping.html">Shop</a>
+  <a href="report.html">Report</a>
+  <a href="profile.html">Profile</a>
+</div>
 
 <div class="card">
 <p id="activeProfile">Loading...</p>
@@ -165,9 +285,10 @@ function extractComponents(text){
   return components
 }
 
-/* ================= AI WRAPPER (SILENT FALLBACK) ================= */
+/* ================= AI WRAPPER (WITH ALERT ON FAILURE) ================= */
 async function analyzeImage(base64){
   setAI("scanning...")
+  let failed = false
   try {
     if (!window.analyzeFoodImage) {
       throw new Error("analyzeFoodImage not available")
@@ -208,12 +329,16 @@ async function analyzeImage(base64){
 
     throw new Error("Unrecognized format")
   } catch(e) {
-    // 🔥 静默降级：不弹窗，只是控制台记录
-    console.warn("AI scan failed, falling back:", e.message)
+    console.warn("AI scan failed:", e.message)
+    failed = true
     setAI("fallback")
   }
 
-  // 返回默认值，让用户手动修改
+  // 只在失败时弹窗提醒（一次性）
+  if (failed) {
+    alert("⚠️ AI scan failed (quota exceeded or network error). You can manually enter the food name and use 'Re-estimate' to get nutrition values.")
+  }
+
   return {
     food: "Unknown meal",
     calories: 450,
@@ -396,7 +521,6 @@ function openMealModal(){
 
   document.getElementById("modalFoodName").value = pendingFood.food
 
-  // 显示/隐藏手动输入提示
   const hint = document.getElementById("manualHint")
   if(pendingFood.food === "Unknown meal" || pendingFood.food === "Unknown Food"){
     hint.style.display = "block"
@@ -440,7 +564,6 @@ document.getElementById("modalFoodName").addEventListener("input", function(e){
   pendingFood.food = newName
   pendingFood.type = detectFoodType(newName)
   pendingFood.components = extractComponents(newName)
-  // 隐藏提示
   document.getElementById("manualHint").style.display = "none"
   updateModalNutritionPreview()
 })
