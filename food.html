@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Food AI v16.2 PRO SYSTEM (FULL SYNC + MOBILE)</title>
+<title>Food AI v16.2 PRO SYSTEM (FULL SYNC + AUTO NUTRITION LOOKUP)</title>
 
 <link rel="stylesheet" href="style.css">
 
@@ -15,7 +15,6 @@
 
 <style>
 /* 仅保留 food.html 特有的、全局 style.css 没有的样式 */
-/* 你的原有样式（除了 .nav 已由全局管理）保留不变 */
 .modal{
 position:fixed;
 top:0;left:0;right:0;bottom:0;
@@ -106,7 +105,7 @@ box-sizing:border-box;
 
 <body>
 
-<h2>🍽 Food AI v16.2 (Sync Across Devices)</h2>
+<h2>🍽 Food AI v16.2 (Auto Nutrition Lookup)</h2>
 
 <!-- 导航栏（样式由全局 style.css 提供） -->
 <div class="nav">
@@ -132,9 +131,9 @@ box-sizing:border-box;
 </div>
 
 <div class="card">
-<input id="foodInput" placeholder="e.g. chicken rice + milo">
+<input id="foodInput" placeholder="e.g. indomie, oreo, chicken rice">
 <br><br>
-<button onclick="startManualFlow()">Add Food</button>
+<button id="addFoodBtn" onclick="startManualFlow()">🔍 Add Food (Auto Lookup)</button>
 <button onclick="openAIUpload()">AI Scan</button>
 <button onclick="openBarcode()">Barcode Scan</button>
 <button onclick="startMultiCapture()">Multi Capture</button>
@@ -320,7 +319,7 @@ function setMode(m){
   document.getElementById("modeStatus").innerText = "Mode: " + m
 }
 
-/* ================= NUTRITION ================= */
+/* ================= NUTRITION ESTIMATION (FALLBACK) ================= */
 function estimateNutrition(food){
   let base = 400
   food = (food || "").toLowerCase()
@@ -337,6 +336,39 @@ function estimateNutrition(food){
   }
 }
 
+/* ================= OPEN FOOD FACTS LOOKUP ================= */
+async function lookupFoodAPI(query) {
+  const url = `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(query)}&search_simple=1&json=1&page_size=3`;
+  try {
+    const response = await fetch(url);
+    if (!response.ok) return null;
+    const data = await response.json();
+    if (!data.products || data.products.length === 0) return null;
+    // 取第一个有完整营养信息的产品（每100g的营养值通常可作为一包/一份的参考）
+    for (let prod of data.products) {
+      if (prod.nutriments && prod.nutriments["energy-kcal_100g"] !== undefined) {
+        const cals = Number(prod.nutriments["energy-kcal_100g"]) || Number(prod.nutriments["energy-kcal"]) || 0;
+        const protein = Number(prod.nutriments.proteins_100g) || Number(prod.nutriments.proteins) || 0;
+        const carbs = Number(prod.nutriments.carbohydrates_100g) || Number(prod.nutriments.carbohydrates) || 0;
+        const fat = Number(prod.nutriments.fat_100g) || Number(prod.nutriments.fat) || 0;
+        if (cals > 0) {
+          return {
+            food: prod.product_name || query,
+            calories: Math.round(cals),
+            protein: Math.round(protein * 10) / 10,
+            carbs: Math.round(carbs * 10) / 10,
+            fat: Math.round(fat * 10) / 10,
+            source: 'Open Food Facts'
+          };
+        }
+      }
+    }
+  } catch (e) {
+    console.warn("Open Food Facts lookup failed:", e);
+  }
+  return null;
+}
+
 /* ================= DEFICIT ================= */
 function getDeficit(cal){
   let maintenance = 2200
@@ -344,19 +376,44 @@ function getDeficit(cal){
   return { status: diff > 0 ? "surplus" : "deficit", diff }
 }
 
-/* ================= MANUAL ================= */
-function startManualFlow(){
+/* ================= MANUAL FLOW (WITH AUTO LOOKUP) ================= */
+async function startManualFlow(){
   let input = document.getElementById("foodInput").value.trim()
   if(!input) return alert("Enter food")
+
+  // 禁用按钮，避免重复点击
+  const btn = document.getElementById("addFoodBtn");
+  if (btn) btn.disabled = true;
+
+  let nutrition = null;
+  // 尝试从 Open Food Facts 获取营养数据
+  nutrition = await lookupFoodAPI(input);
+
+  if (!nutrition) {
+    // 没有找到，使用本地估算
+    nutrition = {
+      food: input,
+      ...estimateNutrition(input),
+      source: 'local'
+    };
+  }
+
   pendingFood = {
     id: Date.now(),
-    food: input,
+    food: nutrition.food || input,
     type: detectFoodType(input),
     date: new Date().toISOString().split("T")[0],
     components: extractComponents(input),
-    ...estimateNutrition(input),
+    calories: nutrition.calories,
+    protein: nutrition.protein,
+    carbs: nutrition.carbs,
+    fat: nutrition.fat,
     dishes: []
   }
+
+  // 恢复按钮
+  if (btn) btn.disabled = false;
+
   openMealModal()
 }
 
