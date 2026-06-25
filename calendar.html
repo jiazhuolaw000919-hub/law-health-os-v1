@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AI Calendar v12.3 (Week Starts Monday)</title>
+<title>AI Calendar v12.3 (Mon–Sun + Sleep)</title>
 
 <link rel="stylesheet" href="style.css">
 
@@ -67,7 +67,6 @@
     <p id="modalProtein"></p>
     <p id="modalCarbs"></p>
     <p id="modalFat"></p>
-    <p id="modalSleep"></p>
     <div id="mealBreakdown"></div>
     <p id="miniAI"></p>
     <br>
@@ -117,8 +116,7 @@ async function safeFoodLogs(date){
   }catch(e){ return []; }
 }
 
-// 获取某天的睡眠时长
-async function getSleepForDate(date){
+function getSleepForDate(date){
   var profile = getActiveProfile();
   var key = "sleep_" + profile.id;
   var logs = JSON.parse(localStorage.getItem(key) || "[]");
@@ -141,7 +139,7 @@ async function getDailyMacro(date){
     fat += Number(f.fat||0);
   });
 
-  var sleepHrs = await getSleepForDate(date);
+  var sleepHrs = getSleepForDate(date);
 
   return { calories, protein, carbs, fat, sleep: sleepHrs, score: 50, risk: "LOW" };
 }
@@ -173,10 +171,9 @@ async function load(){
 
   var y = Number(yearSelect.value || new Date().getFullYear());
   var m = Number(monthSelect.value || new Date().getMonth());
-  var first = new Date(y,m,1).getDay(); // 0=Sun, 1=Mon, ...
+  var first = new Date(y,m,1).getDay();
   var days = new Date(y,m+1,0).getDate();
 
-  // ✅ 改为星期一开始：如果 first=0（周日），偏移6；否则偏移 first-1
   var mondayOffset = first === 0 ? 6 : first - 1;
   for(var i=0; i<mondayOffset; i++){
     grid.innerHTML += "<div></div>";
@@ -224,7 +221,6 @@ function openModal(date, data){
   document.getElementById("modalProtein").innerText = "Protein: " + data.protein + "g";
   document.getElementById("modalCarbs").innerText = "Carbs: " + data.carbs + "g";
   document.getElementById("modalFat").innerText = "Fat: " + data.fat + "g";
-  document.getElementById("modalSleep").innerText = "😴 Sleep: " + (data.sleep > 0 ? data.sleep.toFixed(1) + "h" : "No record");
   document.getElementById("mealBreakdown").innerHTML = "<p>AI Score: " + data.score + "/100</p><p>Risk: " + data.risk + "</p>";
   document.getElementById("miniAI").innerText = data.score>80?"🟢 Excellent":data.score>60?"🟡 Balanced":"🔴 Needs improvement";
 }
