@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Food AI v16.2 PRO (Malaysia DB + Sugar & Grade)</title>
+<title>Food AI v16.2 PRO (Malaysia DB + Sugar & Grade + Autocomplete)</title>
 
 <link rel="stylesheet" href="style.css">
 
@@ -102,7 +102,7 @@ box-sizing:border-box;
   margin:6px 0;
 }
 
-/* ✅ 新增营养等级徽标 */
+/* ✅ 更新后的营养等级徽标 */
 .grade-badge {
   display:inline-block;
   padding:2px 6px;
@@ -111,17 +111,52 @@ box-sizing:border-box;
   font-size:13px;
   margin-left:4px;
 }
-.grade-A { background:#00c853; color:#fff; }
-.grade-B { background:#76ff03; color:#333; }
-.grade-C { background:#ffeb3b; color:#333; }
-.grade-D { background:#ff9100; color:#fff; }
-.grade-E { background:#ff1744; color:#fff; }
+.grade-A { background:#22c55e; color:#fff; }       /* 绿色 */
+.grade-B { background:#86efac; color:#14532d; }    /* 浅绿 */
+.grade-C { background:#facc15; color:#713f12; }    /* 黄色 */
+.grade-D { background:#fb923c; color:#fff; }       /* 橙色 */
+.grade-E { background:#ef4444; color:#fff; }       /* 红色 */
+
+/* ✅ 下拉建议面板 */
+.suggestions-box {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  max-height: 220px;
+  overflow-y: auto;
+  z-index: 1000;
+  display: none;
+  text-align: left;
+}
+.suggestion-item {
+  padding: 8px 12px;
+  cursor: pointer;
+  border-bottom: 1px solid #f3f4f6;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.suggestion-item:hover {
+  background: #f9fafb;
+}
+.suggestion-item:last-child {
+  border-bottom: none;
+}
+.suggestion-name {
+  font-size: 14px;
+  font-weight: 500;
+}
 </style>
 </head>
 
 <body>
 
-<h2>🍽 Food AI v16.2 (Malaysia DB + Sugar & Grade)</h2>
+<h2>🍽 Food AI v16.2 (Malaysia DB + Sugar & Grade + Autocomplete)</h2>
 
 <!-- 导航栏 -->
 <div class="nav">
@@ -146,8 +181,9 @@ box-sizing:border-box;
 <p id="aiStatus">AI: idle</p>
 </div>
 
-<div class="card">
+<div class="card" style="position: relative;">
 <input id="foodInput" placeholder="e.g. maggie kari, oreo, muchys chocolate">
+<div id="suggestionsBox" class="suggestions-box"></div>
 <br><br>
 <button id="addFoodBtn" onclick="startManualFlow()">🔍 Add Food (Auto Lookup)</button>
 <button onclick="openAIUpload()">AI Scan</button>
@@ -812,6 +848,65 @@ async function loadDB(){
 // 启动
 loadDB().catch(e => console.error("loadDB failed:", e))
 
+// ========== 自动补全下拉建议 ==========
+const foodInput = document.getElementById('foodInput');
+const suggestionsBox = document.getElementById('suggestionsBox');
+
+foodInput.addEventListener('input', function(e) {
+  const query = this.value.trim();
+  if (query.length < 2) {
+    suggestionsBox.style.display = 'none';
+    return;
+  }
+  const matches = typeof searchLocalFoods === 'function' ? searchLocalFoods(query, 6) : [];
+  if (matches.length === 0) {
+    suggestionsBox.style.display = 'none';
+    return;
+  }
+  renderSuggestions(matches);
+  suggestionsBox.style.display = 'block';
+});
+
+function renderSuggestions(items) {
+  let html = '';
+  items.forEach(item => {
+    const grade = item.grade || '';
+    html += `
+      <div class="suggestion-item" onclick="selectSuggestion('${item.food.replace(/'/g, "\\'")}', ${item.calories}, ${item.protein}, ${item.carbs}, ${item.fat}, ${item.sugar||0}, '${grade}')">
+        <span class="suggestion-name">${item.food}</span>
+        <span class="grade-badge grade-${grade}">${grade || '?'}</span>
+      </div>
+    `;
+  });
+  suggestionsBox.innerHTML = html;
+}
+
+function selectSuggestion(food, calories, protein, carbs, fat, sugar, grade) {
+  pendingFood = {
+    id: Date.now(),
+    food: food,
+    type: detectFoodType(food),
+    date: new Date().toISOString().split("T")[0],
+    components: extractComponents(food),
+    calories: calories,
+    protein: protein,
+    carbs: carbs,
+    fat: fat,
+    sugar: sugar,
+    grade: grade,
+    dishes: []
+  };
+  suggestionsBox.style.display = 'none';
+  document.getElementById("foodInput").value = food; // 更新输入框显示
+  openMealModal();
+}
+
+// 点击页面其他地方隐藏下拉
+document.addEventListener('click', function(e) {
+  if (!foodInput.contains(e.target) && !suggestionsBox.contains(e.target)) {
+    suggestionsBox.style.display = 'none';
+  }
+});
 </script>
 
 </body>
