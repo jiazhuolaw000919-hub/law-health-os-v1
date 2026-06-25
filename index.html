@@ -91,12 +91,21 @@ function updateClock(){
 
 function num(n){ n = Number(n); return isNaN(n) ? 0 : n; }
 
-// ✅ 修复：BMI = 体重(kg) / (身高(m) * 身高(m))
+// ✅ BMI = 体重(kg) / (身高(m) * 身高(m))
 function bmi(h, w){
-  h = num(h) / 100;  // 转换为米
+  h = num(h) / 100;
   w = num(w);
   if (h <= 0) return "0.0";
   return (w / (h * h)).toFixed(1);
+}
+
+// ✅ 获取 BMI 分类（马来西亚/亚洲标准）
+function getBMICategory(bmiVal) {
+  bmiVal = parseFloat(bmiVal);
+  if (bmiVal < 18.5) return { text: "Underweight", color: "yellow" };
+  if (bmiVal < 23.0) return { text: "Normal", color: "green" };
+  if (bmiVal < 27.5) return { text: "Overweight", color: "yellow" };
+  return { text: "Obese", color: "red" };
 }
 
 async function getData7(){
@@ -219,9 +228,10 @@ async function load(){
   showSkeleton();
   var p = getProfile();
   var bmiVal = bmi(p.height, p.weight);
+  var cat = getBMICategory(bmiVal);
   document.getElementById("bmi").innerText = bmiVal;
   var bmiTag = document.getElementById("bmiTag");
-  if(bmiTag) bmiTag.innerHTML = '<span class="tag ' + (bmiVal<18.5?"yellow":bmiVal<25?"green":bmiVal<30?"yellow":"red") + '">' + (bmiVal<18.5?"Underweight":bmiVal<25?"Normal":bmiVal<30?"Overweight":"Obese") + '</span>';
+  if(bmiTag) bmiTag.innerHTML = '<span class="tag ' + cat.color + '">' + cat.text + '</span>';
 
   var data = await getData7();
   var today = data[data.length-1] || {cal:0,p:0,c:0,f:0};
