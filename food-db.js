@@ -1,6 +1,6 @@
 /* =========================
-   🇲🇾 MALAYSIA LOCAL + IMPORT FOOD DATABASE v5.0 (Sugar & Grade)
-   包含糖分 (g) 和营养等级 (A-E)
+   🇲🇾 MALAYSIA LOCAL + IMPORT FOOD DATABASE v5.1 (Per Piece + Sugar & Grade)
+   新增 searchLocalFoods 支持下拉建议
    ========================= */
 
 const LOCAL_FOOD_DB = [
@@ -61,32 +61,29 @@ const LOCAL_FOOD_DB = [
   { keywords: ["indomie", "aceh"], food: "Indomie Aceh (1 pack)", calories: 400, protein: 8, carbs: 63, fat: 14, sugar: 6, grade: "C" },
   { keywords: ["indomie", "jumbo", "double"], food: "Indomie Jumbo (1 pack)", calories: 610, protein: 14, carbs: 96, fat: 21, sugar: 10, grade: "D" },
 
-  // ============ 饼干 / 曲奇 ============
-  { keywords: ["hup seng", "cream cracker", "3 piece"], food: "Hup Seng Cream Cracker (3 pieces)", calories: 120, protein: 2, carbs: 20, fat: 3.5, sugar: 1, grade: "B" },
-  { keywords: ["hup seng", "cream cracker", "2 piece"], food: "Hup Seng Cream Cracker (2 pieces)", calories: 80, protein: 1.3, carbs: 13, fat: 2.3, sugar: 0.7, grade: "B" },
-  { keywords: ["hup seng", "sugar cracker"], food: "Hup Seng Sugar Cracker (3 pieces)", calories: 130, protein: 2, carbs: 22, fat: 4, sugar: 6, grade: "C" },
+  // ============ 饼干 / 曲奇 (全部改为 per piece 或 独立包装) ============
+  { keywords: ["hup seng", "cream cracker"], food: "Hup Seng Cream Cracker (1 piece)", calories: 40, protein: 0.7, carbs: 6.7, fat: 1.2, sugar: 0.3, grade: "B" },
+  { keywords: ["hup seng", "sugar cracker"], food: "Hup Seng Sugar Cracker (1 piece)", calories: 43, protein: 0.7, carbs: 7.3, fat: 1.3, sugar: 2, grade: "C" },
   { keywords: ["julie's", "peanut butter", "sandwich"], food: "Julie's Peanut Butter Sandwich (1 pack, 2 crackers)", calories: 180, protein: 4, carbs: 21, fat: 9, sugar: 9, grade: "D" },
   { keywords: ["julie's", "cheese", "sandwich"], food: "Julie's Cheese Sandwich (1 pack, 2 crackers)", calories: 170, protein: 4, carbs: 22, fat: 8, sugar: 8, grade: "D" },
   { keywords: ["julie's", "oat 25", "oat cracker"], food: "Julie's Oat 25 (1 small pack)", calories: 120, protein: 2, carbs: 19, fat: 4, sugar: 5, grade: "C" },
-  { keywords: ["julie's", "cream cracker"], food: "Julie's Cream Cracker (3 pieces)", calories: 120, protein: 2, carbs: 20, fat: 3.5, sugar: 1, grade: "B" },
-  { keywords: ["khong guan", "soda", "cracker"], food: "Khong Guan Soda Cracker (3 pieces)", calories: 110, protein: 2, carbs: 19, fat: 3, sugar: 0.5, grade: "A" },
-  { keywords: ["khong guan", "marie", "biscuit"], food: "Khong Guan Marie Biscuit (3 pieces)", calories: 100, protein: 2, carbs: 18, fat: 2.5, sugar: 4, grade: "B" },
-  { keywords: ["tiger", "biskut", "3 piece"], food: "Tiger Biscuit (3 pieces)", calories: 130, protein: 2, carbs: 22, fat: 4, sugar: 6, grade: "C" },
-  { keywords: ["tiger", "biskut", "4 piece"], food: "Tiger Biscuit (4 pieces)", calories: 173, protein: 2.7, carbs: 29, fat: 5.3, sugar: 8, grade: "C" },
-  { keywords: ["oreo", "3 piece"], food: "Oreo (3 pieces)", calories: 160, protein: 2, carbs: 25, fat: 7, sugar: 14, grade: "D" },
-  { keywords: ["oreo", "6 piece"], food: "Oreo (6 pieces)", calories: 320, protein: 4, carbs: 50, fat: 14, sugar: 28, grade: "E" },
-  { keywords: ["chipsmore", "3 piece"], food: "Chipsmore (3 pieces)", calories: 150, protein: 2, carbs: 22, fat: 6, sugar: 12, grade: "D" },
+  { keywords: ["julie's", "cream cracker"], food: "Julie's Cream Cracker (1 piece)", calories: 40, protein: 0.7, carbs: 6.7, fat: 1.2, sugar: 0.3, grade: "B" },
+  { keywords: ["khong guan", "soda", "cracker"], food: "Khong Guan Soda Cracker (1 piece)", calories: 37, protein: 0.7, carbs: 6.3, fat: 1, sugar: 0.2, grade: "A" },
+  { keywords: ["khong guan", "marie", "biscuit"], food: "Khong Guan Marie Biscuit (1 piece)", calories: 33, protein: 0.7, carbs: 6, fat: 0.8, sugar: 1.3, grade: "B" },
+  { keywords: ["tiger", "biskut"], food: "Tiger Biscuit (1 piece)", calories: 43, protein: 0.7, carbs: 7.3, fat: 1.3, sugar: 2, grade: "C" },
+  { keywords: ["oreo"], food: "Oreo (1 piece)", calories: 53, protein: 0.7, carbs: 8.3, fat: 2.3, sugar: 4.7, grade: "D" },
   { keywords: ["chipsmore", "mini"], food: "Chipsmore Mini (1 small pack)", calories: 140, protein: 2, carbs: 21, fat: 5.5, sugar: 11, grade: "D" },
-  { keywords: ["jacob's", "cream cracker", "3 piece"], food: "Jacob's Cream Cracker (3 pieces)", calories: 120, protein: 2, carbs: 21, fat: 3, sugar: 1, grade: "B" },
-  { keywords: ["jacob's", "hi-fibre", "3 piece"], food: "Jacob's Hi-Fibre (3 pieces)", calories: 110, protein: 2, carbs: 20, fat: 2.5, sugar: 1, grade: "A" },
-  { keywords: ["lexus", "cream cracker", "3 piece"], food: "Lexus Cream Cracker (3 pieces)", calories: 120, protein: 2, carbs: 20, fat: 3.5, sugar: 1, grade: "B" },
-  { keywords: ["muchys", "chocolate", "wafer"], food: "Munchy's Chocolate Wafer (1 pack)", calories: 180, protein: 3, carbs: 28, fat: 7, sugar: 16, grade: "D" },
+  { keywords: ["chipsmore"], food: "Chipsmore (1 piece)", calories: 50, protein: 0.7, carbs: 7.3, fat: 2, sugar: 4, grade: "D" },
+  { keywords: ["jacob's", "cream cracker"], food: "Jacob's Cream Cracker (1 piece)", calories: 40, protein: 0.7, carbs: 7, fat: 1, sugar: 0.3, grade: "B" },
+  { keywords: ["jacob's", "hi-fibre"], food: "Jacob's Hi-Fibre (1 piece)", calories: 37, protein: 0.7, carbs: 6.7, fat: 0.8, sugar: 0.3, grade: "A" },
+  { keywords: ["lexus", "cream cracker"], food: "Lexus Cream Cracker (1 piece)", calories: 40, protein: 0.7, carbs: 6.7, fat: 1.2, sugar: 0.3, grade: "B" },
+  { keywords: ["muchys", "chocolate", "wafer"], food: "Munchy's Chocolate Wafer (1 piece)", calories: 90, protein: 1.5, carbs: 14, fat: 3.5, sugar: 8, grade: "D" },
   { keywords: ["muchys", "oat krunch"], food: "Munchy's Oat Krunch (1 pack)", calories: 160, protein: 2, carbs: 26, fat: 5.5, sugar: 10, grade: "C" },
-  { keywords: ["muchys", "lexus", "cream"], food: "Munchy's Lexus Cream (3 pieces)", calories: 120, protein: 2, carbs: 20, fat: 3.5, sugar: 7, grade: "C" },
-  { keywords: ["dan biskut", "cream cracker"], food: "Dan Biskut Cream Cracker (3 pieces)", calories: 120, protein: 2, carbs: 20, fat: 3.5, sugar: 1, grade: "B" },
+  { keywords: ["muchys", "lexus", "cream"], food: "Munchy's Lexus Cream (1 piece)", calories: 40, protein: 0.7, carbs: 6.7, fat: 1.2, sugar: 2.3, grade: "C" },
+  { keywords: ["dan biskut", "cream cracker"], food: "Dan Biskut Cream Cracker (1 piece)", calories: 40, protein: 0.7, carbs: 6.7, fat: 1.2, sugar: 0.3, grade: "B" },
   { keywords: ["tam tam", "cracker"], food: "Tam Tam Cracker (1 small pack)", calories: 130, protein: 1, carbs: 19, fat: 5, sugar: 8, grade: "C" },
-  { keywords: ["biskuat", "cream"], food: "Biskuat Cream (3 pieces)", calories: 130, protein: 2, carbs: 21, fat: 4, sugar: 10, grade: "C" },
-  { keywords: ["ritz", "cracker", "5 piece"], food: "Ritz Cracker (5 pieces)", calories: 120, protein: 2, carbs: 18, fat: 5, sugar: 2, grade: "B" },
+  { keywords: ["biskuat", "cream"], food: "Biskuat Cream (1 piece)", calories: 43, protein: 0.7, carbs: 7, fat: 1.3, sugar: 3.3, grade: "C" },
+  { keywords: ["ritz", "cracker"], food: "Ritz Cracker (1 piece)", calories: 24, protein: 0.4, carbs: 3.6, fat: 1, sugar: 0.4, grade: "B" },
 
   // ============ 进口零食 ============
   { keywords: ["pejoy", "chocolate"], food: "Pejoy Chocolate (1 box)", calories: 280, protein: 4, carbs: 45, fat: 10, sugar: 28, grade: "E" },
@@ -244,37 +241,9 @@ function searchLocalFood(query) {
   }
 
   return bestScore >= 20 ? best : null;
-
 }
 
-/* =========================
-   🇲🇾 MALAYSIA LOCAL + IMPORT FOOD DATABASE v5.0 (Sugar & Grade)
-   新增 searchLocalFoods 支持下拉建议
-   ========================= */
-
-// ... 数据库数组 LOCAL_FOOD_DB 保持不变，此处省略，你已有完整版 ...
-
-// 原有的精确查询函数（保留）
-function searchLocalFood(query) {
-  const q = query.toLowerCase().trim();
-  let best = null;
-  let bestScore = 0;
-  for (let item of LOCAL_FOOD_DB) {
-    let score = 0;
-    for (let kw of item.keywords) {
-      if (q === kw) score += 100;
-      else if (q.includes(kw)) score += 50;
-      else if (kw.includes(q)) score += 30;
-    }
-    if (score > bestScore) {
-      bestScore = score;
-      best = item;
-    }
-  }
-  return bestScore >= 20 ? best : null;
-}
-
-// ✅ 新增：返回多个匹配项（用于下拉建议）
+// ✅ 用于下拉建议的多结果搜索
 function searchLocalFoods(query, maxResults = 6) {
   const q = query.toLowerCase().trim();
   const scored = [];
@@ -282,14 +251,12 @@ function searchLocalFoods(query, maxResults = 6) {
     let score = 0;
     for (let kw of item.keywords) {
       if (q === kw) score += 100;
-      else if (kw.startsWith(q)) score += 60;   // 以输入开头优先
+      else if (kw.startsWith(q)) score += 60;
       else if (kw.includes(q)) score += 40;
     }
-    // 也检查食物名称
     if (item.food.toLowerCase().includes(q)) score += 50;
     if (score > 0) scored.push({ item, score });
   }
-  // 按分数降序排列，取前 maxResults
   scored.sort((a, b) => b.score - a.score);
   return scored.slice(0, maxResults).map(s => s.item);
 }
