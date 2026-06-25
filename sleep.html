@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sleep Logger</title>
+
+<link rel="stylesheet" href="style.css">
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="app.js"></script>
+<script src="supabase.js"></script>
+
+<style>
+.card{ margin:10px; padding:12px; background:#fff; border-radius:10px; box-shadow:0 1px 4px rgba(0,0,0,.05); }
+button{ margin:5px; padding:8px 14px; border-radius:8px; border:1px solid #ddd; cursor:pointer; background:#111827; color:white; }
+input, select{ width:100%; padding:10px; margin:6px 0; border-radius:8px; border:1px solid #ddd; }
+</style>
+</head>
+<body>
+
+<div class="nav">
+<a href="index.html">Home</a>
+<a href="calendar.html">Calendar</a>
+<a href="food.html">Food</a>
+<a href="report.html">Report</a>
+<a href="profile.html">Profile</a>
+</div>
+
+<h2 class="center">😴 Log Sleep</h2>
+
+<div class="card">
+<label>Bed Time:</label>
+<input type="datetime-local" id="bedTime">
+<label>Wake Time:</label>
+<input type="datetime-local" id="wakeTime">
+<br><br>
+<button onclick="saveSleep()">💾 Save Sleep</button>
+<button onclick="location.href='dashboard.html'" style="background:#4b5563;">← Back to Dashboard</button>
+</div>
+
+<div class="card">
+<h3>📋 Recent Sleep Logs</h3>
+<div id="sleepList"></div>
+</div>
+
+<script>
+const profile = JSON.parse(localStorage.getItem("activeProfile")) || { id: "guest" };
+const STORAGE_KEY = `sleep_${profile.id}`;
+
+function getLogs() {
+  return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+}
+
+function saveSleep() {
+  const bed = document.getElementById("bedTime").value;
+  const wake = document.getElementById("wakeTime").value;
+  if (!bed || !wake) return alert("Please fill both times.");
+
+  const logs = getLogs();
+  logs.push({
+    date: new Date(bed).toISOString().split("T")[0],
+    bedTime: bed,
+    wakeTime: wake,
+    timestamp: new Date().toISOString()
+  });
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(logs));
+  alert("Sleep logged!");
+  renderLogs();
+}
+
+function renderLogs() {
+  const logs = getLogs().reverse();
+  const container = document.getElementById("sleepList");
+  if (logs.length === 0) {
+    container.innerHTML = "<p>No sleep records yet.</p>";
+    return;
+  }
+  container.innerHTML = logs.map(log => {
+    const bed = new Date(log.bedTime);
+    const wake = new Date(log.wakeTime);
+    const hrs = ((wake - bed) / (1000 * 60 * 60)).toFixed(1);
+    return `<p>🛏 ${log.date} — ${hrs}h (${bed.toLocaleTimeString()} → ${wake.toLocaleTimeString()})</p>`;
+  }).join("");
+}
+
+renderLogs();
+</script>
+</body>
+</html>
