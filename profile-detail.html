@@ -2,173 +2,200 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Profile Details AI Center</title>
+<title>Profile Detail - Edit & View</title>
 
 <link rel="stylesheet" href="style.css">
 
+<!-- 必需的脚本 -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="app.js"></script>
 <script src="supabase.js"></script>
-<script src="js/db.js"></script>
-<script src="js/profile.js"></script>
-<script src="js/ai-engine.js"></script>
 
 <style>
 .card{
-margin:10px;
-padding:12px;
-background:#fff;
-border-radius:10px;
-box-shadow:0 1px 4px rgba(0,0,0,.05);
+  margin:10px;
+  padding:12px;
+  background:#fff;
+  border-radius:10px;
+  box-shadow:0 1px 4px rgba(0,0,0,.05);
 }
-
-.section{
-margin-top:10px;
-padding-top:10px;
-border-top:1px solid #eee;
+input, select {
+  width:100%;
+  margin:6px 0;
+  padding:9px;
+  border-radius:6px;
+  border:1px solid #ddd;
 }
-
-.badge{
-padding:4px 8px;
-border-radius:6px;
-font-size:12px;
-display:inline-block;
+.row{
+  display:flex;
+  gap:10px;
 }
-
-.green{background:#dcfce7;color:#166534}
-.yellow{background:#fef9c3;color:#854d0e}
-.red{background:#fee2e2;color:#991b1b}
-
-.center{text-align:center}
+.small{width:48%}
+.readonly {
+  background: #f1f5f9;
+  color: #555;
+}
+button {
+  margin:8px 4px;
+  padding:8px 12px;
+  border-radius:6px;
+  cursor:pointer;
+  border:1px solid #ddd;
+}
 </style>
 </head>
-
 <body>
 
 <div class="nav">
-<a href="profile.html">← Back</a>
+  <a href="profile.html">← Back to Profiles</a>
 </div>
 
-<h2 class="center">🧠 Profile AI Details Center</h2>
+<h2 class="center">📝 Edit Profile Details</h2>
 
-<!-- ACTIVE PROFILE -->
 <div class="card">
-<h3>👤 Identity Overview</h3>
-<p id="basic"></p>
-</div>
-
-<!-- BODY METRICS -->
-<div class="card">
-<h3>⚖ Body Metrics</h3>
-
-<p id="body"></p>
-<p id="bmi"></p>
-<p id="goal"></p>
-</div>
-
-<!-- AI INSIGHT -->
-<div class="card">
-<h3>🧠 AI Health Insight</h3>
-
-<p id="risk"></p>
-<p id="score"></p>
-<p id="advice"></p>
-</div>
-
-<!-- FUTURE AI PLACEHOLDER -->
-<div class="card">
-<h3>📊 Future AI Trends (Phase 8 Ready)</h3>
-
-<p id="trend">Loading AI prediction...</p>
+  <h3>🔒 Profile ID (Immutable)</h3>
+  <input id="profileId" class="readonly" readonly disabled>
+  
+  <h3>👤 Identity</h3>
+  <input id="name" placeholder="Name / Nickname *">
+  <input id="email" placeholder="Email *">
+  <input id="phone" placeholder="Phone">
+  
+  <select id="gender">
+    <option value="">Gender *</option>
+    <option value="male">Male</option>
+    <option value="female">Female</option>
+    <option value="other">Other</option>
+  </select>
+  
+  <input id="age" placeholder="Age">
+  <input id="country" placeholder="Country">
+  <input id="occupation" placeholder="Occupation">
+  
+  <h3>⚖ Body Metrics</h3>
+  <input id="height" placeholder="Height (cm) *">
+  <input id="weight" placeholder="Weight (kg) *">
+  <input id="target_weight" placeholder="Target Weight (kg) *">
+  
+  <input id="body_fat" placeholder="Body Fat %">
+  <input id="muscle_mass" placeholder="Muscle Mass (kg)">
+  
+  <select id="goal">
+    <option value="">Primary Goal *</option>
+    <option value="fat_loss">Fat Loss</option>
+    <option value="muscle_gain">Muscle Gain</option>
+    <option value="maintenance">Maintenance</option>
+    <option value="health_improvement">Health Improvement</option>
+    <option value="rehab">Rehab</option>
+  </select>
+  
+  <br><br>
+  <button onclick="saveChanges()">💾 Save Changes</button>
+  <button onclick="cancelEdit()">Cancel</button>
+  <p id="saveStatus" style="color:green; display:none;">Saved successfully!</p>
 </div>
 
 <script>
 
-/* ================= PROFILE ================= */
-function getActiveProfile(){
-return JSON.parse(localStorage.getItem("activeProfile")) || {
-name:"Guest",
-height:170,
-weight:70,
-target_weight:70,
-primary_goal:"maintenance"
-}
+// Get profile ID from URL
+const urlParams = new URLSearchParams(window.location.search);
+const profileId = urlParams.get('id');
+
+if (!profileId) {
+  alert('No profile ID specified.');
+  window.location.href = 'profile.html';
 }
 
-/* ================= BMI ================= */
-function calcBMI(h,w){
-return (w / ((h/100)*(h/100))).toFixed(1)
+// Load the profile from localStorage
+function getProfileById(id) {
+  let profiles = JSON.parse(localStorage.getItem('profiles') || '[]');
+  return profiles.find(p => p.id === id);
 }
 
-/* ================= LOAD ================= */
-function load(){
+let currentProfile = getProfileById(profileId);
 
-const p = getActiveProfile()
-
-/* ================= BASIC ================= */
-document.getElementById("basic").innerHTML = `
-<b>Name:</b> ${p.name}<br>
-<b>Email:</b> ${p.email || "-"}<br>
-<b>Phone:</b> ${p.phone || "-"}<br>
-<b>Gender:</b> ${p.gender || "-"}<br>
-<b>Age:</b> ${p.age || "-"}<br>
-<b>Country:</b> ${p.country || "-"}<br>
-<b>Occupation:</b> ${p.occupation || "-"}
-`
-
-/* ================= BODY ================= */
-document.getElementById("body").innerHTML = `
-<b>Height:</b> ${p.height} cm<br>
-<b>Weight:</b> ${p.weight} kg<br>
-<b>Target Weight:</b> ${p.target_weight || "-"} kg<br>
-<b>Body Fat:</b> ${p.body_fat_percentage || "-"} %<br>
-<b>Muscle Mass:</b> ${p.muscle_mass || "-"} kg
-`
-
-/* ================= BMI ================= */
-let bmi = calcBMI(p.height, p.weight)
-
-document.getElementById("bmi").innerHTML = `
-<b>BMI:</b> ${bmi} <br>
-<span class="badge ${
-bmi < 18.5 ? "yellow" :
-bmi < 25 ? "green" :
-bmi < 30 ? "yellow" : "red"
-}">
-${bmi < 18.5 ? "Underweight"
-: bmi < 25 ? "Normal"
-: bmi < 30 ? "Overweight"
-: "Obese"}
-</span>
-`
-
-/* ================= GOAL ================= */
-document.getElementById("goal").innerHTML = `
-<b>Primary Goal:</b> ${p.primary_goal}
-`
-
-/* ================= AI ENGINE (optional) ================= */
-let ai = null
-
-if(typeof getAIInsight !== "undefined"){
-ai = getAIInsight(2200, Number(bmi || 22), [], "")
+if (!currentProfile) {
+  alert('Profile not found.');
+  window.location.href = 'profile.html';
 }
 
-document.getElementById("risk").innerText =
-`Risk: ${ai?.risk?.level || "🟢 Low Risk"}`
+// Populate the form
+document.getElementById('profileId').value = currentProfile.id || '';
+document.getElementById('name').value = currentProfile.name || '';
+document.getElementById('email').value = currentProfile.email || '';
+document.getElementById('phone').value = currentProfile.phone || '';
+document.getElementById('gender').value = currentProfile.gender || '';
+document.getElementById('age').value = currentProfile.age || '';
+document.getElementById('country').value = currentProfile.country || '';
+document.getElementById('occupation').value = currentProfile.occupation || '';
+document.getElementById('height').value = currentProfile.height || '';
+document.getElementById('weight').value = currentProfile.weight || '';
+document.getElementById('target_weight').value = currentProfile.target_weight || '';
+document.getElementById('body_fat').value = currentProfile.body_fat_percentage || '';
+document.getElementById('muscle_mass').value = currentProfile.muscle_mass || '';
+document.getElementById('goal').value = currentProfile.primary_goal || '';
 
-document.getElementById("score").innerText =
-`Health Score: ${ai?.score || 0}/100`
+async function saveChanges() {
+  // Build updated profile object, preserving the original ID
+  const updatedProfile = {
+    ...currentProfile,
+    name: document.getElementById('name').value.trim(),
+    email: document.getElementById('email').value.trim(),
+    phone: document.getElementById('phone').value.trim(),
+    gender: document.getElementById('gender').value,
+    age: Number(document.getElementById('age').value) || 0,
+    country: document.getElementById('country').value.trim(),
+    occupation: document.getElementById('occupation').value.trim(),
+    height: Number(document.getElementById('height').value) || 170,
+    weight: Number(document.getElementById('weight').value) || 70,
+    target_weight: Number(document.getElementById('target_weight').value) || 70,
+    body_fat_percentage: Number(document.getElementById('body_fat').value) || 0,
+    muscle_mass: Number(document.getElementById('muscle_mass').value) || 0,
+    primary_goal: document.getElementById('goal').value,
+    bmi: (() => {
+      const h = Number(document.getElementById('height').value) || 170;
+      const w = Number(document.getElementById('weight').value) || 70;
+      return (w / ((h/100)*(h/100))).toFixed(1);
+    })(),
+    updated_at: new Date().toISOString()
+  };
 
-document.getElementById("advice").innerText =
-ai?.advice || "No AI advice available yet."
+  // Save to localStorage: replace the old profile in the profiles array
+  let profiles = JSON.parse(localStorage.getItem('profiles') || '[]');
+  const index = profiles.findIndex(p => p.id === profileId);
+  if (index !== -1) {
+    profiles[index] = updatedProfile;
+    localStorage.setItem('profiles', JSON.stringify(profiles));
+  }
 
-/* ================= FUTURE PLACEHOLDER ================= */
-document.getElementById("trend").innerText =
-"AI prediction engine ready (Phase 8: weight + calorie + risk forecasting)"
+  // If this profile is the active one, update activeProfile as well
+  const active = JSON.parse(localStorage.getItem('activeProfile'));
+  if (active && active.id === profileId) {
+    localStorage.setItem('activeProfile', JSON.stringify(updatedProfile));
+  }
+
+  // Sync to Supabase
+  if (typeof upsertProfile === 'function') {
+    try {
+      await upsertProfile(updatedProfile);
+      console.log('✅ Profile synced to cloud');
+    } catch (e) {
+      console.warn('Cloud sync failed, but local is fine:', e);
+    }
+  }
+
+  // Notify other pages
+  window.dispatchEvent(new Event('profileSyncUpdate'));
+
+  document.getElementById('saveStatus').style.display = 'block';
+  setTimeout(() => {
+    window.location.href = 'profile.html';
+  }, 800);
 }
 
-load()
-
+function cancelEdit() {
+  window.location.href = 'profile.html';
+}
 </script>
 
 </body>
