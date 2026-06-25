@@ -61,7 +61,7 @@ async function callOpenAIVision(base64Image) {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${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}`
+        "Authorization": `Bearer ${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}`
       },
       signal: controller.signal,
       body: JSON.stringify({
