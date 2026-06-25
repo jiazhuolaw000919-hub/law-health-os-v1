@@ -2,7 +2,8 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Report v11.4 AI Dashboard Pro</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Report v11.4 AI Dashboard Pro (Mobile Ready)</title>
 
 <link rel="stylesheet" href="style.css">
 
@@ -15,64 +16,64 @@
 <body>
 
 <div class="nav">
-<a href="index.html">Home</a>
-<a href="calendar.html">Calendar</a>
-<a href="food.html">Food</a>
-<a href="workout.html">Workout</a>
-<a href="shopping.html">Shop</a>
-<a href="report.html">Report</a>
-<a href="profile.html">Profile</a>
+  <a href="index.html">Home</a>
+  <a href="calendar.html">Calendar</a>
+  <a href="food.html">Food</a>
+  <a href="workout.html">Workout</a>
+  <a href="shopping.html">Shop</a>
+  <a href="report.html">Report</a>
+  <a href="profile.html">Profile</a>
 </div>
 
 <h2 class="center">📊 AI Health Report v11.4</h2>
 
 <div class="card">
-<p id="activeProfile">Loading...</p>
+  <p id="activeProfile">Loading...</p>
 </div>
 
 <div class="card">
-<h3>🧠 AI Weekly Insight</h3>
-<p id="aiInsight">Loading...</p>
+  <h3>🧠 AI Weekly Insight</h3>
+  <p id="aiInsight">Loading...</p>
 </div>
 
 <div class="card">
-<h3>🔥 Today Calories</h3>
-<p id="dailyCalories">Loading...</p>
+  <h3>🔥 Today Calories</h3>
+  <p id="dailyCalories">Loading...</p>
 </div>
 
 <div class="card">
-<h3>⚠ Risk Level</h3>
-<p id="risk">Loading...</p>
+  <h3>⚠ Risk Level</h3>
+  <p id="risk">Loading...</p>
 </div>
 
 <div class="card">
-<h3>🍽 Food Pattern Analysis</h3>
-<p id="foodPattern">Loading...</p>
+  <h3>🍽 Food Pattern Analysis</h3>
+  <p id="foodPattern">Loading...</p>
 </div>
 
 <div class="card">
-<h3>☠ Top Risk Foods</h3>
-<div id="riskFoods"></div>
+  <h3>☠ Top Risk Foods</h3>
+  <div id="riskFoods"></div>
 </div>
 
 <div class="card">
-<h3>📈 Weight Prediction</h3>
-<p id="weightPrediction">Loading...</p>
+  <h3>📈 Weight Prediction</h3>
+  <p id="weightPrediction">Loading...</p>
 </div>
 
 <div class="card">
-<h3>📊 Weekly Summary</h3>
-<p id="weeklySummary">Loading...</p>
+  <h3>📊 Weekly Summary</h3>
+  <p id="weeklySummary">Loading...</p>
 </div>
 
 <div class="card">
-<h3>📊 Chart</h3>
-<canvas id="chart" width="320" height="140"></canvas>
+  <h3>📊 Chart</h3>
+  <canvas id="chart" width="320" height="140" style="max-width:100%;"></canvas>
 </div>
 
 <div class="card">
-<h3>📄 Export PDF v11.4</h3>
-<button onclick="exportPDF()">Generate Report</button>
+  <h3>📄 Export PDF v11.4</h3>
+  <button onclick="exportPDF()">Generate Report</button>
 </div>
 
 <script>
@@ -120,7 +121,7 @@ function getActiveProfile(){
 
 async function safeGetLogs(date){
   try{
-    if (typeof getFoodLogs === "undefined") return []; // 现在 typeof 返回 "undefined"，正确
+    if (typeof getFoodLogs === "undefined") return [];
     let logs = await getFoodLogs(date);
     return Array.isArray(logs) ? logs : [];
   }catch(e){
@@ -195,7 +196,6 @@ function drawChart(calories, bmi){
 
 function exportPDF(){
   alert("PDF export requires jsPDF library. Add <script src='https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'></script> to enable.");
-  // 如果你要使用，就加上上面那个 CDN，然后这行替换掉。
 }
 
 loadReport();
