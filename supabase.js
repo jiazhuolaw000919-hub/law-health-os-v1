@@ -1,5 +1,5 @@
 /* =========================
- SUPABASE CONFIG (FULL COLUMN + DYNAMIC FALLBACK)
+ SUPABASE CONFIG (ULTRA-FALLBACK)
  ========================= */
 
 const SUPABASE_URL = "https://jqevcfyhnlttzdiylfrh.supabase.co"
@@ -56,7 +56,21 @@ async function saveFood(food) {
       return null
     }
 
-    // 基础字段（food_logs 表通常至少包含这些）
+    // 三级 payload
+    const fullPayload = {
+      userId: profile.id,
+      food: food.food || "unknown",
+      calories: Number(food.calories || 0),
+      protein: Number(food.protein || 0),
+      carbs: Number(food.carbs || 0),
+      fat: Number(food.fat || 0),
+      meal_type: food.mealType || "snack",
+      components: food.components || [],
+      image_url: food.image || null,
+      date: food.date || new Date().toISOString().split("T")[0],
+      created_at: new Date().toISOString()
+    }
+
     const basePayload = {
       userId: profile.id,
       food: food.food || "unknown",
@@ -65,40 +79,38 @@ async function saveFood(food) {
       created_at: new Date().toISOString()
     }
 
-    // 尝试添加更多字段
-    const fullPayload = {
-      ...basePayload,
-      protein: Number(food.protein || 0),
-      carbs: Number(food.carbs || 0),
-      fat: Number(food.fat || 0),
-      meal_type: food.mealType || "snack",
-      components: food.components || [],
-      image_url: food.image || null
+    const minimalPayload = {
+      food: food.food || "unknown",
+      calories: Number(food.calories || 0),
+      date: food.date || new Date().toISOString().split("T")[0]
     }
 
-    // 第一次尝试：插入完整字段
-    let { data, error } = await supabaseClient
-      .from("food_logs")
-      .insert([fullPayload])
-      .select()
+    // 尝试完整插入
+    let result = await supabaseClient.from("food_logs").insert([fullPayload]).select()
+    if (!result.error) {
+      console.log("✅ Synced to Supabase (full):", result.data)
+      return result.data
+    }
+    console.warn("Full insert failed:", result.error.message)
 
-    if (error) {
-      console.warn("Full insert failed, falling back to base columns:", error.message)
-      // 降级：只用基础字段插入
-      const result = await supabaseClient
-        .from("food_logs")
-        .insert([basePayload])
-        .select()
+    // 尝试基础插入（带 userId）
+    result = await supabaseClient.from("food_logs").insert([basePayload]).select()
+    if (!result.error) {
+      console.log("✅ Synced to Supabase (base):", result.data)
+      return result.data
+    }
+    console.warn("Base insert failed:", result.error.message)
 
-      if (result.error) {
-        console.error("saveFood error:", JSON.stringify(result.error, null, 2))
-        return null
-      }
-      data = result.data
+    // 最后尝试最小插入（连 userId 都不要了，表结构一定缺这些列）
+    result = await supabaseClient.from("food_logs").insert([minimalPayload]).select()
+    if (!result.error) {
+      console.warn("⚠️ Synced with minimal columns (no userId). Run SQL to fix table.")
+      return result.data
     }
 
-    console.log("✅ Synced to Supabase:", data)
-    return data
+    // 彻底失败，说明表都不存在或结构完全不兼容
+    console.error("❌ All inserts failed. Please create the food_logs table in Supabase.")
+    return null
   } catch (e) {
     console.error("saveFood crash:", e)
     return null
