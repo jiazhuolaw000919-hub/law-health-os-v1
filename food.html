@@ -135,7 +135,7 @@ box-sizing:border-box;
 <div id="foodList"></div>
 </div>
 
-<!-- Meal Modal（增强了菜肴列表显示） -->
+<!-- Meal Modal（增强菜肴列表） -->
 <div id="mealModal" class="modal">
 <div class="modal-content">
 
@@ -146,7 +146,6 @@ box-sizing:border-box;
 <label>Food Name:</label>
 <input type="text" id="modalFoodName" class="editable-field" placeholder="Enter food name">
 
-<!-- 这里展示识别出的每道菜 -->
 <div id="modalDishList" class="preview-box" style="display:none;"></div>
 
 <div id="modalNutritionPreview" class="preview-box"></div>
@@ -167,7 +166,7 @@ box-sizing:border-box;
 </div>
 </div>
 
-<!-- Custom Entry Modal（不变） -->
+<!-- Custom Entry Modal -->
 <div id="customEntryModal" class="modal">
 <div class="modal-content">
 <h3>✍️ Custom Food Entry</h3>
@@ -205,7 +204,6 @@ box-sizing:border-box;
 
 /* ================= GLOBAL DB ================= */
 let foodDB = JSON.parse(localStorage.getItem("foodDB")) || []
-
 let pendingFood = null
 let mode = "normal"
 let multiList = []
@@ -252,59 +250,71 @@ if(components.length === 0) components = ["mixed ingredients"]
 return components
 }
 
-/* ================= AI WRAPPER（扩展返回所有菜肴） ================= */
+/* ================= AI WRAPPER（彻底修复） ================= */
 async function analyzeImage(base64){
-setAI("scanning...")
-try{
-if(window.analyzeFoodImage){
-const r = await window.analyzeFoodImage(base64)
+  setAI("scanning...")
 
-// 如果有 foods 数组，返回完整列表和总计
-if(r && Array.isArray(r.foods) && r.foods.length > 0){
-  setAI("done")
-  return {
-    // 第一个菜名作为主名称
-    food: r.foods[0].food || "Unknown meal",
-    // 所有菜肴的详细信息
-    dishes: r.foods.map(dish => ({
-      name: dish.food || "Unknown",
-      calories: Number(dish.calories) || 0,
-      protein: Number(dish.protein) || 0,
-      carbs: Number(dish.carbs) || 0,
-      fat: Number(dish.fat) || 0,
-      portion: dish.portion || ""
-    })),
-    // 总计营养
-    calories: Number(r.totalCalories) || r.foods.reduce((a,b)=>a+Number(b.calories||0), 0),
-    protein: Number(r.totalProtein) || r.foods.reduce((a,b)=>a+Number(b.protein||0), 0),
-    carbs: Number(r.totalCarbs) || r.foods.reduce((a,b)=>a+Number(b.carbs||0), 0),
-    fat: Number(r.totalFat) || r.foods.reduce((a,b)=>a+Number(b.fat||0), 0)
+  try {
+    if (!window.analyzeFoodImage) {
+      throw new Error("analyzeFoodImage function not found. Check ai-vision.js loading.")
+    }
+
+    const r = await window.analyzeFoodImage(base64)
+    console.log("Raw AI response:", r)  // 调试用，方便排查
+
+    // 情况1：ai-vision返回了完整的foods数组
+    if (r && Array.isArray(r.foods) && r.foods.length > 0) {
+      setAI("done")
+      return {
+        food: r.foods[0].food || "Unknown meal",
+        dishes: r.foods.map(dish => ({
+          name: dish.food || "Unknown",
+          calories: Number(dish.calories) || 0,
+          protein: Number(dish.protein) || 0,
+          carbs: Number(dish.carbs) || 0,
+          fat: Number(dish.fat) || 0,
+          portion: dish.portion || ""
+        })),
+        calories: Number(r.totalCalories) || r.foods.reduce((a,b) => a + Number(b.calories||0), 0),
+        protein: Number(r.totalProtein) || r.foods.reduce((a,b) => a + Number(b.protein||0), 0),
+        carbs: Number(r.totalCarbs) || r.foods.reduce((a,b) => a + Number(b.carbs||0), 0),
+        fat: Number(r.totalFat) || r.foods.reduce((a,b) => a + Number(b.fat||0), 0)
+      }
+    }
+
+    // 情况2：旧版格式（顶层有food/calories）
+    if (r && (r.food || r.calories)) {
+      setAI("done")
+      return {
+        food: r.food || "Unknown meal",
+        calories: Number(r.calories || r.totalCalories || 450),
+        protein: Number(r.protein || r.totalProtein || 18),
+        carbs: Number(r.carbs || r.totalCarbs || 55),
+        fat: Number(r.fat || r.totalFat || 12),
+        dishes: []
+      }
+    }
+
+    // 情况3：连顶层都没有，直接fallback
+    throw new Error("AI returned unrecognized format")
+  } catch(e) {
+    console.error("AI scan error:", e)
+    alert("❌ AI scan failed. Possible reasons:\n\n" +
+          "1. API key is invalid or missing (check ai-vision.js)\n" +
+          "2. Network error (check console for details)\n" +
+          "3. You are not on an HTTP/HTTPS connection\n\n" +
+          "Open browser console (F12) to see the error.")
   }
-} else {
-  // 旧格式降级
-  setAI("done")
+
+  setAI("fallback")
   return {
-    food: r?.food || "Unknown meal",
-    calories: Number(r?.calories ?? r?.totalCalories ?? 450),
-    protein: Number(r?.protein ?? r?.totalProtein ?? 18),
-    carbs: Number(r?.carbs ?? r?.totalCarbs ?? 55),
-    fat: Number(r?.fat ?? r?.totalFat ?? 12),
+    food: "Unknown meal",
+    calories: 450,
+    protein: 18,
+    carbs: 55,
+    fat: 12,
     dishes: []
   }
-}
-}
-}catch(e){
-console.log(e)
-}
-setAI("fallback")
-return {
-food:"Unknown meal",
-calories:450,
-protein:18,
-carbs:55,
-fat:12,
-dishes: []
-}
 }
 
 /* ================= MODE ================= */
@@ -337,7 +347,7 @@ let diff = cal - maintenance
 return { status: diff > 0 ? "surplus" : "deficit", diff }
 }
 
-/* ================= MANUAL（原有快速输入） ================= */
+/* ================= MANUAL ================= */
 function startManualFlow(){
 let input = document.getElementById("foodInput").value.trim()
 if(!input) return alert("Enter food")
@@ -353,7 +363,7 @@ dishes: []
 openMealModal()
 }
 
-/* ================= AI UPLOAD（现在会携带 dishes） ================= */
+/* ================= AI UPLOAD ================= */
 async function openAIUpload(){
 let input = document.createElement("input")
 input.type = "file"
@@ -462,13 +472,12 @@ closeCustomEntry()
 openMealModal()
 }
 
-/* ================= MEAL MODAL（增强显示 dishes） ================= */
+/* ================= MEAL MODAL ================= */
 function openMealModal(){
 if(!pendingFood) return;
 const modal = document.getElementById("mealModal")
 modal.style.display = "flex"
 
-// 图片预览
 const imgDiv = document.getElementById("modalImagePreview")
 if(pendingFood.image){
 imgDiv.style.display = "block"
@@ -478,10 +487,8 @@ imgDiv.style.display = "none"
 imgDiv.innerHTML = ""
 }
 
-// 食物名称输入框
 document.getElementById("modalFoodName").value = pendingFood.food
 
-// 展示菜肴列表（如果有 dishes 且长度>1）
 const dishListDiv = document.getElementById("modalDishList")
 if(pendingFood.dishes && pendingFood.dishes.length > 1){
 let dishHtml = "<b>🔍 Identified dishes:</b><ul class='dish-list'>"
@@ -504,7 +511,6 @@ let adj = {...pendingFood}
 if(mode==="deficit") adj.calories = Math.round(adj.calories * 0.85)
 if(mode==="bulk") adj.calories = Math.round(adj.calories * 1.15)
 
-// 如果有多个菜肴，补充说明
 let totalInfo = `<b>${adj.food}</b><br><span class="small-tag">${adj.type}</span><br><br>`
 totalInfo += `🔥 Total: ${Math.round(adj.calories)} kcal<br>`
 totalInfo += `P:${Math.round(adj.protein)} C:${Math.round(adj.carbs)} F:${Math.round(adj.fat)}<br>`
@@ -513,7 +519,6 @@ totalInfo += `<br><b>Components:</b><br>${(adj.components||[]).map(c=>`<span cla
 document.getElementById("modalNutritionPreview").innerHTML = totalInfo
 }
 
-// 监听名称修改
 document.getElementById("modalFoodName").addEventListener("input", function(e){
 if(!pendingFood) return;
 let newName = e.target.value.trim() || "Unknown meal"
@@ -534,10 +539,8 @@ pendingFood.calories = est.calories
 pendingFood.protein = est.protein
 pendingFood.carbs = est.carbs
 pendingFood.fat = est.fat
-// 手动重估会清除 dishes（因为不再是AI拆分）
 pendingFood.dishes = []
 updateModalNutritionPreview()
-// 刷新菜肴列表显示
 document.getElementById("modalDishList").style.display = "none"
 }
 window.reEstimateFromName = reEstimateFromName
@@ -553,7 +556,6 @@ if(!pendingFood) return
 pendingFood.food = document.getElementById("modalFoodName").value.trim() || pendingFood.food
 pendingFood.mealType = type
 
-// 如果有多个菜肴，用所有菜名生成成分列表，让已保存列表更详细
 if(pendingFood.dishes && pendingFood.dishes.length > 1){
 let allNames = pendingFood.dishes.map(d=>d.name).join(", ")
 pendingFood.components = extractComponents(allNames)
