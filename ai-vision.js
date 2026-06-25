@@ -1,12 +1,8 @@
 //////////////////////////////
-// 🧠 AI VISION v11.6 (UPGRADED + FIXED FOR v13)
-// 🔑 IMPORTANT: Replace the placeholder with your NEW OpenAI API key
-//    Get it at: https://platform.openai.com/api-keys
+// 🧠 AI VISION v11.6 (FIXED)
+// 🔑 必须把下面的 sk-YOUR_NEW_KEY_HERE 换成你全新的 OpenAI key
 //////////////////////////////
 
-/* =========================
-IMAGE PREVIEW HELPER
-========================= */
 function previewFoodImage(file, callback) {
   if (!file) return;
   const reader = new FileReader();
@@ -26,42 +22,30 @@ function previewFoodImage(file, callback) {
   reader.readAsDataURL(file);
 }
 
-//////////////////////////////
-// 🧠 GLOBAL WRAPPER
-//////////////////////////////
 window.analyzeFoodImage = async function(base64) {
   try {
-    // Basic validation
-    if (!base64 || typeof base64 !== "string" || !base64.startsWith("data:image/")) {
-      throw new Error("Invalid image data");
-    }
+    if (!base64 || !base64.startsWith("data:image/")) throw new Error("Invalid image");
     const result = await callOpenAIVision(base64);
     return normalizeVision(result);
   } catch (e) {
-    console.error("❌ analyzeFoodImage error:", e.message);
-    // Show user-friendly alert
-    alert("AI scan failed: " + (e.message.includes("API key") ? "Invalid API key. Please check ai-vision.js" : e.message));
+    console.error("analyzeFoodImage error:", e);
     return fallbackVision();
   }
 };
 
-//////////////////////////////
-// 🧠 MAIN VISION ENGINE (call OpenAI API)
-//////////////////////////////
 async function callOpenAIVision(base64Image) {
-  // ===== PUT YOUR NEW KEY HERE (keep it secret!) =====
+  // 🔥 在这里粘贴你的新 key
   const OPENAI_API_KEY = "sk-YOUR_NEW_KEY_HERE";
-  // ===================================================
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 seconds
+  const timeoutId = setTimeout(() => controller.abort(), 25000);
 
   try {
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${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}`
+        "Authorization": "Bearer " + OPENAI_API_KEY
       },
       signal: controller.signal,
       body: JSON.stringify({
@@ -69,74 +53,13 @@ async function callOpenAIVision(base64Image) {
         messages: [
           {
             role: "system",
-            content: `You are a senior clinical nutrition AI + food vision expert specializing in Asian cuisine. Your job is to analyze food images and return STRICT JSON ONLY.
-
-🚨 OUTPUT RULES (HARD):
-- ALWAYS return valid JSON
-- NEVER return null or empty fields
-- ALWAYS estimate portion size if unclear
-- NEVER output "unknown" unless absolutely impossible
-- ALWAYS assume real-world Asian portions (Singapore/Malaysia style)
-
-🍱 CRITICAL: FOOD SPLITTING
-If food contains multiple components, YOU MUST SPLIT THEM.
-Examples:
-- Chicken rice → chicken, rice, sauce
-- Cai Fan / Mixed Rice → rice, meat, vegetables, egg if present
-- Noodle dish → noodles, protein, soup/oil base
-- Drinks → sugar, milk, coffee/tea base
-
-🇸🇬 ASIAN FOOD KNOWLEDGE:
-- cai fan = mixed rice stall food
-- economic rice = same as above
-- kopitiam drinks = high sugar milk tea/coffee
-- nasi lemak = rice + egg + sambal + anchovy
-- mee goreng = oily fried noodles
-- chicken rice = rice + chicken + sauce
-- mala = high oil + spice + heavy calories
-
-🔥 CALORIE LOGIC (REALISTIC):
-- rice (1 plate) = 250–350 kcal
-- fried chicken = 250–400 kcal
-- grilled chicken = 150–250 kcal
-- noodles = 300–500 kcal
-- oily dishes = +30–50% calories
-- drinks = 120–300 kcal
-
-📦 OUTPUT FORMAT (STRICT JSON ONLY, NO MARKDOWN):
-{
-  "foods": [
-    {
-      "food": "string",
-      "calories": number,
-      "protein": number,
-      "carbs": number,
-      "fat": number,
-      "portion": "string",
-      "cuisine": "string",
-      "confidence": number
-    }
-  ],
-  "totalCalories": number,
-  "totalProtein": number,
-  "totalCarbs": number,
-  "totalFat": number,
-  "mealScore": number,
-  "healthRisk": "low" | "medium" | "high"
-}
-`
+            content: "You are a nutrition AI. Analyze food images and return ONLY valid JSON. The JSON must contain an array 'foods' with objects having 'food','calories','protein','carbs','fat'. Include 'totalCalories', etc. Always estimate Asian portions."
           },
           {
             role: "user",
             content: [
-              {
-                type: "text",
-                text: "Analyze this food image and return nutrition JSON."
-              },
-              {
-                type: "image_url",
-                image_url: { url: base64Image }
-              }
+              { type: "text", text: "Analyze this food and return nutrition JSON." },
+              { type: "image_url", image_url: { url: base64Image } }
             ]
           }
         ],
@@ -147,121 +70,53 @@ Examples:
     clearTimeout(timeoutId);
 
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error("OpenAI API error:", response.status, errorText);
-      if (response.status === 401) throw new Error("Invalid API key or unauthorized.");
-      if (response.status === 429) throw new Error("Rate limit exceeded. Try again later.");
-      if (response.status === 500) throw new Error("OpenAI server error. Try again.");
-      throw new Error(`API error ${response.status}: ${errorText}`);
+      const errText = await response.text();
+      throw new Error("API error " + response.status + ": " + errText);
     }
 
     const data = await response.json();
-    let raw = data?.choices?.[0]?.message?.content;
-
-    if (!raw) {
-      console.warn("⚠️ No content returned from OpenAI");
-      return fallbackVision();
-    }
-
-    console.log("📦 Raw AI response:", raw);
-
-    // Parse JSON, handling possible markdown fences
-    let parsed = null;
-    try {
-      parsed = JSON.parse(raw);
-    } catch (e) {
-      const cleaned = raw
-        .replace(/```json|```/g, "")
-        .trim();
-      parsed = JSON.parse(cleaned);
-    }
-
-    return parsed;
-
+    const raw = data?.choices?.[0]?.message?.content;
+    if (!raw) throw new Error("Empty response");
+    const clean = raw.replace(/```json|```/g, "").trim();
+    return JSON.parse(clean);
   } catch (e) {
     clearTimeout(timeoutId);
-    if (e.name === "AbortError") {
-      console.error("⏰ Vision API call timed out");
-      throw new Error("Request timed out. Please try again.");
-    }
-    console.error("❌ Vision API call failed:", e);
     throw e;
   }
 }
 
-//////////////////////////////
-// 🧠 NORMALIZER
-//////////////////////////////
 function normalizeVision(data) {
-  if (!data) {
-    console.warn("⚠️ normalizeVision: data is null/undefined");
+  if (!data || !Array.isArray(data.foods) || data.foods.length === 0) {
     return fallbackVision();
   }
-
-  let foods = [];
-
-  if (Array.isArray(data.foods)) {
-    foods = data.foods;
-  } else if (data.food) {
-    foods = [data];
-  } else {
-    console.warn("⚠️ normalizeVision: no foods array or food field");
-    return fallbackVision();
-  }
-
-  const normalized = {
-    foods: foods.map(f => ({
+  return {
+    foods: data.foods.map(f => ({
       food: f.food || "Unknown Food",
       calories: Number(f.calories) || 0,
       protein: Number(f.protein) || 0,
       carbs: Number(f.carbs) || 0,
       fat: Number(f.fat) || 0,
-      portion: f.portion || "unknown",
-      cuisine: f.cuisine || "unknown",
+      portion: f.portion || "",
+      cuisine: f.cuisine || "",
       confidence: Number(f.confidence) || 0.5
     })),
-    totalCalories: Number(data.totalCalories) || foods.reduce((a, b) => a + Number(b.calories || 0), 0),
-    totalProtein: Number(data.totalProtein) || foods.reduce((a, b) => a + Number(b.protein || 0), 0),
-    totalCarbs: Number(data.totalCarbs) || foods.reduce((a, b) => a + Number(b.carbs || 0), 0),
-    totalFat: Number(data.totalFat) || foods.reduce((a, b) => a + Number(b.fat || 0), 0),
-    mealScore: Number(data.mealScore) || 70,
+    totalCalories: data.totalCalories || data.foods.reduce((a,b) => a + Number(b.calories||0), 0),
+    totalProtein: data.totalProtein || data.foods.reduce((a,b) => a + Number(b.protein||0), 0),
+    totalCarbs: data.totalCarbs || data.foods.reduce((a,b) => a + Number(b.carbs||0), 0),
+    totalFat: data.totalFat || data.foods.reduce((a,b) => a + Number(b.fat||0), 0),
+    mealScore: data.mealScore || 70,
     healthRisk: data.healthRisk || "medium"
   };
-
-  console.log("✅ Normalized:", normalized);
-  return normalized;
 }
 
-//////////////////////////////
-// 🧠 FALLBACK
-//////////////////////////////
 function fallbackVision() {
-  console.warn("⚠️ Using fallback data");
   return {
-    foods: [
-      {
-        food: "Unknown Food",
-        calories: 450,
-        protein: 18,
-        carbs: 55,
-        fat: 15,
-        portion: "estimated",
-        cuisine: "unknown",
-        confidence: 0.4
-      }
-    ],
-    totalCalories: 450,
-    totalProtein: 18,
-    totalCarbs: 55,
-    totalFat: 15,
-    mealScore: 60,
-    healthRisk: "medium"
+    foods: [{ food: "Unknown Food", calories: 450, protein: 18, carbs: 55, fat: 15, portion: "estimated", cuisine: "unknown", confidence: 0.4 }],
+    totalCalories: 450, totalProtein: 18, totalCarbs: 55, totalFat: 15,
+    mealScore: 60, healthRisk: "medium"
   };
 }
 
-//////////////////////////////
-// 🧠 SIMPLE WRAPPER (for manual use)
-//////////////////////////////
 async function scanFoodAI(file) {
   return new Promise((resolve) => {
     if (!file) {
@@ -275,7 +130,6 @@ async function scanFoodAI(file) {
         const result = await callOpenAIVision(base64);
         resolve(normalizeVision(result));
       } catch (e) {
-        console.error("scanFoodAI error:", e);
         resolve(fallbackVision());
       }
     };
