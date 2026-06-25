@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Food AI v16.2 PRO SYSTEM (FULL SYNC + AUTO NUTRITION LOOKUP)</title>
+<title>Food AI v16.2 PRO (Malaysia Food DB + Auto Lookup)</title>
 
 <link rel="stylesheet" href="style.css">
 
@@ -13,8 +13,11 @@
 <script src="supabase.js"></script>
 <script src="ai-vision.js"></script>
 
+<!-- 🇲🇾 独立的本地食物数据库 -->
+<script src="food-db.js"></script>
+
 <style>
-/* 仅保留 food.html 特有的、全局 style.css 没有的样式 */
+/* 仅保留 food.html 特有的样式 */
 .modal{
 position:fixed;
 top:0;left:0;right:0;bottom:0;
@@ -105,9 +108,9 @@ box-sizing:border-box;
 
 <body>
 
-<h2>🍽 Food AI v16.2 (Auto Nutrition Lookup)</h2>
+<h2>🍽 Food AI v16.2 (Malaysia DB)</h2>
 
-<!-- 导航栏（样式由全局 style.css 提供） -->
+<!-- 导航栏 -->
 <div class="nav">
   <a href="index.html">Home</a>
   <a href="calendar.html">Calendar</a>
@@ -131,7 +134,7 @@ box-sizing:border-box;
 </div>
 
 <div class="card">
-<input id="foodInput" placeholder="e.g. indomie, oreo, chicken rice">
+<input id="foodInput" placeholder="e.g. maggie kari, oreo, muchys chocolate">
 <br><br>
 <button id="addFoodBtn" onclick="startManualFlow()">🔍 Add Food (Auto Lookup)</button>
 <button onclick="openAIUpload()">AI Scan</button>
@@ -344,7 +347,6 @@ async function lookupFoodAPI(query) {
     if (!response.ok) return null;
     const data = await response.json();
     if (!data.products || data.products.length === 0) return null;
-    // 取第一个有完整营养信息的产品（每100g的营养值通常可作为一包/一份的参考）
     for (let prod of data.products) {
       if (prod.nutriments && prod.nutriments["energy-kcal_100g"] !== undefined) {
         const cals = Number(prod.nutriments["energy-kcal_100g"]) || Number(prod.nutriments["energy-kcal"]) || 0;
@@ -376,45 +378,62 @@ function getDeficit(cal){
   return { status: diff > 0 ? "surplus" : "deficit", diff }
 }
 
-/* ================= MANUAL FLOW (WITH AUTO LOOKUP) ================= */
+/* ================= MANUAL FLOW (WITH LOCAL DB + API) ================= */
 async function startManualFlow(){
   let input = document.getElementById("foodInput").value.trim()
   if(!input) return alert("Enter food")
 
-  // 禁用按钮，避免重复点击
   const btn = document.getElementById("addFoodBtn");
   if (btn) btn.disabled = true;
 
-  let nutrition = null;
-  // 尝试从 Open Food Facts 获取营养数据
-  nutrition = await lookupFoodAPI(input);
-
-  if (!nutrition) {
-    // 没有找到，使用本地估算
-    nutrition = {
-      food: input,
-      ...estimateNutrition(input),
-      source: 'local'
+  // 1. 查本地数据库（来自 food-db.js）
+  const localMatch = searchLocalFood(input);
+  if (localMatch) {
+    pendingFood = {
+      id: Date.now(),
+      food: localMatch.food || input,
+      type: detectFoodType(input),
+      date: new Date().toISOString().split("T")[0],
+      components: extractComponents(input),
+      calories: localMatch.calories,
+      protein: localMatch.protein,
+      carbs: localMatch.carbs,
+      fat: localMatch.fat,
+      dishes: []
     };
+    if (btn) btn.disabled = false;
+    openMealModal();
+    return;
   }
 
-  pendingFood = {
-    id: Date.now(),
-    food: nutrition.food || input,
-    type: detectFoodType(input),
-    date: new Date().toISOString().split("T")[0],
-    components: extractComponents(input),
-    calories: nutrition.calories,
-    protein: nutrition.protein,
-    carbs: nutrition.carbs,
-    fat: nutrition.fat,
-    dishes: []
+  // 2. 查 Open Food Facts
+  const apiResult = await lookupFoodAPI(input);
+  if (apiResult) {
+    pendingFood = {
+      id: Date.now(),
+      food: apiResult.food || input,
+      type: detectFoodType(input),
+      date: new Date().toISOString().split("T")[0],
+      components: extractComponents(input),
+      calories: apiResult.calories,
+      protein: apiResult.protein,
+      carbs: apiResult.carbs,
+      fat: apiResult.fat,
+      dishes: []
+    };
+    if (btn) btn.disabled = false;
+    openMealModal();
+    return;
   }
 
-  // 恢复按钮
+  // 3. 都没有，弹出 Custom Entry 让用户手动输入
   if (btn) btn.disabled = false;
-
-  openMealModal()
+  document.getElementById("customFoodName").value = input;
+  document.getElementById("customCalories").value = "";
+  document.getElementById("customProtein").value = "";
+  document.getElementById("customCarbs").value = "";
+  document.getElementById("customFat").value = "";
+  openCustomEntry();
 }
 
 /* ================= AI UPLOAD ================= */
@@ -481,18 +500,18 @@ function startMultiCapture(){
 
 /* ================= CUSTOM ENTRY ================= */
 function openCustomEntry(){
-  document.getElementById("customFoodName").value = ""
-  document.getElementById("customCalories").value = ""
-  document.getElementById("customProtein").value = ""
-  document.getElementById("customCarbs").value = ""
-  document.getElementById("customFat").value = ""
-  document.getElementById("customPhotoInput").value = ""
-  document.getElementById("customPhotoPreview").style.display = "none"
-  customPhotoData = null
-  document.getElementById("customEntryModal").style.display = "flex"
+  document.getElementById("customFoodName").value = "";
+  document.getElementById("customCalories").value = "";
+  document.getElementById("customProtein").value = "";
+  document.getElementById("customCarbs").value = "";
+  document.getElementById("customFat").value = "";
+  document.getElementById("customPhotoInput").value = "";
+  document.getElementById("customPhotoPreview").style.display = "none";
+  customPhotoData = null;
+  document.getElementById("customEntryModal").style.display = "flex";
 }
 function closeCustomEntry(){
-  document.getElementById("customEntryModal").style.display = "none"
+  document.getElementById("customEntryModal").style.display = "none";
 }
 function previewCustomPhoto(){
   const file = document.getElementById("customPhotoInput").files[0]
