@@ -1,9 +1,9 @@
-<!DOCTYPE html>
+<<!DOCTYPE html>
 <html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sleep Logger</title>
+<title>Sleep Logger Pro (Stable)</title>
 
 <link rel="stylesheet" href="style.css">
 
@@ -14,8 +14,22 @@
 <style>
 .card{ margin:10px; padding:12px; background:#fff; border-radius:10px; box-shadow:0 1px 4px rgba(0,0,0,.05); }
 button{ margin:5px; padding:8px 14px; border-radius:8px; border:1px solid #ddd; cursor:pointer; background:#111827; color:white; }
-input{ width:100%; padding:10px; margin:6px 0; border-radius:8px; border:1px solid #ddd; }
+input, select{ width:100%; padding:10px; margin:6px 0; border-radius:8px; border:1px solid #ddd; }
 .delete-btn{ background:#ef4444; color:white; border:none; padding:4px 8px; border-radius:4px; cursor:pointer; font-size:12px; }
+.edit-btn{ background:#3b82f6; color:white; border:none; padding:4px 8px; border-radius:4px; cursor:pointer; font-size:12px; margin-right:4px; }
+.mood-row { display: flex; gap: 8px; justify-content: center; margin: 8px 0; }
+.mood-btn { font-size: 28px; padding: 8px 16px; border-radius: 12px; cursor: pointer; border: 2px solid transparent; background: #f3f4f6; transition: all 0.2s; }
+.mood-btn.selected { border-color: #3b82f6; background: #dbeafe; }
+
+.toast {
+  position: fixed; top: 12px; left: 50%; transform: translateX(-50%);
+  background: #22c55e; color: white; padding: 10px 20px; border-radius: 8px;
+  z-index: 9999; font-size: 14px; font-weight: 600;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  animation: slideDown 0.3s ease;
+}
+.toast.error { background: #ef4444; }
+@keyframes slideDown { from { top: -50px; opacity: 0; } to { top: 12px; opacity: 1; } }
 </style>
 </head>
 <body>
@@ -28,7 +42,7 @@ input{ width:100%; padding:10px; margin:6px 0; border-radius:8px; border:1px sol
 <a href="profile.html">Profile</a>
 </div>
 
-<h2 class="center">😴 Log Sleep</h2>
+<h2 class="center">😴 Log Sleep Pro</h2>
 
 <div class="card">
 <label>📅 Date:</label>
@@ -37,9 +51,20 @@ input{ width:100%; padding:10px; margin:6px 0; border-radius:8px; border:1px sol
 <input type="time" id="bedTime">
 <label>⏰ Wake Time:</label>
 <input type="time" id="wakeTime">
-<br><br>
-<button onclick="saveSleep()">💾 Save Sleep</button>
+<label>😊 Quality:</label>
+<div class="mood-row">
+  <button class="mood-btn" onclick="selectMood('great')" id="mood-great">😊</button>
+  <button class="mood-btn" onclick="selectMood('ok')" id="mood-ok">😐</button>
+  <button class="mood-btn" onclick="selectMood('bad')" id="mood-bad">😟</button>
+</div>
+<br>
+<button onclick="saveSleep()" id="saveBtn">💾 Save Sleep</button>
 <button onclick="location.href='index.html'" style="background:#4b5563;">← Back to Dashboard</button>
+</div>
+
+<div class="card">
+<h3>📊 Sleep Stats</h3>
+<div id="sleepStats"></div>
 </div>
 
 <div class="card">
@@ -48,29 +73,45 @@ input{ width:100%; padding:10px; margin:6px 0; border-radius:8px; border:1px sol
 </div>
 
 <script>
-const profile = JSON.parse(localStorage.getItem("activeProfile")) || { id: "guest" };
-const STORAGE_KEY = `sleep_${profile.id}`;
+var profile = JSON.parse(localStorage.getItem("activeProfile")) || { id: "guest" };
+var STORAGE_KEY = "sleep_" + profile.id;
+var selectedMood = "";
+var editingIndex = -1;
 
 document.getElementById("sleepDate").value = new Date().toISOString().split("T")[0];
 
+// ========== 基础函数 ==========
 function getLogs() {
-  try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
-  } catch(e) {
-    return [];
-  }
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; } catch(e) { return []; }
 }
 
 function saveLogs(logs) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(logs));
 }
 
+function showToast(msg, isError) {
+  var existing = document.querySelector('.toast');
+  if (existing) existing.remove();
+  var toast = document.createElement("div");
+  toast.className = "toast" + (isError ? " error" : "");
+  toast.innerText = msg;
+  document.body.appendChild(toast);
+  setTimeout(function() { toast.remove(); }, 2000);
+}
+
+function selectMood(mood) {
+  selectedMood = mood;
+  document.querySelectorAll('.mood-btn').forEach(function(b) { b.classList.remove('selected'); });
+  document.getElementById("mood-" + mood).classList.add('selected');
+}
+
+// ========== 保存（异步云端放后台） ==========
 function saveSleep() {
   var bedTime = document.getElementById("bedTime").value;
   var wakeTime = document.getElementById("wakeTime").value;
 
   if (!bedTime || !wakeTime) {
-    alert("Please fill both bed and wake times.");
+    showToast("Please fill both times", true);
     return;
   }
 
@@ -87,49 +128,128 @@ function saveSleep() {
     date: date,
     bedTime: bedDateTime,
     wakeTime: wakeDate.toISOString(),
+    mood: selectedMood || "ok",
     timestamp: new Date().toISOString()
   };
 
+  // 本地保存
   var logs = getLogs();
-  logs.push(entry);
+  if (editingIndex >= 0 && editingIndex < logs.length) {
+    logs[editingIndex] = entry;
+    editingIndex = -1;
+    document.getElementById("saveBtn").innerText = "💾 Save Sleep";
+  } else {
+    logs.push(entry);
+  }
   saveLogs(logs);
 
+  // 清空表单
   document.getElementById("bedTime").value = "";
   document.getElementById("wakeTime").value = "";
+  selectedMood = "";
+  document.querySelectorAll('.mood-btn').forEach(function(b) { b.classList.remove('selected'); });
 
-  alert("Saved!");
+  // 刷新列表
   renderLogs();
+  showToast("Saved!");
+
+  // 后台云端同步（不等待）
+  if (window.saveSleep) {
+    window.saveSleep(entry).then(function() {
+      console.log("✅ Synced to cloud");
+    }).catch(function(e) {
+      console.warn("Cloud sync failed:", e);
+    });
+  }
 }
 
+// ========== 编辑 ==========
+function editSleep(index) {
+  var logs = getLogs();
+  var log = logs[index];
+  if (!log) return;
+
+  document.getElementById("sleepDate").value = log.date;
+  document.getElementById("bedTime").value = new Date(log.bedTime).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',hour12:false});
+  document.getElementById("wakeTime").value = new Date(log.wakeTime).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',hour12:false});
+  selectMood(log.mood || "ok");
+
+  editingIndex = index;
+  document.getElementById("saveBtn").innerText = "✏️ Update";
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ========== 删除 ==========
 function deleteSleep(index) {
   if (!confirm("Delete this record?")) return;
   var logs = getLogs();
   logs.splice(index, 1);
   saveLogs(logs);
   renderLogs();
+  showToast("Deleted");
 }
 
+// ========== 统计 ==========
+function renderStats(logs) {
+  var c = document.getElementById("sleepStats");
+  if (!logs || logs.length === 0) {
+    c.innerHTML = "<p>No data yet.</p>";
+    return;
+  }
+
+  var now = new Date();
+  var weekAgo = new Date(now.getTime() - 7 * 86400000);
+  var monthAgo = new Date(now.getTime() - 30 * 86400000);
+
+  var weekLogs = logs.filter(function(l) { return new Date(l.date) >= weekAgo; });
+  var monthLogs = logs.filter(function(l) { return new Date(l.date) >= monthAgo; });
+
+  var avgWeek = weekLogs.length > 0
+    ? (weekLogs.reduce(function(s, l) { return s + (new Date(l.wakeTime) - new Date(l.bedTime)) / 3600000; }, 0) / weekLogs.length).toFixed(1)
+    : "0.0";
+
+  var avgMonth = monthLogs.length > 0
+    ? (monthLogs.reduce(function(s, l) { return s + (new Date(l.wakeTime) - new Date(l.bedTime)) / 3600000; }, 0) / monthLogs.length).toFixed(1)
+    : "0.0";
+
+  var great = logs.filter(function(l) { return l.mood === "great"; }).length;
+  var ok = logs.filter(function(l) { return l.mood === "ok"; }).length;
+  var bad = logs.filter(function(l) { return l.mood === "bad"; }).length;
+
+  c.innerHTML = "<p>📅 Week: Avg " + avgWeek + "h | 🗓 Month: Avg " + avgMonth + "h</p>" +
+                "<p>😊 Great: " + great + " | 😐 Ok: " + ok + " | 😟 Poor: " + bad + "</p>";
+}
+
+// ========== 渲染列表 ==========
 function renderLogs() {
   var logs = getLogs();
   var container = document.getElementById("sleepList");
+
   if (logs.length === 0) {
     container.innerHTML = "<p>No records yet.</p>";
+    renderStats([]);
     return;
   }
+
   var html = "";
   for (var i = 0; i < logs.length; i++) {
     var log = logs[i];
     var bed = new Date(log.bedTime);
     var wake = new Date(log.wakeTime);
     var hrs = ((wake - bed) / 3600000).toFixed(1);
-    html += "<p>🛏 " + log.date + " — " + hrs + "h (" +
+    var emoji = log.mood === "great" ? "😊" : log.mood === "bad" ? "😟" : "😐";
+
+    html += "<p>🛏 " + log.date + " — " + hrs + "h " + emoji + " (" +
             bed.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) + " → " +
             wake.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) +
-            ") <button class='delete-btn' onclick='deleteSleep(" + i + ")'>✕</button></p>";
+            ") <button class='edit-btn' onclick='editSleep(" + i + ")'>✏️</button>" +
+            "<button class='delete-btn' onclick='deleteSleep(" + i + ")'>✕</button></p>";
   }
   container.innerHTML = html;
+  renderStats(logs);
 }
 
+// ========== 启动 ==========
 renderLogs();
 </script>
 </body>
