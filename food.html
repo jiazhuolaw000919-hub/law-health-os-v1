@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Food AI v16.2 PRO SYSTEM (FALLBACK + ALERT + DELETE SYNC)</title>
+<title>Food AI v16.2 PRO SYSTEM (FALLBACK + ALERT + DELETE SYNC + CLOUD LOAD)</title>
 
 <link rel="stylesheet" href="style.css">
 
@@ -140,7 +140,7 @@ box-sizing:border-box;
 
 <body>
 
-<h2>🍽 Food AI v16.2 (Alert + Sync Delete)</h2>
+<h2>🍽 Food AI v16.2 (Sync Across Devices)</h2>
 
 <!-- 导航栏 -->
 <div class="nav">
@@ -668,13 +668,53 @@ function updateToday(){
   document.getElementById("deficitInfo").innerText = def.status + " (" + def.diff + ")"
 }
 
-/* ================= INIT ================= */
-function loadDB(){
+/* ================= INIT (ASYNC + CLOUD MERGE) ================= */
+async function loadDB(){
+  // 先读取本地数据
   foodDB = JSON.parse(localStorage.getItem("foodDB")) || []
+
+  // 从云端拉取该用户的所有记录（如果可用）
+  if (window.loadAllMyFoodLogs) {
+    try {
+      const cloudLogs = await window.loadAllMyFoodLogs()
+      if (cloudLogs && cloudLogs.length > 0) {
+        // 将云端记录转换成与本地兼容的格式
+        const cloudItems = cloudLogs.map(r => ({
+          id: Date.now() + Math.random(),   // 生成本地临时id
+          cloudId: r.id,                    // Supabase 记录的真正 id
+          food: r.food,
+          type: detectFoodType(r.food) || "mixed meal",
+          date: r.date,
+          components: r.components || extractComponents(r.food || ""),
+          calories: Number(r.calories) || 0,
+          protein: Number(r.protein) || 0,
+          carbs: Number(r.carbs) || 0,
+          fat: Number(r.fat) || 0,
+          mealType: r.meal_type || "snack",
+          image: r.image_url || null,
+          dishes: []  // 简单菜肴拆分可以从 components 还原，这里先留空
+        }))
+
+        // 收集云端记录的所有 cloudId
+        const cloudIds = new Set(cloudItems.filter(i => i.cloudId).map(i => i.cloudId))
+        // 移除本地中那些已经同步到云端（即有cloudId且cloudId出现在云端列表）的旧版本
+        foodDB = foodDB.filter(item => !item.cloudId || !cloudIds.has(item.cloudId))
+        // 将云端记录添加到本地（云端数据放在前面）
+        foodDB = [...cloudItems, ...foodDB]
+      }
+    } catch (e) {
+      console.warn("Cloud sync load failed, using local data:", e)
+    }
+  }
+
+  // 保存合并后的数据到本地
+  localStorage.setItem("foodDB", JSON.stringify(foodDB))
   renderFoodList()
   updateToday()
 }
-loadDB()
+
+// 启动
+loadDB().catch(e => console.error("loadDB failed:", e))
 
 </script>
 
