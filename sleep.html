@@ -1,9 +1,9 @@
-<<!DOCTYPE html>
+<!DOCTYPE html>
 <html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sleep Logger Pro (Stable)</title>
+<title>Sleep Logger Pro</title>
 
 <link rel="stylesheet" href="style.css">
 
@@ -15,8 +15,8 @@
 .card{ margin:10px; padding:12px; background:#fff; border-radius:10px; box-shadow:0 1px 4px rgba(0,0,0,.05); }
 button{ margin:5px; padding:8px 14px; border-radius:8px; border:1px solid #ddd; cursor:pointer; background:#111827; color:white; }
 input, select{ width:100%; padding:10px; margin:6px 0; border-radius:8px; border:1px solid #ddd; }
-.delete-btn{ background:#ef4444; color:white; border:none; padding:4px 8px; border-radius:4px; cursor:pointer; font-size:12px; }
-.edit-btn{ background:#3b82f6; color:white; border:none; padding:4px 8px; border-radius:4px; cursor:pointer; font-size:12px; margin-right:4px; }
+.delete-btn{ background:#ef4444; color:white; border:none; padding:8px 12px; border-radius:6px; cursor:pointer; font-size:18px; }
+.edit-btn{ background:#3b82f6; color:white; border:none; padding:8px 12px; border-radius:6px; cursor:pointer; font-size:18px; margin-right:6px; }
 .mood-row { display: flex; gap: 8px; justify-content: center; margin: 8px 0; }
 .mood-btn { font-size: 28px; padding: 8px 16px; border-radius: 12px; cursor: pointer; border: 2px solid transparent; background: #f3f4f6; transition: all 0.2s; }
 .mood-btn.selected { border-color: #3b82f6; background: #dbeafe; }
@@ -40,6 +40,10 @@ input, select{ width:100%; padding:10px; margin:6px 0; border-radius:8px; border
 <a href="food.html">Food</a>
 <a href="report.html">Report</a>
 <a href="profile.html">Profile</a>
+</div>
+
+<div class="card">
+  <p id="activeProfile">Loading...</p>
 </div>
 
 <h2 class="center">😴 Log Sleep Pro</h2>
@@ -73,6 +77,9 @@ input, select{ width:100%; padding:10px; margin:6px 0; border-radius:8px; border
 </div>
 
 <script>
+document.getElementById("activeProfile").innerText =
+  JSON.parse(localStorage.getItem("activeProfile"))?.name || "Guest";
+
 var profile = JSON.parse(localStorage.getItem("activeProfile")) || { id: "guest" };
 var STORAGE_KEY = "sleep_" + profile.id;
 var selectedMood = "";
@@ -80,7 +87,6 @@ var editingIndex = -1;
 
 document.getElementById("sleepDate").value = new Date().toISOString().split("T")[0];
 
-// ========== 基础函数 ==========
 function getLogs() {
   try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; } catch(e) { return []; }
 }
@@ -105,7 +111,6 @@ function selectMood(mood) {
   document.getElementById("mood-" + mood).classList.add('selected');
 }
 
-// ========== 保存（异步云端放后台） ==========
 function saveSleep() {
   var bedTime = document.getElementById("bedTime").value;
   var wakeTime = document.getElementById("wakeTime").value;
@@ -132,7 +137,6 @@ function saveSleep() {
     timestamp: new Date().toISOString()
   };
 
-  // 本地保存
   var logs = getLogs();
   if (editingIndex >= 0 && editingIndex < logs.length) {
     logs[editingIndex] = entry;
@@ -143,17 +147,14 @@ function saveSleep() {
   }
   saveLogs(logs);
 
-  // 清空表单
   document.getElementById("bedTime").value = "";
   document.getElementById("wakeTime").value = "";
   selectedMood = "";
   document.querySelectorAll('.mood-btn').forEach(function(b) { b.classList.remove('selected'); });
 
-  // 刷新列表
   renderLogs();
   showToast("Saved!");
 
-  // 后台云端同步（不等待）
   if (window.saveSleep) {
     window.saveSleep(entry).then(function() {
       console.log("✅ Synced to cloud");
@@ -163,7 +164,6 @@ function saveSleep() {
   }
 }
 
-// ========== 编辑 ==========
 function editSleep(index) {
   var logs = getLogs();
   var log = logs[index];
@@ -179,7 +179,6 @@ function editSleep(index) {
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-// ========== 删除 ==========
 function deleteSleep(index) {
   if (!confirm("Delete this record?")) return;
   var logs = getLogs();
@@ -189,7 +188,6 @@ function deleteSleep(index) {
   showToast("Deleted");
 }
 
-// ========== 统计 ==========
 function renderStats(logs) {
   var c = document.getElementById("sleepStats");
   if (!logs || logs.length === 0) {
@@ -220,7 +218,6 @@ function renderStats(logs) {
                 "<p>😊 Great: " + great + " | 😐 Ok: " + ok + " | 😟 Poor: " + bad + "</p>";
 }
 
-// ========== 渲染列表 ==========
 function renderLogs() {
   var logs = getLogs();
   var container = document.getElementById("sleepList");
@@ -249,7 +246,6 @@ function renderLogs() {
   renderStats(logs);
 }
 
-// ========== 启动 ==========
 renderLogs();
 </script>
 </body>
