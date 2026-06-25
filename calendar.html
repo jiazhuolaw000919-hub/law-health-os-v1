@@ -2,16 +2,14 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>AI Calendar v12.3 Stable Pro (PROFILE + SKELETON UPGRADED)</title>
+<title>AI Calendar v12.3 Stable Pro (FIXED SCRIPTS)</title>
 
 <link rel="stylesheet" href="style.css">
 
+<!-- ✅ 必需的 CDN 和脚本 -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="app.js"></script>
-<script src="ai.js"></script>
 <script src="supabase.js"></script>
-<script src="js/db.js"></script>
-<script src="js/profile.js"></script>
-<script src="js/ai-engine.js"></script>
 
 <style>
 body{
@@ -86,7 +84,7 @@ background:rgba(0,0,0,0.5);
 z-index:9999;
 }
 
-/* ================= SKELETON UI (NEW) ================= */
+/* ================= SKELETON UI ================= */
 .skeleton {
 background: linear-gradient(90deg,#eee 25%,#f5f5f5 50%,#eee 75%);
 background-size: 200% 100%;
@@ -119,7 +117,7 @@ margin:5px 0;
 <a href="profile.html">Profile</a>
 </div>
 
-<h2 class="center">📅 AI Calendar v12.3 (SKELETON + SYNC UPGRADED)</h2>
+<h2 class="center">📅 AI Calendar v12.3 (FIXED)</h2>
 
 <div class="card">
 <p id="time"></p>
@@ -205,7 +203,7 @@ return fallbackProfile()
 }
 }
 
-/* ================= PROFILE RENDER (SKELETON FIX) ================= */
+/* ================= PROFILE RENDER ================= */
 function renderProfile(){
 
 const sk = document.getElementById("profileSkeleton")
@@ -455,7 +453,6 @@ renderProfile()
 buildWeeklySummary()
 load()
 
-// extra safety (fix async profile delay)
 setTimeout(renderProfile, 300)
 setTimeout(renderProfile, 1500)
 })
