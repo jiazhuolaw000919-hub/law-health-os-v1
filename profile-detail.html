@@ -2,7 +2,8 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Profile Detail - Edit & View</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Profile Detail - Edit & View (Mobile Ready)</title>
 
 <link rel="stylesheet" href="style.css">
 
@@ -41,6 +42,21 @@ button {
   border-radius:6px;
   cursor:pointer;
   border:1px solid #ddd;
+}
+
+/* 移动端微调 */
+@media (max-width: 480px) {
+  .card {
+    margin: 8px;
+    padding: 10px;
+  }
+  input, select {
+    padding: 8px;
+    font-size: 0.9rem;
+  }
+  button {
+    padding: 10px 14px;
+  }
 }
 </style>
 </head>
