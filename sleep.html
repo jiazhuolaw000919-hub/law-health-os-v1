@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sleep Logger Pro</title>
+<title>Sleep Logger</title>
 
 <link rel="stylesheet" href="style.css">
 
@@ -14,39 +14,8 @@
 <style>
 .card{ margin:10px; padding:12px; background:#fff; border-radius:10px; box-shadow:0 1px 4px rgba(0,0,0,.05); }
 button{ margin:5px; padding:8px 14px; border-radius:8px; border:1px solid #ddd; cursor:pointer; background:#111827; color:white; }
-input, select{ width:100%; padding:10px; margin:6px 0; border-radius:8px; border:1px solid #ddd; }
+input{ width:100%; padding:10px; margin:6px 0; border-radius:8px; border:1px solid #ddd; }
 .delete-btn{ background:#ef4444; color:white; border:none; padding:4px 8px; border-radius:4px; cursor:pointer; font-size:12px; }
-.edit-btn{ background:#3b82f6; color:white; border:none; padding:4px 8px; border-radius:4px; cursor:pointer; font-size:12px; margin-right:4px; }
-.mood-row { display: flex; gap: 8px; justify-content: center; margin: 8px 0; }
-.mood-btn { font-size: 28px; padding: 8px 16px; border-radius: 12px; cursor: pointer; border: 2px solid transparent; background: #f3f4f6; transition: all 0.2s; }
-.mood-btn.selected { border-color: #3b82f6; background: #dbeafe; }
-.reminder-row { display: flex; gap: 8px; align-items: center; margin: 8px 0; }
-.toggle-switch { position: relative; width: 48px; height: 24px; }
-.toggle-switch input { opacity: 0; width: 0; height: 0; }
-.toggle-slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background: #ccc; border-radius: 24px; transition: 0.3s; }
-.toggle-slider:before { content: ""; position: absolute; height: 18px; width: 18px; left: 3px; bottom: 3px; background: white; border-radius: 50%; transition: 0.3s; }
-input:checked + .toggle-slider { background: #3b82f6; }
-input:checked + .toggle-slider:before { transform: translateX(24px); }
-
-/* Toast 提示 */
-.toast {
-  position: fixed;
-  bottom: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: #111827;
-  color: white;
-  padding: 12px 24px;
-  border-radius: 8px;
-  z-index: 9999;
-  font-size: 14px;
-  animation: fadeIn 0.3s, fadeOut 0.3s 1.7s;
-}
-@keyframes fadeIn { from { opacity: 0; bottom: 0; } to { opacity: 1; bottom: 20px; } }
-@keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
-
-/* 编辑模式高亮 */
-.editing { background: #fef3c7 !important; }
 </style>
 </head>
 <body>
@@ -59,42 +28,18 @@ input:checked + .toggle-slider:before { transform: translateX(24px); }
 <a href="profile.html">Profile</a>
 </div>
 
-<h2 class="center">😴 Log Sleep Pro</h2>
+<h2 class="center">😴 Log Sleep</h2>
 
 <div class="card">
-<label>📅 Date (optional, defaults to bed time):</label>
+<label>📅 Date:</label>
 <input type="date" id="sleepDate">
-
 <label>🛏 Bed Time:</label>
 <input type="time" id="bedTime">
-
 <label>⏰ Wake Time:</label>
 <input type="time" id="wakeTime">
-
-<label>😊 Sleep Quality:</label>
-<div class="mood-row">
-  <button class="mood-btn" onclick="selectMood('great')" id="mood-great" title="Slept great">😊</button>
-  <button class="mood-btn" onclick="selectMood('ok')" id="mood-ok" title="Slept okay">😐</button>
-  <button class="mood-btn" onclick="selectMood('bad')" id="mood-bad" title="Slept poorly">😟</button>
-</div>
-
-<br>
-<button onclick="saveSleep()" id="saveBtn">💾 Save Sleep</button>
+<br><br>
+<button onclick="saveSleep()">💾 Save Sleep</button>
 <button onclick="location.href='index.html'" style="background:#4b5563;">← Back to Dashboard</button>
-
-<div class="reminder-row" style="margin-top:12px;">
-  <label style="flex:1;">🔔 Bedtime Reminder:</label>
-  <input type="time" id="reminderTime" value="23:00" style="width:100px;">
-  <label class="toggle-switch">
-    <input type="checkbox" id="reminderToggle" onchange="toggleReminder()">
-    <span class="toggle-slider"></span>
-  </label>
-</div>
-</div>
-
-<div class="card">
-<h3>📊 Sleep Stats</h3>
-<div id="sleepStats"></div>
 </div>
 
 <div class="card">
@@ -105,247 +50,86 @@ input:checked + .toggle-slider:before { transform: translateX(24px); }
 <script>
 const profile = JSON.parse(localStorage.getItem("activeProfile")) || { id: "guest" };
 const STORAGE_KEY = `sleep_${profile.id}`;
-let selectedMood = "";
-let reminderInterval = null;
-let editingIndex = -1;
+
+document.getElementById("sleepDate").value = new Date().toISOString().split("T")[0];
 
 function getLogs() {
-  return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+  try {
+    return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+  } catch(e) {
+    return [];
+  }
 }
 
 function saveLogs(logs) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(logs));
 }
 
-function showToast(msg) {
-  const toast = document.createElement("div");
-  toast.className = "toast";
-  toast.innerText = msg;
-  document.body.appendChild(toast);
-  setTimeout(() => toast.remove(), 2000);
-}
-
-function selectMood(mood) {
-  selectedMood = mood;
-  document.querySelectorAll('.mood-btn').forEach(b => b.classList.remove('selected'));
-  document.getElementById(`mood-${mood}`).classList.add('selected');
-}
-
-document.getElementById("sleepDate").value = new Date().toISOString().split("T")[0];
-
-async function saveSleep() {
-  const sleepDate = document.getElementById("sleepDate").value;
-  const bedTime = document.getElementById("bedTime").value;
-  const wakeTime = document.getElementById("wakeTime").value;
+function saveSleep() {
+  var bedTime = document.getElementById("bedTime").value;
+  var wakeTime = document.getElementById("wakeTime").value;
 
   if (!bedTime || !wakeTime) {
-    showToast("Please fill both bed and wake times.");
-    return;  // ← 关键：必须 return，阻止后续代码执行
+    alert("Please fill both bed and wake times.");
+    return;
   }
 
-  const date = sleepDate || new Date().toISOString().split("T")[0];
-  const bedDateTime = `${date}T${bedTime}:00`;
-  const wakeDateTime = `${date}T${wakeTime}:00`;
+  var date = document.getElementById("sleepDate").value || new Date().toISOString().split("T")[0];
+  var bedDateTime = date + "T" + bedTime + ":00";
+  var wakeDateTime = date + "T" + wakeTime + ":00";
 
-  let wakeDate = new Date(wakeDateTime);
+  var wakeDate = new Date(wakeDateTime);
   if (wakeDate <= new Date(bedDateTime)) {
     wakeDate.setDate(wakeDate.getDate() + 1);
   }
 
-  const sleepEntry = {
+  var entry = {
     date: date,
     bedTime: bedDateTime,
     wakeTime: wakeDate.toISOString(),
-    mood: selectedMood || "ok",
     timestamp: new Date().toISOString()
   };
 
-  const logs = getLogs();
-
-  if (editingIndex >= 0 && editingIndex < logs.length) {
-    logs[editingIndex] = sleepEntry;
-  } else {
-    logs.push(sleepEntry);
-  }
-
+  var logs = getLogs();
+  logs.push(entry);
   saveLogs(logs);
 
-  // 云端同步
-  if (window.saveSleep) {
-    try {
-      await window.saveSleep(sleepEntry);
-      console.log("✅ Sleep synced to cloud");
-    } catch (e) {
-      console.warn("Cloud sync failed, but local is fine:", e);
-    }
-  }
-
-  // 清空表单
   document.getElementById("bedTime").value = "";
   document.getElementById("wakeTime").value = "";
-  selectedMood = "";
-  document.querySelectorAll('.mood-btn').forEach(b => b.classList.remove('selected'));
 
-  // 退出编辑模式
-  const wasEditing = editingIndex >= 0;
-  editingIndex = -1;
-  document.getElementById("saveBtn").innerText = "💾 Save Sleep";
-  document.querySelector(".card").classList.remove("editing");
-
-  showToast(wasEditing ? "Sleep updated!" : "Sleep logged!");
+  alert("Saved!");
   renderLogs();
-}
-
-function editSleep(index) {
-  const logs = getLogs();
-  const log = logs[index];
-  if (!log) return;
-
-  document.getElementById("sleepDate").value = log.date;
-  document.getElementById("bedTime").value = new Date(log.bedTime).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',hour12:false});
-  document.getElementById("wakeTime").value = new Date(log.wakeTime).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',hour12:false});
-  selectMood(log.mood || "ok");
-
-  editingIndex = index;
-  document.getElementById("saveBtn").innerText = "✏️ Update Sleep";
-  document.querySelector(".card").classList.add("editing");
-  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 function deleteSleep(index) {
-  if (!confirm("Delete this sleep record?")) return;
-  const logs = getLogs();
+  if (!confirm("Delete this record?")) return;
+  var logs = getLogs();
   logs.splice(index, 1);
   saveLogs(logs);
   renderLogs();
-  showToast("Sleep deleted.");
 }
 
-async function loadCloudLogs() {
-  if (!window.loadSleepLogs) return;
-  try {
-    const cloudLogs = await window.loadSleepLogs();
-    if (cloudLogs && cloudLogs.length > 0) {
-      const localLogs = getLogs();
-      const merged = [...localLogs];
-      cloudLogs.forEach(c => {
-        if (!merged.find(m => m.date === c.date && m.bedTime === c.bed_time && m.wakeTime === c.wake_time)) {
-          merged.push({
-            date: c.date,
-            bedTime: c.bed_time,
-            wakeTime: c.wake_time,
-            mood: c.mood || "ok",
-            timestamp: c.created_at
-          });
-        }
-      });
-      merged.sort((a, b) => new Date(b.bedTime) - new Date(a.bedTime));
-      saveLogs(merged);
-    }
-  } catch (e) {
-    console.warn("Failed to load cloud sleep logs:", e);
-  }
-}
-
-function renderStats(logs) {
-  const container = document.getElementById("sleepStats");
-  if (!logs || logs.length === 0) {
-    container.innerHTML = "<p>No data yet. Log your first sleep!</p>";
+function renderLogs() {
+  var logs = getLogs();
+  var container = document.getElementById("sleepList");
+  if (logs.length === 0) {
+    container.innerHTML = "<p>No records yet.</p>";
     return;
   }
-
-  const now = new Date();
-  const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-  const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-
-  const weekLogs = logs.filter(l => new Date(l.date) >= weekAgo);
-  const monthLogs = logs.filter(l => new Date(l.date) >= monthAgo);
-
-  const avgWeek = weekLogs.length > 0
-    ? (weekLogs.reduce((s, l) => s + (new Date(l.wakeTime) - new Date(l.bedTime)) / (1000*60*60), 0) / weekLogs.length).toFixed(1)
-    : "0.0";
-
-  const avgMonth = monthLogs.length > 0
-    ? (monthLogs.reduce((s, l) => s + (new Date(l.wakeTime) - new Date(l.bedTime)) / (1000*60*60), 0) / monthLogs.length).toFixed(1)
-    : "0.0";
-
-  const goodDays = logs.filter(l => l.mood === "great").length;
-  const okDays = logs.filter(l => l.mood === "ok").length;
-  const badDays = logs.filter(l => l.mood === "bad").length;
-
-  container.innerHTML = `
-    <p>📅 <b>This Week:</b> Avg ${avgWeek}h (${weekLogs.length} records)</p>
-    <p>🗓 <b>This Month:</b> Avg ${avgMonth}h (${monthLogs.length} records)</p>
-    <p>😊 Great: ${goodDays} | 😐 Okay: ${okDays} | 😟 Poor: ${badDays}</p>
-  `;
-}
-
-function toggleReminder() {
-  const enabled = document.getElementById("reminderToggle").checked;
-  const time = document.getElementById("reminderTime").value;
-
-  if (enabled && time) {
-    scheduleReminder(time);
-    localStorage.setItem("sleepReminder", JSON.stringify({ enabled: true, time }));
-  } else {
-    clearInterval(reminderInterval);
-    localStorage.setItem("sleepReminder", JSON.stringify({ enabled: false, time }));
+  var html = "";
+  for (var i = 0; i < logs.length; i++) {
+    var log = logs[i];
+    var bed = new Date(log.bedTime);
+    var wake = new Date(log.wakeTime);
+    var hrs = ((wake - bed) / 3600000).toFixed(1);
+    html += "<p>🛏 " + log.date + " — " + hrs + "h (" +
+            bed.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) + " → " +
+            wake.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) +
+            ") <button class='delete-btn' onclick='deleteSleep(" + i + ")'>✕</button></p>";
   }
+  container.innerHTML = html;
 }
 
-function scheduleReminder(time) {
-  clearInterval(reminderInterval);
-  reminderInterval = setInterval(() => {
-    const now = new Date();
-    const currentTime = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
-    if (currentTime === time) {
-      if (Notification.permission === "granted") {
-        new Notification("😴 Time for bed!", { body: "It's your scheduled bedtime. Get some rest!" });
-      } else if (Notification.permission !== "denied") {
-        Notification.requestPermission().then(perm => {
-          if (perm === "granted") {
-            new Notification("😴 Time for bed!", { body: "It's your scheduled bedtime. Get some rest!" });
-          }
-        });
-      }
-    }
-  }, 60000);
-}
-
-function restoreReminder() {
-  const saved = JSON.parse(localStorage.getItem("sleepReminder") || "{}");
-  if (saved.enabled) {
-    document.getElementById("reminderToggle").checked = true;
-    document.getElementById("reminderTime").value = saved.time || "23:00";
-    scheduleReminder(saved.time || "23:00");
-  }
-}
-
-async function renderLogs() {
-  await loadCloudLogs();
-
-  const logs = getLogs();
-  const container = document.getElementById("sleepList");
-  if (logs.length === 0) {
-    container.innerHTML = "<p>No sleep records yet.</p>";
-  } else {
-    container.innerHTML = logs.map((log, index) => {
-      const bed = new Date(log.bedTime);
-      const wake = new Date(log.wakeTime);
-      const hrs = ((wake - bed) / (1000 * 60 * 60)).toFixed(1);
-      const moodEmoji = log.mood === "great" ? "😊" : log.mood === "bad" ? "😟" : "😐";
-      return `<p>🛏 ${log.date} — ${hrs}h ${moodEmoji} (${bed.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})} → ${wake.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}) <button class="edit-btn" onclick="editSleep(${index})">✏️</button><button class="delete-btn" onclick="deleteSleep(${index})">✕</button></p>`;
-    }).join("");
-  }
-
-  renderStats(logs);
-}
-
-if (Notification.permission !== "denied") {
-  Notification.requestPermission();
-}
-
-restoreReminder();
 renderLogs();
 </script>
 </body>
