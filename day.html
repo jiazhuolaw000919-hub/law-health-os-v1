@@ -3,33 +3,30 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Day Analysis v11.5 (Phase 7 Upgrade) - Mobile Ready</title>
+<title>Day Analysis v11.5 (Sleep + Mobile)</title>
 
 <link rel="stylesheet" href="style.css">
 
-<!-- ✅ 只保留我们已有的脚本 -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="app.js"></script>
 <script src="supabase.js"></script>
 
 <style>
-/* 保留原有的额外样式 */
-.tag{
-padding:5px 10px;
-border-radius:8px;
-font-size:12px;
-display:inline-block;
-}
-
-.green{background:#dcfce7;color:#166534}
-.yellow{background:#fef9c3;color:#854d0e}
-.red{background:#fecaca;color:#991b1b}
-
-.section{
-margin-top:10px;
-padding-top:10px;
-border-top:1px solid #eee;
-}
+.tag{ padding:5px 10px; border-radius:8px; font-size:12px; display:inline-block; }
+.green{ background:#dcfce7; color:#166534; }
+.yellow{ background:#fef9c3; color:#854d0e; }
+.red{ background:#fecaca; color:#991b1b; }
+.section{ margin-top:10px; padding-top:10px; border-top:1px solid #eee; }
+button{ margin:5px; padding:8px 14px; border-radius:8px; border:1px solid #ddd; cursor:pointer; background:#111827; color:white; }
+input, select{ width:100%; padding:10px; margin:6px 0; border-radius:8px; border:1px solid #ddd; }
+.delete-btn{ background:#ef4444; color:white; border:none; padding:8px 12px; border-radius:6px; cursor:pointer; font-size:16px; }
+.edit-btn{ background:#3b82f6; color:white; border:none; padding:8px 12px; border-radius:6px; cursor:pointer; font-size:16px; margin-right:6px; }
+.mood-btn { font-size: 28px; padding: 8px 16px; border-radius: 12px; cursor: pointer; border: 2px solid transparent; background: #f3f4f6; }
+.mood-btn.selected { border-color: #3b82f6; background: #dbeafe; }
+.mood-row { display: flex; gap: 8px; justify-content: center; margin: 8px 0; }
+.toast { position: fixed; top: 12px; left: 50%; transform: translateX(-50%); background: #22c55e; color: white; padding: 10px 20px; border-radius: 8px; z-index: 9999; font-size: 14px; font-weight: 600; box-shadow: 0 4px 12px rgba(0,0,0,0.2); animation: slideDown 0.3s ease; }
+.toast.error { background: #ef4444; }
+@keyframes slideDown { from { top: -50px; opacity: 0; } to { top: 12px; opacity: 1; } }
 </style>
 </head>
 
@@ -71,6 +68,25 @@ border-top:1px solid #eee;
   <p id="streak"></p>
 </div>
 
+<!-- ✅ 新增：睡眠记录卡片 -->
+<div class="card">
+  <h3>😴 Sleep Record</h3>
+  <div id="sleepRecord"></div>
+  <div id="sleepEdit" style="display:none;">
+    <label>Bed Time:</label>
+    <input type="time" id="editBedTime">
+    <label>Wake Time:</label>
+    <input type="time" id="editWakeTime">
+    <div class="mood-row">
+      <button class="mood-btn" onclick="setEditMood('great')" id="edit-mood-great">😊</button>
+      <button class="mood-btn" onclick="setEditMood('ok')" id="edit-mood-ok">😐</button>
+      <button class="mood-btn" onclick="setEditMood('bad')" id="edit-mood-bad">😟</button>
+    </div>
+    <button onclick="saveSleepEdit()">💾 Save</button>
+    <button onclick="cancelSleepEdit()">Cancel</button>
+  </div>
+</div>
+
 <!-- MEALS -->
 <div class="card">
   <h3>🍱 Meal Breakdown</h3>
@@ -86,200 +102,235 @@ border-top:1px solid #eee;
 
 <script>
 
-const params = new URLSearchParams(location.search)
-const date = params.get("date")
+var params = new URLSearchParams(location.search);
+var date = params.get("date");
 
-/* ================= PROFILE ================= */
 function getProfile(){
-  return JSON.parse(localStorage.getItem("activeProfile")) || {
-    id:"guest",
-    name:"Guest",
-    height:170,
-    weight:70
-  }
+  return JSON.parse(localStorage.getItem("activeProfile")) || { id:"guest", name:"Guest", height:170, weight:70 };
 }
 
-/* ================= SAFE LOGS ================= */
 async function safeFoodLogs(date){
-  if(typeof getFoodLogs === "undefined") return []
-  const p = getProfile()
-  const logs = await getFoodLogs(date) || []
-  return logs.filter(f => !f.userId || f.userId === p.id)
+  if(typeof getFoodLogs === "undefined") return [];
+  var p = getProfile();
+  var logs = await getFoodLogs(date) || [];
+  return logs.filter(function(f) { return !f.userId || f.userId === p.id; });
 }
 
-/* ================= DAILY GLOBAL ================= */
 async function getDailyMacro(date){
-  const foods = await safeFoodLogs(date)
+  var foods = await safeFoodLogs(date);
+  var calories = 0, protein = 0, carbs = 0, fat = 0;
+  foods.forEach(function(f){
+    calories += Number(f.calories || 0);
+    protein += Number(f.protein || 0);
+    carbs += Number(f.carbs || 0);
+    fat += Number(f.fat || 0);
+  });
 
-  let calories = 0
-  let protein = 0
-  let carbs = 0
-  let fat = 0
-
-  foods.forEach(f=>{
-    calories += Number(f.calories || 0)
-    protein += Number(f.protein || 0)
-    carbs += Number(f.carbs || 0)
-    fat += Number(f.fat || 0)
-  })
-
-  // AI insight 降级处理
-  let ai = { score:0, mealScore:0, risk:{level:"🟢"} }
+  var ai = { score:0, mealScore:0, risk:{level:"🟢"} };
   if(typeof getAIInsight !== "undefined"){
-    try {
-      ai = getAIInsight(calories, 22)
-    } catch(e) {
-      console.warn("getAIInsight failed, using default:", e)
-    }
+    try { ai = getAIInsight(calories, 22); } catch(e) {}
   }
 
-  return {
-    calories,
-    protein,
-    carbs,
-    fat,
-    score: ai.score,
-    mealScore: ai.mealScore || 0,
-    risk: ai.risk?.level || "🟢"
-  }
+  return { calories, protein, carbs, fat, score: ai.score, mealScore: ai.mealScore || 0, risk: ai.risk?.level || "🟢" };
 }
 
-/* ================= 7 DAY LOOKBACK ================= */
 async function get7DayTrend(){
-  let trend = []
-  for(let i=6;i>=0;i--){
-    let d = new Date()
-    d.setDate(d.getDate()-i)
-    let date = d.toISOString().split("T")[0]
-    let logs = await safeFoodLogs(date)
-    let cal=0,p=0,c=0,f=0
-    logs.forEach(x=>{
-      cal+=Number(x.calories||0)
-      p+=Number(x.protein||0)
-      c+=Number(x.carbs||0)
-      f+=Number(x.fat||0)
-    })
-    trend.push({date,cal,p,c,f})
+  var trend = [];
+  for(var i=6;i>=0;i--){
+    var d = new Date(); d.setDate(d.getDate()-i);
+    var date = d.toISOString().split("T")[0];
+    var logs = await safeFoodLogs(date);
+    var cal=0,p=0,c=0,f=0;
+    logs.forEach(function(x){ cal+=Number(x.calories||0); p+=Number(x.protein||0); c+=Number(x.carbs||0); f+=Number(x.fat||0); });
+    trend.push({date,cal,p,c,f});
   }
-  return trend
+  return trend;
 }
 
-/* ================= STREAK ================= */
 function detectStreak(trend){
-  let streak = 0
-  for(let i=trend.length-1;i>=0;i--){
-    if(trend[i].cal > 2500){
-      streak++
-    }else{
-      break
-    }
+  var streak = 0;
+  for(var i=trend.length-1;i>=0;i--){
+    if(trend[i].cal > 2500) streak++; else break;
   }
-  return streak
+  return streak;
 }
 
-/* ================= RECOMMEND ================= */
 function recommendFood(today){
-  if(today.calories > 2600){
-    return "🍽 Tomorrow: Eat light → salad, eggs, soup, low carbs"
-  }
-  if(today.protein < 50){
-    return "🍗 Tomorrow: Add protein → chicken, fish, eggs"
-  }
-  if(today.carbs > 250){
-    return "🍚 Tomorrow: Reduce carbs → avoid rice/noodles"
-  }
-  return "🥗 Tomorrow: Balanced diet recommended"
+  if(today.calories > 2600) return "🍽 Tomorrow: Eat light → salad, eggs, soup, low carbs";
+  if(today.protein < 50) return "🍗 Tomorrow: Add protein → chicken, fish, eggs";
+  if(today.carbs > 250) return "🍚 Tomorrow: Reduce carbs → avoid rice/noodles";
+  return "🥗 Tomorrow: Balanced diet recommended";
 }
 
-/* ================= LOAD ================= */
+// ========== 睡眠功能 ==========
+var sleepKey = "sleep_" + getProfile().id;
+var editMood = "";
+
+function getSleepLogs() {
+  return JSON.parse(localStorage.getItem(sleepKey) || "[]");
+}
+
+function saveSleepLogs(logs) {
+  localStorage.setItem(sleepKey, JSON.stringify(logs));
+}
+
+function renderSleep() {
+  var logs = getSleepLogs();
+  var match = logs.find(function(l) { return l.date === date; });
+  var container = document.getElementById("sleepRecord");
+  var editDiv = document.getElementById("sleepEdit");
+
+  if (!match) {
+    container.innerHTML = "<p>No sleep record for this day. <a href='sleep.html'>Log sleep</a></p>";
+    editDiv.style.display = "none";
+    return;
+  }
+
+  var bed = new Date(match.bedTime);
+  var wake = new Date(match.wakeTime);
+  var hrs = ((wake - bed) / 3600000).toFixed(1);
+  var emoji = match.mood === "great" ? "😊" : match.mood === "bad" ? "😟" : "😐";
+
+  container.innerHTML = "<p>🛏 " + bed.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) +
+    " → " + wake.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) +
+    " (" + hrs + "h) " + emoji + "</p>" +
+    "<button class='edit-btn' onclick='editSleep()'>✏️ Edit</button>" +
+    "<button class='delete-btn' onclick='deleteSleep()'>✕ Delete</button>";
+
+  editDiv.style.display = "none";
+}
+
+function editSleep() {
+  var logs = getSleepLogs();
+  var match = logs.find(function(l) { return l.date === date; });
+  if (!match) return;
+
+  document.getElementById("editBedTime").value = new Date(match.bedTime).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',hour12:false});
+  document.getElementById("editWakeTime").value = new Date(match.wakeTime).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',hour12:false});
+  setEditMood(match.mood || "ok");
+
+  document.getElementById("sleepRecord").style.display = "none";
+  document.getElementById("sleepEdit").style.display = "block";
+}
+
+function setEditMood(mood) {
+  editMood = mood;
+  document.querySelectorAll('#sleepEdit .mood-btn').forEach(function(b) { b.classList.remove('selected'); });
+  document.getElementById("edit-mood-" + mood).classList.add('selected');
+}
+
+function cancelSleepEdit() {
+  document.getElementById("sleepRecord").style.display = "block";
+  document.getElementById("sleepEdit").style.display = "none";
+}
+
+function saveSleepEdit() {
+  var bedTime = document.getElementById("editBedTime").value;
+  var wakeTime = document.getElementById("editWakeTime").value;
+  if (!bedTime || !wakeTime) return alert("Please fill both times.");
+
+  var logs = getSleepLogs();
+  var idx = logs.findIndex(function(l) { return l.date === date; });
+
+  var bedDateTime = date + "T" + bedTime + ":00";
+  var wakeDateTime = date + "T" + wakeTime + ":00";
+  var wakeDate = new Date(wakeDateTime);
+  if (wakeDate <= new Date(bedDateTime)) wakeDate.setDate(wakeDate.getDate() + 1);
+
+  var entry = {
+    date: date,
+    bedTime: bedDateTime,
+    wakeTime: wakeDate.toISOString(),
+    mood: editMood || "ok",
+    timestamp: new Date().toISOString()
+  };
+
+  if (idx >= 0) { logs[idx] = entry; }
+  else { logs.push(entry); }
+
+  saveSleepLogs(logs);
+  document.getElementById("sleepRecord").style.display = "block";
+  document.getElementById("sleepEdit").style.display = "none";
+  renderSleep();
+
+  var toast = document.createElement("div");
+  toast.className = "toast";
+  toast.innerText = "Sleep updated!";
+  document.body.appendChild(toast);
+  setTimeout(function() { toast.remove(); }, 2000);
+}
+
+function deleteSleep() {
+  if (!confirm("Delete this sleep record?")) return;
+  var logs = getSleepLogs();
+  var idx = logs.findIndex(function(l) { return l.date === date; });
+  if (idx >= 0) { logs.splice(idx, 1); saveSleepLogs(logs); }
+  renderSleep();
+
+  var toast = document.createElement("div");
+  toast.className = "toast error";
+  toast.innerText = "Sleep deleted.";
+  document.body.appendChild(toast);
+  setTimeout(function() { toast.remove(); }, 2000);
+}
+
+// ========== MAIN LOAD ==========
 async function load(){
-  const profile = getProfile()
+  var profile = getProfile();
+  document.getElementById("profile").innerText = "👤 " + profile.name;
+  document.getElementById("title").innerText = "📅 " + date;
 
-  document.getElementById("profile").innerText =
-    `👤 ${profile.name}`
-
-  document.getElementById("title").innerText =
-    `📅 ${date}`
-
-  const today = await getDailyMacro(date)
+  var today = await getDailyMacro(date);
 
   if(today.calories === 0){
-    document.getElementById("meals").innerHTML = "No data for this day."
-    return
+    document.getElementById("meals").innerHTML = "No data for this day.";
+  } else {
+    document.getElementById("calories").innerText = "Calories: " + today.calories + " kcal";
+    document.getElementById("protein").innerText = "Protein: " + today.protein + " g";
+    document.getElementById("carbs").innerText = "Carbs: " + today.carbs + " g";
+    document.getElementById("fat").innerText = "Fat: " + today.fat + " g";
+    document.getElementById("mealScore").innerText = "Meal Score: " + today.mealScore + "/100";
+
+    var riskClass = "green";
+    if(today.risk==="HIGH") riskClass = "red";
+    else if(today.risk==="MEDIUM") riskClass = "yellow";
+    document.getElementById("risk").innerHTML = '<span class="tag ' + riskClass + '">' + today.risk + '</span>';
+
+    var trend = await get7DayTrend();
+    var streak = detectStreak(trend);
+    document.getElementById("streak").innerText = "⚠ Unhealthy streak: " + streak + " days over limit";
+    document.getElementById("tomorrowFood").innerText = recommendFood(today);
+    document.getElementById("aiAdvice").innerText = today.risk==="HIGH" ? "Reduce carbs + increase activity" : today.risk==="MEDIUM" ? "Balance meals tomorrow" : "Maintain current diet";
+
+    var foods = await safeFoodLogs(date);
+    var grouped = {Breakfast:[],Lunch:[],Dinner:[],Snack:[]};
+    foods.forEach(function(f){
+      var cat = "Dinner";
+      var name = (f.food||"").toLowerCase();
+      if(name.includes("egg") || name.includes("coffee") || name.includes("milo")) cat = "Breakfast";
+      else if(name.includes("rice") || name.includes("chicken rice") || name.includes("noodle")) cat = "Lunch";
+      else if(name.includes("snack") || name.includes("chips") || name.includes("cookie")) cat = "Snack";
+      grouped[cat].push(f);
+    });
+
+    var html="";
+    Object.keys(grouped).forEach(function(k){
+      if(grouped[k].length===0) return;
+      var sum = grouped[k].reduce(function(s,f){ return s+Number(f.calories||0); },0);
+      html += '<div class="section"><h4>' + k + ' (' + sum + ' kcal)</h4>';
+      grouped[k].forEach(function(f){ html += '<p>🍽 ' + f.food + ' - ' + f.calories + ' kcal</p>'; });
+      html += '</div>';
+    });
+    document.getElementById("meals").innerHTML = html;
+
+    document.getElementById("ai").innerText = today.risk==="HIGH" ? "High intake detected. Risk increasing." : today.risk==="MEDIUM" ? "Moderate intake detected." : "Healthy balance";
+    document.getElementById("aiScore").innerText = "Score: " + today.score + "/100";
   }
 
-  /* ================= UI ================= */
-  document.getElementById("calories").innerText = `Calories: ${today.calories} kcal`
-  document.getElementById("protein").innerText = `Protein: ${today.protein} g`
-  document.getElementById("carbs").innerText = `Carbs: ${today.carbs} g`
-  document.getElementById("fat").innerText = `Fat: ${today.fat} g`
-  document.getElementById("mealScore").innerText = `Meal Score: ${today.mealScore}/100`
-
-  let riskClass = "green"
-  if(today.risk==="HIGH") riskClass = "red"
-  else if(today.risk==="MEDIUM") riskClass = "yellow"
-
-  document.getElementById("risk").innerHTML =
-    `<span class="tag ${riskClass}">${today.risk}</span>`
-
-  /* ================= TREND + AI LAYER ================= */
-  let trend = await get7DayTrend()
-  let streak = detectStreak(trend)
-
-  document.getElementById("streak").innerText =
-    `⚠ Unhealthy streak: ${streak} days over limit`
-
-  document.getElementById("tomorrowFood").innerText =
-    recommendFood(today)
-
-  document.getElementById("aiAdvice").innerText =
-    today.risk==="HIGH"
-    ?"Reduce carbs + increase activity"
-    :today.risk==="MEDIUM"
-    ?"Balance meals tomorrow"
-    :"Maintain current diet"
-
-  /* ================= MEALS ================= */
-  const foods = await safeFoodLogs(date)
-
-  let grouped = {Breakfast:[],Lunch:[],Dinner:[],Snack:[]}
-  foods.forEach(f=>{
-    let cat = "Dinner"  // default
-    const name = (f.food||"").toLowerCase()
-    if(name.includes("egg") || name.includes("coffee") || name.includes("milo")) cat = "Breakfast"
-    else if(name.includes("rice") || name.includes("chicken rice") || name.includes("noodle")) cat = "Lunch"
-    else if(name.includes("snack") || name.includes("chips") || name.includes("cookie")) cat = "Snack"
-
-    grouped[cat].push(f)
-  })
-
-  let html=""
-  Object.keys(grouped).forEach(k=>{
-    if(grouped[k].length===0) return
-    let sum = grouped[k].reduce((s,f)=>s+Number(f.calories||0),0)
-    html += `<div class="section"><h4>${k} (${sum} kcal)</h4>`
-    grouped[k].forEach(f=>{
-      html += `<p>🍽 ${f.food} - ${f.calories} kcal</p>`
-    })
-    html += `</div>`
-  })
-  document.getElementById("meals").innerHTML = html
-
-  /* ================= AI SUMMARY ================= */
-  document.getElementById("ai").innerText =
-    today.risk==="HIGH"
-    ?"High intake detected. Risk increasing."
-    :today.risk==="MEDIUM"
-    ?"Moderate intake detected."
-    :"Healthy balance"
-
-  document.getElementById("aiScore").innerText =
-    `Score: ${today.score}/100`
+  renderSleep();
 }
 
-load()
-
+load();
 </script>
-
 </body>
 </html>
