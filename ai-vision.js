@@ -1,6 +1,7 @@
 //////////////////////////////
-// 🧠 AI VISION v11.6 (FIXED)
-// 🔑 必须把下面的 sk-YOUR_NEW_KEY_HERE 换成你全新的 OpenAI key
+// 🧠 AI VISION v11.6 (CORS-FIXED PROXY VERSION)
+// 🔑 API key now stored in Vercel environment variable OPENAI_API_KEY
+//    Calls our own /api/analyze-food to avoid browser CORS restriction
 //////////////////////////////
 
 function previewFoodImage(file, callback) {
@@ -29,60 +30,29 @@ window.analyzeFoodImage = async function(base64) {
     return normalizeVision(result);
   } catch (e) {
     console.error("analyzeFoodImage error:", e);
+    alert("AI scan failed: " + e.message);
     return fallbackVision();
   }
 };
 
 async function callOpenAIVision(base64Image) {
-  // 🔥 在这里粘贴你的新 key
-  const OPENAI_API_KEY = "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";
+  // 🔥 Now calling our own Vercel proxy (no CORS, no exposed key)
+  const response = await fetch("/api/analyze-food", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ image: base64Image })
+  });
 
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 25000);
-
-  try {
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": "Bearer " + OPENAI_API_KEY
-      },
-      signal: controller.signal,
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        messages: [
-          {
-            role: "system",
-            content: "You are a nutrition AI. Analyze food images and return ONLY valid JSON. The JSON must contain an array 'foods' with objects having 'food','calories','protein','carbs','fat'. Include 'totalCalories', etc. Always estimate Asian portions."
-          },
-          {
-            role: "user",
-            content: [
-              { type: "text", text: "Analyze this food and return nutrition JSON." },
-              { type: "image_url", image_url: { url: base64Image } }
-            ]
-          }
-        ],
-        temperature: 0.2
-      })
-    });
-
-    clearTimeout(timeoutId);
-
-    if (!response.ok) {
-      const errText = await response.text();
-      throw new Error("API error " + response.status + ": " + errText);
-    }
-
-    const data = await response.json();
-    const raw = data?.choices?.[0]?.message?.content;
-    if (!raw) throw new Error("Empty response");
-    const clean = raw.replace(/```json|```/g, "").trim();
-    return JSON.parse(clean);
-  } catch (e) {
-    clearTimeout(timeoutId);
-    throw e;
+  if (!response.ok) {
+    const errData = await response.json().catch(() => ({}));
+    throw new Error(errData.error || "Proxy error " + response.status);
   }
+
+  const data = await response.json();
+  const raw = data?.choices?.[0]?.message?.content;
+  if (!raw) throw new Error("Empty response from AI");
+  const clean = raw.replace(/```json|```/g, "").trim();
+  return JSON.parse(clean);
 }
 
 function normalizeVision(data) {
