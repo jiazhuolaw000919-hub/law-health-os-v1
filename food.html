@@ -6,7 +6,7 @@
 
 <link rel="stylesheet" href="style.css">
 
-<!-- Supabase CDN must be loaded before supabase.js -->
+<!-- Supabase CDN -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="app.js"></script>
 <script src="supabase.js"></script>
@@ -294,7 +294,7 @@ async function analyzeImage(base64){
     throw new Error("AI returned unrecognized format")
   } catch(e) {
     console.error("AI scan error:", e)
-    alert("❌ AI scan failed. Check console (F12) or your API key.")
+    alert("AI scan failed. Check console (F12) or your API key.")
   }
 
   setAI("fallback")
@@ -482,9 +482,9 @@ function openMealModal(){
 
   const dishListDiv = document.getElementById("modalDishList")
   if(pendingFood.dishes && pendingFood.dishes.length > 1){
-    let dishHtml = "<b>🔍 Identified dishes:</b><ul class='dish-list'>"
+    let dishHtml = "<b>Identified dishes:</b><ul class='dish-list'>"
     pendingFood.dishes.forEach(d => {
-      dishHtml += `<li>🍽️ ${d.name} — ${d.calories} kcal</li>`
+      dishHtml += `<li>${d.name} - ${d.calories} kcal</li>`
     })
     dishHtml += "</ul>"
     dishListDiv.innerHTML = dishHtml
@@ -503,7 +503,7 @@ function updateModalNutritionPreview(){
   if(mode==="bulk") adj.calories = Math.round(adj.calories * 1.15)
 
   let totalInfo = `<b>${adj.food}</b><br><span class="small-tag">${adj.type}</span><br><br>`
-  totalInfo += `🔥 Total: ${Math.round(adj.calories)} kcal<br>`
+  totalInfo += `Total: ${Math.round(adj.calories)} kcal<br>`
   totalInfo += `P:${Math.round(adj.protein)} C:${Math.round(adj.carbs)} F:${Math.round(adj.fat)}<br>`
   totalInfo += `<br><b>Components:</b><br>${(adj.components||[]).map(c=>`<span class="small-tag">${c}</span>`).join("")}`
 
@@ -576,7 +576,7 @@ function renderFoodList(){
     <div class="preview-box">
       <b>${f.food}</b><br>
       <span class="small-tag">${f.type || "unknown"}</span><br>
-      🔥 ${f.calories} kcal
+      ${f.calories} kcal
       <br><button class="delete-btn" onclick="deleteFood(${f.id})">Delete</button>
     </div>
   `).join("")
