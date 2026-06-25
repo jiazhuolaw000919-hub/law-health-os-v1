@@ -1,5 +1,5 @@
 /* =========================
-GLOBAL PROFILE ENGINE v10.8 (CLOUD MERGE + SYNC)
+GLOBAL PROFILE ENGINE v10.9 (CLOUD MERGE + AUTO SYNC)
 ========================= */
 
 const STORAGE_KEYS = {
@@ -56,7 +56,7 @@ async function syncProfilesFromCloud() {
     const cloudProfiles = await fetchProfiles()
     if (!cloudProfiles || cloudProfiles.length === 0) return false
 
-    // 标准化云端数据
+    // 标准化云端数据（✅ 包含 targetSleep）
     const normalizedCloud = cloudProfiles.map(p => ({
       id: p.id,
       name: p.name || "Unnamed",
@@ -72,6 +72,7 @@ async function syncProfilesFromCloud() {
       body_fat_percentage: Number(p.body_fat_percentage || 0),
       muscle_mass: Number(p.muscle_mass || 0),
       primary_goal: p.primary_goal || "maintenance",
+      targetSleep: Number(p.targetSleep || 8),  // ✅ 新增
       bmi: p.bmi || null,
       created_at: p.created_at || new Date().toISOString(),
       updated_at: p.updated_at || new Date().toISOString()
@@ -219,7 +220,21 @@ window.addEventListener("DOMContentLoaded", async () => {
   window.dispatchEvent(new Event("profileSyncUpdate"))
 })
 
-// 立刻初始化
+// 立刻初始化（以防 DOMContentLoaded 已过）
 ensureProfileSystem().then(() => {
   window.dispatchEvent(new Event("profileSyncUpdate"))
+})
+
+// ✅ 每次页面获得焦点时同步（从其他标签页回来）
+window.addEventListener("focus", async () => {
+  await syncProfilesFromCloud()
+  window.dispatchEvent(new Event("profileSyncUpdate"))
+})
+
+// ✅ 监听 storage 变化（其他标签页修改了 localStorage）
+window.addEventListener("storage", async (e) => {
+  if (e.key === STORAGE_KEYS.profiles || e.key === STORAGE_KEYS.activeProfile) {
+    await syncProfilesFromCloud()
+    window.dispatchEvent(new Event("profileSyncUpdate"))
+  }
 })
