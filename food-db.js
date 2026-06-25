@@ -244,4 +244,52 @@ function searchLocalFood(query) {
   }
 
   return bestScore >= 20 ? best : null;
+
+}
+
+/* =========================
+   🇲🇾 MALAYSIA LOCAL + IMPORT FOOD DATABASE v5.0 (Sugar & Grade)
+   新增 searchLocalFoods 支持下拉建议
+   ========================= */
+
+// ... 数据库数组 LOCAL_FOOD_DB 保持不变，此处省略，你已有完整版 ...
+
+// 原有的精确查询函数（保留）
+function searchLocalFood(query) {
+  const q = query.toLowerCase().trim();
+  let best = null;
+  let bestScore = 0;
+  for (let item of LOCAL_FOOD_DB) {
+    let score = 0;
+    for (let kw of item.keywords) {
+      if (q === kw) score += 100;
+      else if (q.includes(kw)) score += 50;
+      else if (kw.includes(q)) score += 30;
+    }
+    if (score > bestScore) {
+      bestScore = score;
+      best = item;
+    }
+  }
+  return bestScore >= 20 ? best : null;
+}
+
+// ✅ 新增：返回多个匹配项（用于下拉建议）
+function searchLocalFoods(query, maxResults = 6) {
+  const q = query.toLowerCase().trim();
+  const scored = [];
+  for (let item of LOCAL_FOOD_DB) {
+    let score = 0;
+    for (let kw of item.keywords) {
+      if (q === kw) score += 100;
+      else if (kw.startsWith(q)) score += 60;   // 以输入开头优先
+      else if (kw.includes(q)) score += 40;
+    }
+    // 也检查食物名称
+    if (item.food.toLowerCase().includes(q)) score += 50;
+    if (score > 0) scored.push({ item, score });
+  }
+  // 按分数降序排列，取前 maxResults
+  scored.sort((a, b) => b.score - a.score);
+  return scored.slice(0, maxResults).map(s => s.item);
 }
