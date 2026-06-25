@@ -6,8 +6,14 @@
 
 <link rel="stylesheet" href="style.css">
 
-<!-- 只保留 ai-vision.js，其他都删掉 -->
+<!-- ✅ 1. Supabase CDN (must be loaded before supabase.js) -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<!-- ✅ 2. Your custom scripts (supabase.js and ai-vision.js are essential) -->
+<script src="supabase.js"></script>
 <script src="ai-vision.js"></script>
+
+<!-- ❌ Removed: app.js, ai.js, ai-engine.js (they cause errors and are not needed) -->
 
 <style>
 .card{
@@ -132,7 +138,7 @@ box-sizing:border-box;
 <div id="foodList"></div>
 </div>
 
-<!-- Meal Modal -->
+<!-- Meal Modal（增强菜肴列表） -->
 <div id="mealModal" class="modal">
 <div class="modal-content">
 
@@ -206,59 +212,60 @@ let mode = "normal"
 let multiList = []
 let customPhotoData = null
 
-/* ================= PROFILE (简单的默认值，不再依赖外部) ================= */
+/* ================= PROFILE ================= */
 document.getElementById("activeProfile").innerText =
-  JSON.parse(localStorage.getItem("activeProfile"))?.name || "Guest"
+JSON.parse(localStorage.getItem("activeProfile"))?.name || "Guest"
 
 /* ================= AI STATUS ================= */
 function setAI(status){
-  document.getElementById("aiStatus").innerText = "AI: " + status
+document.getElementById("aiStatus").innerText = "AI: " + status
 }
 
 /* ================= SMART FOOD TYPE DETECTOR ================= */
 function detectFoodType(text){
-  let t = (text || "").toLowerCase()
-  let type = "mixed meal"
-  if(t.includes("economy rice") || t.includes("杂饭") || t.includes("cai fan")) type = "Economy Rice"
-  else if(t.includes("coffee") || t.includes("kopi") || t.includes("milo")) type = "Drink"
-  else if(t.includes("sandwich")) type = "Sandwich"
-  else if(t.includes("burger")) type = "Burger"
-  else if(t.includes("noodle")) type = "Noodle"
-  else if(t.includes("chicken rice")) type = "Chicken Rice"
-  else if(t.includes("rice")) type = "Rice Dish"
-  else if(t.includes("salad")) type = "Salad"
-  return type
+let t = (text || "").toLowerCase()
+let type = "mixed meal"
+if(t.includes("economy rice") || t.includes("杂饭") || t.includes("cai fan")) type = "Economy Rice"
+else if(t.includes("coffee") || t.includes("kopi") || t.includes("milo")) type = "Drink"
+else if(t.includes("sandwich")) type = "Sandwich"
+else if(t.includes("burger")) type = "Burger"
+else if(t.includes("noodle")) type = "Noodle"
+else if(t.includes("chicken rice")) type = "Chicken Rice"
+else if(t.includes("rice")) type = "Rice Dish"
+else if(t.includes("salad")) type = "Salad"
+return type
 }
 
 /* ================= COMPONENT DETECTOR ================= */
 function extractComponents(text){
-  let t = (text || "").toLowerCase()
-  let components = []
-  if(t.includes("rice")) components.push("rice")
-  if(t.includes("chicken") || t.includes("meat")) components.push("meat")
-  if(t.includes("egg")) components.push("egg")
-  if(t.includes("veg")) components.push("vegetables")
-  if(t.includes("fish")) components.push("fish")
-  if(t.includes("noodle")) components.push("noodles")
-  if(t.includes("coffee") || t.includes("kopi")) components.push("coffee/milk")
-  if(t.includes("sandwich")) components.push("bread + filling")
-  if(t.includes("burger")) components.push("bun + meat")
-  if(components.length === 0) components = ["mixed ingredients"]
-  return components
+let t = (text || "").toLowerCase()
+let components = []
+if(t.includes("rice")) components.push("rice")
+if(t.includes("chicken") || t.includes("meat")) components.push("meat")
+if(t.includes("egg")) components.push("egg")
+if(t.includes("veg")) components.push("vegetables")
+if(t.includes("fish")) components.push("fish")
+if(t.includes("noodle")) components.push("noodles")
+if(t.includes("coffee") || t.includes("kopi")) components.push("coffee/milk")
+if(t.includes("sandwich")) components.push("bread + filling")
+if(t.includes("burger")) components.push("bun + meat")
+if(components.length === 0) components = ["mixed ingredients"]
+return components
 }
 
-/* ================= AI WRAPPER ================= */
+/* ================= AI WRAPPER（彻底修复） ================= */
 async function analyzeImage(base64){
   setAI("scanning...")
 
   try {
     if (!window.analyzeFoodImage) {
-      throw new Error("analyzeFoodImage function not found. Check ai-vision.js.")
+      throw new Error("analyzeFoodImage function not found. Check ai-vision.js loading.")
     }
 
     const r = await window.analyzeFoodImage(base64)
-    console.log("Raw AI response:", r)
+    console.log("Raw AI response:", r)  // 调试用，方便排查
 
+    // 情况1：ai-vision返回了完整的foods数组
     if (r && Array.isArray(r.foods) && r.foods.length > 0) {
       setAI("done")
       return {
@@ -278,6 +285,7 @@ async function analyzeImage(base64){
       }
     }
 
+    // 情况2：旧版格式（顶层有food/calories）
     if (r && (r.food || r.calories)) {
       setAI("done")
       return {
@@ -290,10 +298,15 @@ async function analyzeImage(base64){
       }
     }
 
-    throw new Error("Unrecognized format")
+    // 情况3：连顶层都没有，直接fallback
+    throw new Error("AI returned unrecognized format")
   } catch(e) {
     console.error("AI scan error:", e)
-    alert("❌ AI scan failed. Check console (F12) or your API key.")
+    alert("❌ AI scan failed. Possible reasons:\n\n" +
+          "1. API key is invalid or missing (check ai-vision.js)\n" +
+          "2. Network error (check console for details)\n" +
+          "3. You are not on an HTTP/HTTPS connection\n\n" +
+          "Open browser console (F12) to see the error.")
   }
 
   setAI("fallback")
@@ -309,294 +322,293 @@ async function analyzeImage(base64){
 
 /* ================= MODE ================= */
 function setMode(m){
-  mode = m
-  document.getElementById("modeStatus").innerText = "Mode: " + m
+mode = m
+document.getElementById("modeStatus").innerText = "Mode: " + m
 }
 
 /* ================= NUTRITION ================= */
 function estimateNutrition(food){
-  let base = 400
-  food = (food || "").toLowerCase()
-  if(food.includes("chicken")) base += 120
-  if(food.includes("rice")) base += 120
-  if(food.includes("milo")) base += 150
-  if(food.includes("burger")) base += 300
-  if(food.includes("egg")) base += 80
-  return {
-    calories: base,
-    protein: Math.round(base*0.05),
-    carbs: Math.round(base*0.12),
-    fat: Math.round(base*0.04)
-  }
+let base = 400
+food = (food || "").toLowerCase()
+if(food.includes("chicken")) base += 120
+if(food.includes("rice")) base += 120
+if(food.includes("milo")) base += 150
+if(food.includes("burger")) base += 300
+if(food.includes("egg")) base += 80
+return {
+calories: base,
+protein: Math.round(base*0.05),
+carbs: Math.round(base*0.12),
+fat: Math.round(base*0.04)
+}
 }
 
 /* ================= DEFICIT ================= */
 function getDeficit(cal){
-  let maintenance = 2200
-  let diff = cal - maintenance
-  return { status: diff > 0 ? "surplus" : "deficit", diff }
+let maintenance = 2200
+let diff = cal - maintenance
+return { status: diff > 0 ? "surplus" : "deficit", diff }
 }
 
 /* ================= MANUAL ================= */
 function startManualFlow(){
-  let input = document.getElementById("foodInput").value.trim()
-  if(!input) return alert("Enter food")
-  pendingFood = {
-    id: Date.now(),
-    food: input,
-    type: detectFoodType(input),
-    date: new Date().toISOString().split("T")[0],
-    components: extractComponents(input),
-    ...estimateNutrition(input),
-    dishes: []
-  }
-  openMealModal()
+let input = document.getElementById("foodInput").value.trim()
+if(!input) return alert("Enter food")
+pendingFood = {
+id: Date.now(),
+food: input,
+type: detectFoodType(input),
+date: new Date().toISOString().split("T")[0],
+components: extractComponents(input),
+...estimateNutrition(input),
+dishes: []
+}
+openMealModal()
 }
 
 /* ================= AI UPLOAD ================= */
 async function openAIUpload(){
-  let input = document.createElement("input")
-  input.type = "file"
-  input.accept = "image/*"
-  input.onchange = async ()=>{
-    let file = input.files[0]
-    if(!file) return
-    let reader = new FileReader()
-    reader.onload = async ()=>{
-      let base64 = reader.result
-      let result = await analyzeImage(base64)
-      pendingFood = {
-        id: Date.now(),
-        food: result.food,
-        type: detectFoodType(result.food),
-        date: new Date().toISOString().split("T")[0],
-        components: extractComponents(result.food),
-        calories: result.calories,
-        protein: result.protein,
-        carbs: result.carbs,
-        fat: result.fat,
-        dishes: result.dishes || [],
-        image: base64
-      }
-      openMealModal()
-    }
-    reader.readAsDataURL(file)
-  }
-  setTimeout(()=>{ input.click() },0)
+let input = document.createElement("input")
+input.type = "file"
+input.accept = "image/*"
+input.onchange = async ()=>{
+let file = input.files[0]
+if(!file) return
+let reader = new FileReader()
+reader.onload = async ()=>{
+let base64 = reader.result
+let result = await analyzeImage(base64)
+pendingFood = {
+id: Date.now(),
+food: result.food,
+type: detectFoodType(result.food),
+date: new Date().toISOString().split("T")[0],
+components: extractComponents(result.food),
+calories: result.calories,
+protein: result.protein,
+carbs: result.carbs,
+fat: result.fat,
+dishes: result.dishes || [],
+image: base64
+}
+openMealModal()
+}
+reader.readAsDataURL(file)
+}
+setTimeout(()=>{ input.click() },0)
 }
 
 /* ================= BARCODE ================= */
 function openBarcode(){
-  let code = prompt("barcode/name")
-  pendingFood = {
-    id: Date.now(),
-    food: code || "Unknown",
-    type: detectFoodType(code),
-    date: new Date().toISOString().split("T")[0],
-    components: extractComponents(code || ""),
-    calories: 300,
-    protein: 10,
-    carbs: 40,
-    fat: 10,
-    dishes: []
-  }
-  openMealModal()
+let code = prompt("barcode/name")
+pendingFood = {
+id: Date.now(),
+food: code || "Unknown",
+type: detectFoodType(code),
+date: new Date().toISOString().split("T")[0],
+components: extractComponents(code || ""),
+calories: 300,
+protein: 10,
+carbs: 40,
+fat: 10,
+dishes: []
+}
+openMealModal()
 }
 
 /* ================= MULTI ================= */
 function startMultiCapture(){
-  multiList = [
-    {food:"Chicken rice",calories:600},
-    {food:"Mixed veg rice",calories:500},
-    {food:"Egg noodle",calories:550}
-  ]
-  document.getElementById("foodList").innerHTML = multiList.map(m=>`
-    <div class="preview-box"><b>${m.food}</b><br>${m.calories} kcal</div>
-  `).join("")
+multiList = [
+{food:"Chicken rice",calories:600},
+{food:"Mixed veg rice",calories:500},
+{food:"Egg noodle",calories:550}
+]
+document.getElementById("foodList").innerHTML = multiList.map(m=>`
+<div class="preview-box"><b>${m.food}</b><br>${m.calories} kcal</div>
+`).join("")
 }
 
 /* ================= CUSTOM ENTRY ================= */
 function openCustomEntry(){
-  document.getElementById("customFoodName").value = ""
-  document.getElementById("customCalories").value = ""
-  document.getElementById("customProtein").value = ""
-  document.getElementById("customCarbs").value = ""
-  document.getElementById("customFat").value = ""
-  document.getElementById("customPhotoInput").value = ""
-  document.getElementById("customPhotoPreview").style.display = "none"
-  customPhotoData = null
-  document.getElementById("customEntryModal").style.display = "flex"
+document.getElementById("customFoodName").value = ""
+document.getElementById("customCalories").value = ""
+document.getElementById("customProtein").value = ""
+document.getElementById("customCarbs").value = ""
+document.getElementById("customFat").value = ""
+document.getElementById("customPhotoInput").value = ""
+document.getElementById("customPhotoPreview").style.display = "none"
+customPhotoData = null
+document.getElementById("customEntryModal").style.display = "flex"
 }
 function closeCustomEntry(){
-  document.getElementById("customEntryModal").style.display = "none"
+document.getElementById("customEntryModal").style.display = "none"
 }
 function previewCustomPhoto(){
-  const file = document.getElementById("customPhotoInput").files[0]
-  if(!file) return
-  const reader = new FileReader()
-  reader.onload = function(e){
-    customPhotoData = e.target.result
-    document.getElementById("customPhotoImg").src = customPhotoData
-    document.getElementById("customPhotoPreview").style.display = "block"
-  }
-  reader.readAsDataURL(file)
+const file = document.getElementById("customPhotoInput").files[0]
+if(!file) return
+const reader = new FileReader()
+reader.onload = function(e){
+customPhotoData = e.target.result
+document.getElementById("customPhotoImg").src = customPhotoData
+document.getElementById("customPhotoPreview").style.display = "block"
+}
+reader.readAsDataURL(file)
 }
 function confirmCustomEntry(){
-  const name = document.getElementById("customFoodName").value.trim()
-  const cal = parseFloat(document.getElementById("customCalories").value)
-  if(!name || isNaN(cal)) return alert("Please enter at least a food name and calories.")
-  pendingFood = {
-    id: Date.now(),
-    food: name,
-    type: detectFoodType(name),
-    date: new Date().toISOString().split("T")[0],
-    components: extractComponents(name),
-    calories: cal,
-    protein: parseFloat(document.getElementById("customProtein").value) || 0,
-    carbs: parseFloat(document.getElementById("customCarbs").value) || 0,
-    fat: parseFloat(document.getElementById("customFat").value) || 0,
-    image: customPhotoData || null,
-    dishes: []
-  }
-  closeCustomEntry()
-  openMealModal()
+const name = document.getElementById("customFoodName").value.trim()
+const cal = parseFloat(document.getElementById("customCalories").value)
+if(!name || isNaN(cal)) return alert("Please enter at least a food name and calories.")
+pendingFood = {
+id: Date.now(),
+food: name,
+type: detectFoodType(name),
+date: new Date().toISOString().split("T")[0],
+components: extractComponents(name),
+calories: cal,
+protein: parseFloat(document.getElementById("customProtein").value) || 0,
+carbs: parseFloat(document.getElementById("customCarbs").value) || 0,
+fat: parseFloat(document.getElementById("customFat").value) || 0,
+image: customPhotoData || null,
+dishes: []
+}
+closeCustomEntry()
+openMealModal()
 }
 
 /* ================= MEAL MODAL ================= */
 function openMealModal(){
-  if(!pendingFood) return;
-  const modal = document.getElementById("mealModal")
-  modal.style.display = "flex"
+if(!pendingFood) return;
+const modal = document.getElementById("mealModal")
+modal.style.display = "flex"
 
-  const imgDiv = document.getElementById("modalImagePreview")
-  if(pendingFood.image){
-    imgDiv.style.display = "block"
-    imgDiv.innerHTML = `<img src="${pendingFood.image}" class="upload-preview-img" />`
-  } else {
-    imgDiv.style.display = "none"
-    imgDiv.innerHTML = ""
-  }
+const imgDiv = document.getElementById("modalImagePreview")
+if(pendingFood.image){
+imgDiv.style.display = "block"
+imgDiv.innerHTML = `<img src="${pendingFood.image}" class="upload-preview-img" />`
+} else {
+imgDiv.style.display = "none"
+imgDiv.innerHTML = ""
+}
 
-  document.getElementById("modalFoodName").value = pendingFood.food
+document.getElementById("modalFoodName").value = pendingFood.food
 
-  const dishListDiv = document.getElementById("modalDishList")
-  if(pendingFood.dishes && pendingFood.dishes.length > 1){
-    let dishHtml = "<b>🔍 Identified dishes:</b><ul class='dish-list'>"
-    pendingFood.dishes.forEach(d => {
-      dishHtml += `<li>🍽️ ${d.name} — ${d.calories} kcal</li>`
-    })
-    dishHtml += "</ul>"
-    dishListDiv.innerHTML = dishHtml
-    dishListDiv.style.display = "block"
-  } else {
-    dishListDiv.style.display = "none"
-  }
+const dishListDiv = document.getElementById("modalDishList")
+if(pendingFood.dishes && pendingFood.dishes.length > 1){
+let dishHtml = "<b>🔍 Identified dishes:</b><ul class='dish-list'>"
+pendingFood.dishes.forEach(d => {
+  dishHtml += `<li>🍽️ ${d.name} — ${d.calories} kcal</li>`
+})
+dishHtml += "</ul>"
+dishListDiv.innerHTML = dishHtml
+dishListDiv.style.display = "block"
+} else {
+dishListDiv.style.display = "none"
+}
 
-  updateModalNutritionPreview()
+updateModalNutritionPreview()
 }
 
 function updateModalNutritionPreview(){
-  if(!pendingFood) return;
-  let adj = {...pendingFood}
-  if(mode==="deficit") adj.calories = Math.round(adj.calories * 0.85)
-  if(mode==="bulk") adj.calories = Math.round(adj.calories * 1.15)
+if(!pendingFood) return;
+let adj = {...pendingFood}
+if(mode==="deficit") adj.calories = Math.round(adj.calories * 0.85)
+if(mode==="bulk") adj.calories = Math.round(adj.calories * 1.15)
 
-  let totalInfo = `<b>${adj.food}</b><br><span class="small-tag">${adj.type}</span><br><br>`
-  totalInfo += `🔥 Total: ${Math.round(adj.calories)} kcal<br>`
-  totalInfo += `P:${Math.round(adj.protein)} C:${Math.round(adj.carbs)} F:${Math.round(adj.fat)}<br>`
-  totalInfo += `<br><b>Components:</b><br>${(adj.components||[]).map(c=>`<span class="small-tag">${c}</span>`).join("")}`
+let totalInfo = `<b>${adj.food}</b><br><span class="small-tag">${adj.type}</span><br><br>`
+totalInfo += `🔥 Total: ${Math.round(adj.calories)} kcal<br>`
+totalInfo += `P:${Math.round(adj.protein)} C:${Math.round(adj.carbs)} F:${Math.round(adj.fat)}<br>`
+totalInfo += `<br><b>Components:</b><br>${(adj.components||[]).map(c=>`<span class="small-tag">${c}</span>`).join("")}`
 
-  document.getElementById("modalNutritionPreview").innerHTML = totalInfo
+document.getElementById("modalNutritionPreview").innerHTML = totalInfo
 }
 
 document.getElementById("modalFoodName").addEventListener("input", function(e){
-  if(!pendingFood) return;
-  let newName = e.target.value.trim() || "Unknown meal"
-  pendingFood.food = newName
-  pendingFood.type = detectFoodType(newName)
-  pendingFood.components = extractComponents(newName)
-  updateModalNutritionPreview()
+if(!pendingFood) return;
+let newName = e.target.value.trim() || "Unknown meal"
+pendingFood.food = newName
+pendingFood.type = detectFoodType(newName)
+pendingFood.components = extractComponents(newName)
+updateModalNutritionPreview()
 })
 
 function reEstimateFromName(){
-  if(!pendingFood) return;
-  let name = document.getElementById("modalFoodName").value.trim() || "Unknown meal"
-  let est = estimateNutrition(name)
-  pendingFood.food = name
-  pendingFood.type = detectFoodType(name)
-  pendingFood.components = extractComponents(name)
-  pendingFood.calories = est.calories
-  pendingFood.protein = est.protein
-  pendingFood.carbs = est.carbs
-  pendingFood.fat = est.fat
-  pendingFood.dishes = []
-  updateModalNutritionPreview()
-  document.getElementById("modalDishList").style.display = "none"
+if(!pendingFood) return;
+let name = document.getElementById("modalFoodName").value.trim() || "Unknown meal"
+let est = estimateNutrition(name)
+pendingFood.food = name
+pendingFood.type = detectFoodType(name)
+pendingFood.components = extractComponents(name)
+pendingFood.calories = est.calories
+pendingFood.protein = est.protein
+pendingFood.carbs = est.carbs
+pendingFood.fat = est.fat
+pendingFood.dishes = []
+updateModalNutritionPreview()
+document.getElementById("modalDishList").style.display = "none"
 }
 window.reEstimateFromName = reEstimateFromName
 
 function closeMealModal(){
-  document.getElementById("mealModal").style.display="none"
-  pendingFood = null
+document.getElementById("mealModal").style.display="none"
+pendingFood = null
 }
 
 /* ================= SAVE ================= */
 function saveMeal(type){
-  if(!pendingFood) return
-  pendingFood.food = document.getElementById("modalFoodName").value.trim() || pendingFood.food
-  pendingFood.mealType = type
+if(!pendingFood) return
+pendingFood.food = document.getElementById("modalFoodName").value.trim() || pendingFood.food
+pendingFood.mealType = type
 
-  if(pendingFood.dishes && pendingFood.dishes.length > 1){
-    let allNames = pendingFood.dishes.map(d=>d.name).join(", ")
-    pendingFood.components = extractComponents(allNames)
-  }
+if(pendingFood.dishes && pendingFood.dishes.length > 1){
+let allNames = pendingFood.dishes.map(d=>d.name).join(", ")
+pendingFood.components = extractComponents(allNames)
+}
 
-  foodDB.push(pendingFood)
-  localStorage.setItem("foodDB", JSON.stringify(foodDB))
-
-  // 如果将来还有其他系统需要同步，可以通过事件通知，不再依赖外部函数
-  pendingFood = null
-  closeMealModal()
-  renderFoodList()
-  updateToday()
-  alert("Saved!")
+foodDB.push(pendingFood)
+localStorage.setItem("foodDB", JSON.stringify(foodDB))
+if(window.saveFood) window.saveFood(pendingFood)
+pendingFood = null
+closeMealModal()
+renderFoodList()
+updateToday()
+alert("Saved!")
 }
 
 /* ================= DELETE ================= */
 function deleteFood(id){
-  foodDB = foodDB.filter(f => f.id !== id)
-  localStorage.setItem("foodDB", JSON.stringify(foodDB))
-  renderFoodList()
-  updateToday()
+foodDB = foodDB.filter(f => f.id !== id)
+localStorage.setItem("foodDB", JSON.stringify(foodDB))
+renderFoodList()
+updateToday()
 }
 
 /* ================= RENDER ================= */
 function renderFoodList(){
-  document.getElementById("foodList").innerHTML = foodDB.map(f=>`
-    <div class="preview-box">
-      <b>${f.food}</b><br>
-      <span class="small-tag">${f.type || "unknown"}</span><br>
-      🔥 ${f.calories} kcal
-      <br><button class="delete-btn" onclick="deleteFood(${f.id})">Delete</button>
-    </div>
-  `).join("")
+document.getElementById("foodList").innerHTML = foodDB.map(f=>`
+<div class="preview-box">
+<b>${f.food}</b><br>
+<span class="small-tag">${f.type || "unknown"}</span><br>
+🔥 ${f.calories} kcal
+<br><button class="delete-btn" onclick="deleteFood(${f.id})">Delete</button>
+</div>
+`).join("")
 }
 
 /* ================= TODAY ================= */
 function updateToday(){
-  let today = new Date().toISOString().split("T")[0]
-  let todayFoods = foodDB.filter(f => f.date === today)
-  let cal = todayFoods.reduce((a,b)=>a + (b.calories||0),0)
-  let def = getDeficit(cal)
-  document.getElementById("todayCalories").innerText = "Calories: " + cal
-  document.getElementById("deficitInfo").innerText = def.status + " (" + def.diff + ")"
+let today = new Date().toISOString().split("T")[0]
+let todayFoods = foodDB.filter(f => f.date === today)
+let cal = todayFoods.reduce((a,b)=>a + (b.calories||0),0)
+let def = getDeficit(cal)
+document.getElementById("todayCalories").innerText = "Calories: " + cal
+document.getElementById("deficitInfo").innerText = def.status + " (" + def.diff + ")"
 }
 
 /* ================= INIT ================= */
 function loadDB(){
-  foodDB = JSON.parse(localStorage.getItem("foodDB")) || []
-  renderFoodList()
-  updateToday()
+foodDB = JSON.parse(localStorage.getItem("foodDB")) || []
+renderFoodList()
+updateToday()
 }
 loadDB()
 
