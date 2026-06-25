@@ -114,6 +114,7 @@ box-sizing:border-box;
 <button onclick="openAIUpload()">AI Scan</button>
 <button onclick="openBarcode()">Barcode Scan</button>
 <button onclick="startMultiCapture()">Multi Capture</button>
+<button onclick="openCustomEntry()">✍️ Custom Entry</button>
 </div>
 
 <div class="card">
@@ -121,23 +122,19 @@ box-sizing:border-box;
 <div id="foodList"></div>
 </div>
 
-<!-- 重构后的 Meal Modal，支持图片预览 + 手动修正 -->
+<!-- Meal Modal (原有的，保持不动) -->
 <div id="mealModal" class="modal">
 <div class="modal-content">
 
 <h3>🍽️ Confirm & Save</h3>
 
-<!-- 图片预览区 -->
 <div id="modalImagePreview" style="display:none;"></div>
 
-<!-- 可编辑的食物名称 -->
 <label>Food Name:</label>
 <input type="text" id="modalFoodName" class="editable-field" placeholder="Enter food name">
 
-<!-- 显示估算营养值 -->
 <div id="modalNutritionPreview" class="preview-box"></div>
 
-<!-- 重新估算按钮 -->
 <button onclick="reEstimateFromName()">🔄 Re-estimate from name</button>
 
 <br><br>
@@ -154,6 +151,40 @@ box-sizing:border-box;
 </div>
 </div>
 
+<!-- 新加的 Custom Entry Modal -->
+<div id="customEntryModal" class="modal">
+<div class="modal-content">
+<h3>✍️ Custom Food Entry</h3>
+
+<label>Food Name:</label>
+<input type="text" id="customFoodName" class="editable-field" placeholder="e.g. Chicken rice">
+
+<label>Calories (kcal):</label>
+<input type="number" id="customCalories" class="editable-field" placeholder="500" min="0">
+
+<label>Protein (g):</label>
+<input type="number" id="customProtein" class="editable-field" placeholder="20" min="0">
+
+<label>Carbs (g):</label>
+<input type="number" id="customCarbs" class="editable-field" placeholder="50" min="0">
+
+<label>Fat (g):</label>
+<input type="number" id="customFat" class="editable-field" placeholder="15" min="0">
+
+<br>
+<label>Photo (optional):</label>
+<input type="file" id="customPhotoInput" accept="image/*" onchange="previewCustomPhoto()">
+
+<div id="customPhotoPreview" style="display:none; margin:10px 0;">
+  <img id="customPhotoImg" class="upload-preview-img" />
+</div>
+
+<br>
+<button onclick="confirmCustomEntry()">Continue to Meal Select</button>
+<button onclick="closeCustomEntry()">Cancel</button>
+</div>
+</div>
+
 <script>
 
 /* ================= GLOBAL DB ================= */
@@ -162,6 +193,7 @@ let foodDB = JSON.parse(localStorage.getItem("foodDB")) || []
 let pendingFood = null
 let mode = "normal"
 let multiList = []
+let customPhotoData = null   // 暂存手动上传的照片 base64
 
 /* ================= PROFILE ================= */
 document.getElementById("activeProfile").innerText =
@@ -231,7 +263,7 @@ components = ["mixed ingredients"]
 return components
 }
 
-/* ================= AI WRAPPER (保留原样，但即使失败我们也能手动修正) ================= */
+/* ================= AI WRAPPER (FIXED for ai-vision.js structure) ================= */
 async function analyzeImage(base64){
 
 setAI("scanning...")
@@ -240,14 +272,27 @@ try{
 if(window.analyzeFoodImage){
 const r = await window.analyzeFoodImage(base64)
 
-setAI("done")
-
-return {
-food: r?.food || "Unknown meal",
-calories: Number(r?.calories ?? 450),
-protein: Number(r?.protein ?? 18),
-carbs: Number(r?.carbs ?? 55),
-fat: Number(r?.fat ?? 12)
+// ai-vision.js 返回 { foods: [...], totalCalories, ... }，我们取第一个食物
+if(r && Array.isArray(r.foods) && r.foods.length > 0){
+  const first = r.foods[0]
+  setAI("done")
+  return {
+    food: first.food || "Unknown meal",
+    calories: Number(first.calories ?? r.totalCalories ?? 450),
+    protein: Number(first.protein ?? r.totalProtein ?? 18),
+    carbs: Number(first.carbs ?? r.totalCarbs ?? 55),
+    fat: Number(first.fat ?? r.totalFat ?? 12)
+  }
+} else {
+  // 降级到旧格式或 fallback
+  setAI("done")
+  return {
+    food: r?.food || "Unknown meal",
+    calories: Number(r?.calories ?? r?.totalCalories ?? 450),
+    protein: Number(r?.protein ?? r?.totalProtein ?? 18),
+    carbs: Number(r?.carbs ?? r?.totalCarbs ?? 55),
+    fat: Number(r?.fat ?? r?.totalFat ?? 12)
+  }
 }
 }
 }catch(e){
@@ -303,7 +348,7 @@ diff
 }
 }
 
-/* ================= MANUAL ================= */
+/* ================= MANUAL (原有快速输入) ================= */
 function startManualFlow(){
 
 let input = document.getElementById("foodInput").value.trim()
@@ -321,7 +366,7 @@ components: extractComponents(input),
 openMealModal()
 }
 
-/* ================= AI UPLOAD (现在会弹出可编辑的确认框) ================= */
+/* ================= AI UPLOAD ================= */
 async function openAIUpload(){
 
 let input = document.createElement("input")
@@ -340,10 +385,9 @@ reader.onload = async ()=>{
 let base64 = reader.result
 let result = await analyzeImage(base64)
 
-// 构建 pendingFood，但 food 名称会被放入模态框供编辑
 pendingFood = {
 id: Date.now(),
-food: result.food,            // 可能是 Unknown meal
+food: result.food,
 type: detectFoodType(result.food),
 date: new Date().toISOString().split("T")[0],
 components: extractComponents(result.food),
@@ -357,7 +401,6 @@ openMealModal()
 reader.readAsDataURL(file)
 }
 
-// iOS safe click
 setTimeout(()=>{
 input.click()
 },0)
@@ -401,7 +444,68 @@ ${m.calories} kcal
 `).join("")
 }
 
-/* ================= 新的 Meal Modal 逻辑 ================= */
+/* ================= CUSTOM ENTRY (新功能) ================= */
+function openCustomEntry(){
+// 清空表单
+document.getElementById("customFoodName").value = ""
+document.getElementById("customCalories").value = ""
+document.getElementById("customProtein").value = ""
+document.getElementById("customCarbs").value = ""
+document.getElementById("customFat").value = ""
+document.getElementById("customPhotoInput").value = ""
+document.getElementById("customPhotoPreview").style.display = "none"
+customPhotoData = null
+
+document.getElementById("customEntryModal").style.display = "flex"
+}
+
+function closeCustomEntry(){
+document.getElementById("customEntryModal").style.display = "none"
+}
+
+function previewCustomPhoto(){
+const file = document.getElementById("customPhotoInput").files[0]
+if(!file) return
+
+const reader = new FileReader()
+reader.onload = function(e){
+customPhotoData = e.target.result
+document.getElementById("customPhotoImg").src = customPhotoData
+document.getElementById("customPhotoPreview").style.display = "block"
+}
+reader.readAsDataURL(file)
+}
+
+function confirmCustomEntry(){
+const name = document.getElementById("customFoodName").value.trim()
+const cal = parseFloat(document.getElementById("customCalories").value)
+if(!name || isNaN(cal)) {
+alert("Please enter at least a food name and calories.")
+return
+}
+
+const protein = parseFloat(document.getElementById("customProtein").value) || 0
+const carbs = parseFloat(document.getElementById("customCarbs").value) || 0
+const fat = parseFloat(document.getElementById("customFat").value) || 0
+
+pendingFood = {
+id: Date.now(),
+food: name,
+type: detectFoodType(name),
+date: new Date().toISOString().split("T")[0],
+components: extractComponents(name),
+calories: cal,
+protein: protein,
+carbs: carbs,
+fat: fat,
+image: customPhotoData || null   // 如果有照片就带上
+}
+
+closeCustomEntry()
+openMealModal()
+}
+
+/* ================= MEAL MODAL LOGIC ================= */
 function openMealModal(){
 if(!pendingFood) return;
 
@@ -442,21 +546,15 @@ ${(adj.components||[]).map(c=>`<span class="small-tag">${c}</span>`).join("")}
 `
 }
 
-// 当用户在输入框修改名字时，实时更新 pendingFood 并重算
 document.getElementById("modalFoodName").addEventListener("input", function(e){
 if(!pendingFood) return;
 let newName = e.target.value.trim() || "Unknown meal"
 pendingFood.food = newName
 pendingFood.type = detectFoodType(newName)
 pendingFood.components = extractComponents(newName)
-
-// 是否自动重算营养？这里提供手动按钮，但也可以自动：
-// 为了不过度覆盖AI的结果，我们只在用户点击"Re-estimate"时才重算
-// 但我们可以更新预览中的 food 名称
 updateModalNutritionPreview()
 })
 
-// 重新估算按钮：根据当前输入框的名字重新生成营养值（覆盖AI结果）
 function reEstimateFromName(){
 if(!pendingFood) return;
 let name = document.getElementById("modalFoodName").value.trim() || "Unknown meal"
@@ -471,7 +569,6 @@ pendingFood.fat = est.fat
 updateModalNutritionPreview()
 }
 
-// 让 reEstimateFromName 全局可访问
 window.reEstimateFromName = reEstimateFromName
 
 function closeMealModal(){
@@ -484,7 +581,6 @@ function saveMeal(type){
 
 if(!pendingFood) return
 
-// 保存前确保 food 名称是输入框里的最终值
 pendingFood.food = document.getElementById("modalFoodName").value.trim() || pendingFood.food
 pendingFood.mealType = type
 
