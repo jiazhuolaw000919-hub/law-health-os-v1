@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sleep Logger</title>
+<title>Sleep Logger Pro</title>
 
 <link rel="stylesheet" href="style.css">
 
@@ -14,8 +14,18 @@
 <style>
 .card{ margin:10px; padding:12px; background:#fff; border-radius:10px; box-shadow:0 1px 4px rgba(0,0,0,.05); }
 button{ margin:5px; padding:8px 14px; border-radius:8px; border:1px solid #ddd; cursor:pointer; background:#111827; color:white; }
-input{ width:100%; padding:10px; margin:6px 0; border-radius:8px; border:1px solid #ddd; }
+input, select{ width:100%; padding:10px; margin:6px 0; border-radius:8px; border:1px solid #ddd; }
 .delete-btn{ background:#ef4444; color:white; border:none; padding:4px 8px; border-radius:4px; cursor:pointer; font-size:12px; }
+.mood-row { display: flex; gap: 8px; justify-content: center; margin: 8px 0; }
+.mood-btn { font-size: 28px; padding: 8px 16px; border-radius: 12px; cursor: pointer; border: 2px solid transparent; background: #f3f4f6; transition: all 0.2s; }
+.mood-btn.selected { border-color: #3b82f6; background: #dbeafe; }
+.reminder-row { display: flex; gap: 8px; align-items: center; margin: 8px 0; }
+.toggle-switch { position: relative; width: 48px; height: 24px; }
+.toggle-switch input { opacity: 0; width: 0; height: 0; }
+.toggle-slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background: #ccc; border-radius: 24px; transition: 0.3s; }
+.toggle-slider:before { content: ""; position: absolute; height: 18px; width: 18px; left: 3px; bottom: 3px; background: white; border-radius: 50%; transition: 0.3s; }
+input:checked + .toggle-slider { background: #3b82f6; }
+input:checked + .toggle-slider:before { transform: translateX(24px); }
 </style>
 </head>
 <body>
@@ -28,16 +38,45 @@ input{ width:100%; padding:10px; margin:6px 0; border-radius:8px; border:1px sol
 <a href="profile.html">Profile</a>
 </div>
 
-<h2 class="center">😴 Log Sleep</h2>
+<h2 class="center">😴 Log Sleep Pro</h2>
 
 <div class="card">
-<label>Bed Time:</label>
-<input type="datetime-local" id="bedTime">
-<label>Wake Time:</label>
-<input type="datetime-local" id="wakeTime">
-<br><br>
+<label>📅 Date (optional, defaults to bed time):</label>
+<input type="date" id="sleepDate">
+
+<label>🛏 Bed Time:</label>
+<input type="time" id="bedTime">
+
+<label>⏰ Wake Time:</label>
+<input type="time" id="wakeTime">
+
+<!-- 睡眠质量自评 -->
+<label>😊 Sleep Quality:</label>
+<div class="mood-row">
+  <button class="mood-btn" onclick="selectMood('great')" id="mood-great" title="Slept great">😊</button>
+  <button class="mood-btn" onclick="selectMood('ok')" id="mood-ok" title="Slept okay">😐</button>
+  <button class="mood-btn" onclick="selectMood('bad')" id="mood-bad" title="Slept poorly">😟</button>
+</div>
+
+<br>
 <button onclick="saveSleep()">💾 Save Sleep</button>
 <button onclick="location.href='index.html'" style="background:#4b5563;">← Back to Dashboard</button>
+
+<!-- 睡眠提醒 -->
+<div class="reminder-row" style="margin-top:12px;">
+  <label style="flex:1;">🔔 Bedtime Reminder:</label>
+  <input type="time" id="reminderTime" value="23:00" style="width:100px;">
+  <label class="toggle-switch">
+    <input type="checkbox" id="reminderToggle" onchange="toggleReminder()">
+    <span class="toggle-slider"></span>
+  </label>
+</div>
+</div>
+
+<!-- 周/月趋势统计 -->
+<div class="card">
+<h3>📊 Sleep Stats</h3>
+<div id="sleepStats"></div>
 </div>
 
 <div class="card">
@@ -48,6 +87,8 @@ input{ width:100%; padding:10px; margin:6px 0; border-radius:8px; border:1px sol
 <script>
 const profile = JSON.parse(localStorage.getItem("activeProfile")) || { id: "guest" };
 const STORAGE_KEY = `sleep_${profile.id}`;
+let selectedMood = "";
+let reminderInterval = null;
 
 function getLogs() {
   return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
@@ -57,24 +98,46 @@ function saveLogs(logs) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(logs));
 }
 
+// 表情选择
+function selectMood(mood) {
+  selectedMood = mood;
+  document.querySelectorAll('.mood-btn').forEach(b => b.classList.remove('selected'));
+  document.getElementById(`mood-${mood}`).classList.add('selected');
+}
+
+// 设置默认日期为今天
+document.getElementById("sleepDate").value = new Date().toISOString().split("T")[0];
+
 async function saveSleep() {
-  const bed = document.getElementById("bedTime").value;
-  const wake = document.getElementById("wakeTime").value;
-  if (!bed || !wake) return alert("Please fill both times.");
+  const sleepDate = document.getElementById("sleepDate").value;
+  const bedTime = document.getElementById("bedTime").value;
+  const wakeTime = document.getElementById("wakeTime").value;
+
+  if (!bedTime || !wakeTime) return alert("Please fill both bed and wake times.");
+
+  // 使用选择的日期或 bed time 的日期
+  const date = sleepDate || new Date().toISOString().split("T")[0];
+  const bedDateTime = `${date}T${bedTime}:00`;
+  const wakeDateTime = `${date}T${wakeTime}:00`;
+
+  // 如果起床时间在就寝时间之前，说明跨天了，起床日期+1
+  let wakeDate = new Date(wakeDateTime);
+  if (wakeDate <= new Date(bedDateTime)) {
+    wakeDate.setDate(wakeDate.getDate() + 1);
+  }
 
   const sleepEntry = {
-    date: new Date(bed).toISOString().split("T")[0],
-    bedTime: bed,
-    wakeTime: wake,
+    date: date,
+    bedTime: bedDateTime,
+    wakeTime: wakeDate.toISOString(),
+    mood: selectedMood || "ok",
     timestamp: new Date().toISOString()
   };
 
-  // 保存到本地
   const logs = getLogs();
   logs.push(sleepEntry);
   saveLogs(logs);
 
-  // ✅ 同步到 Supabase
   if (window.saveSleep) {
     try {
       await window.saveSleep(sleepEntry);
@@ -84,9 +147,10 @@ async function saveSleep() {
     }
   }
 
-  // 清空输入框
   document.getElementById("bedTime").value = "";
   document.getElementById("wakeTime").value = "";
+  selectedMood = "";
+  document.querySelectorAll('.mood-btn').forEach(b => b.classList.remove('selected'));
 
   alert("Sleep logged!");
   renderLogs();
@@ -105,7 +169,6 @@ async function loadCloudLogs() {
     const cloudLogs = await window.loadSleepLogs();
     if (cloudLogs && cloudLogs.length > 0) {
       const localLogs = getLogs();
-      // 合并去重
       const merged = [...localLogs];
       cloudLogs.forEach(c => {
         if (!merged.find(m => m.date === c.date && m.bedTime === c.bed_time && m.wakeTime === c.wake_time)) {
@@ -113,11 +176,11 @@ async function loadCloudLogs() {
             date: c.date,
             bedTime: c.bed_time,
             wakeTime: c.wake_time,
+            mood: c.mood || "ok",
             timestamp: c.created_at
           });
         }
       });
-      // 按日期排序
       merged.sort((a, b) => new Date(b.bedTime) - new Date(a.bedTime));
       saveLogs(merged);
     }
@@ -126,25 +189,111 @@ async function loadCloudLogs() {
   }
 }
 
+// 周/月趋势统计
+function renderStats(logs) {
+  const container = document.getElementById("sleepStats");
+  if (!logs || logs.length === 0) {
+    container.innerHTML = "<p>No data yet. Log your first sleep!</p>";
+    return;
+  }
+
+  // 本周数据
+  const now = new Date();
+  const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+  const weekLogs = logs.filter(l => new Date(l.date) >= weekAgo);
+  const monthLogs = logs.filter(l => new Date(l.date) >= monthAgo);
+
+  const avgWeek = weekLogs.length > 0
+    ? (weekLogs.reduce((s, l) => s + (new Date(l.wakeTime) - new Date(l.bedTime)) / (1000*60*60), 0) / weekLogs.length).toFixed(1)
+    : "0.0";
+
+  const avgMonth = monthLogs.length > 0
+    ? (monthLogs.reduce((s, l) => s + (new Date(l.wakeTime) - new Date(l.bedTime)) / (1000*60*60), 0) / monthLogs.length).toFixed(1)
+    : "0.0";
+
+  const goodDays = logs.filter(l => l.mood === "great").length;
+  const okDays = logs.filter(l => l.mood === "ok").length;
+  const badDays = logs.filter(l => l.mood === "bad").length;
+
+  container.innerHTML = `
+    <p>📅 <b>This Week:</b> Avg ${avgWeek}h (${weekLogs.length} records)</p>
+    <p>🗓 <b>This Month:</b> Avg ${avgMonth}h (${monthLogs.length} records)</p>
+    <p>😊 Great: ${goodDays} | 😐 Okay: ${okDays} | 😟 Poor: ${badDays}</p>
+  `;
+}
+
+// 睡眠提醒
+function toggleReminder() {
+  const enabled = document.getElementById("reminderToggle").checked;
+  const time = document.getElementById("reminderTime").value;
+
+  if (enabled && time) {
+    scheduleReminder(time);
+    localStorage.setItem("sleepReminder", JSON.stringify({ enabled: true, time }));
+  } else {
+    clearInterval(reminderInterval);
+    localStorage.setItem("sleepReminder", JSON.stringify({ enabled: false, time }));
+  }
+}
+
+function scheduleReminder(time) {
+  clearInterval(reminderInterval);
+  reminderInterval = setInterval(() => {
+    const now = new Date();
+    const currentTime = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+    if (currentTime === time) {
+      if (Notification.permission === "granted") {
+        new Notification("😴 Time for bed!", { body: "It's your scheduled bedtime. Get some rest!" });
+      } else if (Notification.permission !== "denied") {
+        Notification.requestPermission().then(perm => {
+          if (perm === "granted") {
+            new Notification("😴 Time for bed!", { body: "It's your scheduled bedtime. Get some rest!" });
+          }
+        });
+      }
+    }
+  }, 60000); // 每分钟检查一次
+}
+
+// 恢复提醒设置
+function restoreReminder() {
+  const saved = JSON.parse(localStorage.getItem("sleepReminder") || "{}");
+  if (saved.enabled) {
+    document.getElementById("reminderToggle").checked = true;
+    document.getElementById("reminderTime").value = saved.time || "23:00";
+    scheduleReminder(saved.time || "23:00");
+  }
+}
+
 async function renderLogs() {
-  // 先从云端拉取最新数据
   await loadCloudLogs();
 
   const logs = getLogs();
   const container = document.getElementById("sleepList");
   if (logs.length === 0) {
     container.innerHTML = "<p>No sleep records yet.</p>";
-    return;
+  } else {
+    container.innerHTML = logs.map((log, index) => {
+      const bed = new Date(log.bedTime);
+      const wake = new Date(log.wakeTime);
+      const hrs = ((wake - bed) / (1000 * 60 * 60)).toFixed(1);
+      const moodEmoji = log.mood === "great" ? "😊" : log.mood === "bad" ? "😟" : "😐";
+      return `<p>🛏 ${log.date} — ${hrs}h ${moodEmoji} (${bed.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})} → ${wake.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}) <button class="delete-btn" onclick="deleteSleep(${index})">✕</button></p>`;
+    }).join("");
   }
-  container.innerHTML = logs.map((log, index) => {
-    const bed = new Date(log.bedTime);
-    const wake = new Date(log.wakeTime);
-    const hrs = ((wake - bed) / (1000 * 60 * 60)).toFixed(1);
-    return `<p>🛏 ${log.date} — ${hrs}h (${bed.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})} → ${wake.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}) <button class="delete-btn" onclick="deleteSleep(${index})">✕</button></p>`;
-  }).join("");
+
+  renderStats(logs);
+}
+
+// 请求通知权限
+if (Notification.permission !== "denied") {
+  Notification.requestPermission();
 }
 
 // 初始渲染
+restoreReminder();
 renderLogs();
 </script>
 </body>
