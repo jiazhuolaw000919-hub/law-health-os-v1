@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Profile v12.3 (Fixed Save + Cloud Sync + Mobile)</title>
+<title>Profile v12.3 (Fixed Save + Cloud Sync + Mobile + Auto-Sync)</title>
 
 <link rel="stylesheet" href="style.css">
 
@@ -81,7 +81,7 @@ margin:5px 0;
 <a href="profile.html">Profile</a>
 </div>
 
-<h2 class="center">👤 Profile v12.3 (Save Fixed)</h2>
+<h2 class="center">👤 Profile v12.3 (Auto-Sync)</h2>
 
 <!-- ACTIVE PROFILE -->
 <div class="card">
@@ -235,8 +235,15 @@ function emitProfileUpdate(){
 window.dispatchEvent(new Event("profileSyncUpdate"))
 }
 
+// 🔥 关键修改：每次获得焦点时先拉取云端最新 profiles，再渲染
 window.addEventListener("profileSyncUpdate", render)
-window.addEventListener("focus", render)
+window.addEventListener("focus", async () => {
+  // 若 app.js 提供了 syncProfilesFromCloud 则调用（新版本都有）
+  if (typeof syncProfilesFromCloud === "function") {
+    await syncProfilesFromCloud();
+  }
+  render();
+})
 
 //////////////////////////////
 // DELETE (FIXED)
