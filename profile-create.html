@@ -2,11 +2,14 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Create Profile v3 (Phase A–D Ready)</title>
+<title>Create Profile v3 (Phase A–D Ready) - Fixed Save</title>
 
 <link rel="stylesheet" href="style.css">
+
+<!-- ✅ 必需的脚本 -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="app.js"></script>
-<script src="profile.js"></script>
+<script src="supabase.js"></script>
 
 <style>
 .card{
@@ -129,44 +132,10 @@ if(!data.primary_goal) errors.push("Primary goal is required")
 return errors
 }
 
-/* ================= NORMALIZE ================= */
-function normalizeProfile(p){
-
-return {
-id: p.id || Date.now().toString(),
-
-name: p.name,
-email: p.email,
-phone: p.phone || "",
-
-gender: p.gender,
-age: Number(p.age || 0),
-
-country: p.country || "",
-occupation: p.occupation || "",
-
-height: Number(p.height || 170),
-weight: Number(p.weight || 70),
-target_weight: Number(p.target_weight || 70),
-
-body_fat_percentage: Number(p.body_fat_percentage || 0),
-muscle_mass: Number(p.muscle_mass || 0),
-
-primary_goal: p.primary_goal,
-
-bmi: 0,
-
-created_at: p.created_at || new Date().toISOString(),
-updated_at: new Date().toISOString()
-}
-}
-
-/* ================= SAVE ================= */
+/* ================= SAVE (Fixed) ================= */
 async function saveProfile(){
 
 let raw = {
-
-id: Date.now().toString(),
 
 name: document.getElementById("name").value.trim(),
 email: document.getElementById("email").value.trim(),
@@ -197,21 +166,33 @@ errors.join("\n")
 return
 }
 
-/* normalize */
-let profile = normalizeProfile(raw)
+// Normalize numbers
+raw.height = Number(raw.height || 170)
+raw.weight = Number(raw.weight || 70)
+raw.target_weight = Number(raw.target_weight || 70)
+raw.age = Number(raw.age || 0)
+raw.body_fat_percentage = Number(raw.body_fat_percentage || 0)
+raw.muscle_mass = Number(raw.muscle_mass || 0)
 
-/* BMI */
-profile.bmi = calcBMI(profile.height, profile.weight)
+// Calculate BMI
+raw.bmi = calcBMI(raw.height, raw.weight)
 
-/* ================= LOCAL SAVE ================= */
-localStorage.setItem("activeProfile", JSON.stringify(profile))
+/* ================= SAVE TO LOCAL & CLOUD ================= */
+// Use app.js's createProfile (stores in localStorage, sets active)
+const newProfile = window.createProfile(raw)
 
-let all = JSON.parse(localStorage.getItem("profiles") || "[]")
-all.push(profile)
-localStorage.setItem("profiles", JSON.stringify(all))
+// Sync to Supabase (if upsertProfile exists)
+if (typeof upsertProfile === 'function') {
+try {
+await upsertProfile(newProfile)
+console.log('✅ Profile synced to cloud')
+} catch (e) {
+console.warn('Cloud sync failed, but local save is fine:', e)
+}
+}
 
-/* trigger sync */
-window.dispatchEvent(new Event("profileUpdated"))
+// Notify all pages of profile change
+window.dispatchEvent(new Event("profileSyncUpdate"))
 
 alert("Profile created successfully!")
 
