@@ -52,7 +52,7 @@ async function analyzeFoodImage(base64Image){
       method:"POST",
       headers:{
         "Content-Type":"application/json",
-        "Authorization":"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"
+        "Authorization":"Bearer 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"
       },
       body:JSON.stringify({
         model:"gpt-4o-mini",
