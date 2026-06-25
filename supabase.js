@@ -1,5 +1,5 @@
 /* =========================
- SUPABASE CONFIG (FORCE userId + NO created_at)
+ SUPABASE CONFIG v16 (AUTO ADAPT + userId WHEN POSSIBLE)
  ========================= */
 
 const SUPABASE_URL = "https://jqevcfyhnlttzdiylfrh.supabase.co"
@@ -56,7 +56,7 @@ async function saveFood(food) {
       return null
     }
 
-    // 1️⃣ 优先插入完整字段（不含 created_at，因为你的表目前没有）
+    // 1️⃣ 尝试带 userId 的完整字段（如果表已升级则使用这个）
     const fullPayload = {
       userId: profile.id,
       food: food.food || "unknown",
@@ -80,7 +80,7 @@ async function saveFood(food) {
       return data
     }
 
-    // 2️⃣ 降级到基础字段（仍然包含 userId，且没有 created_at）
+    // 2️⃣ 完整失败，尝试基础字段（userId + 食物 + 热量 + 日期）
     console.warn("Full insert failed, trying base with userId:", error.message)
     const basePayload = {
       userId: profile.id,
@@ -89,17 +89,35 @@ async function saveFood(food) {
       date: food.date || new Date().toISOString().split("T")[0]
     }
 
-    const result = await supabaseClient
+    let result = await supabaseClient
       .from("food_logs")
       .insert([basePayload])
       .select()
 
+    if (!result.error) {
+      console.log("✅ Synced to Supabase (base with userId):", result.data)
+      return result.data
+    }
+
+    // 3️⃣ 如果连基础字段都失败（说明表里连 userId 都没有），降级到极简字段
+    console.warn("Base insert failed, trying minimal (no userId):", result.error.message)
+    const minimalPayload = {
+      food: food.food || "unknown",
+      calories: Number(food.calories || 0),
+      date: food.date || new Date().toISOString().split("T")[0]
+    }
+
+    result = await supabaseClient
+      .from("food_logs")
+      .insert([minimalPayload])
+      .select()
+
     if (result.error) {
-      console.error("❌ Even base insert failed:", JSON.stringify(result.error, null, 2))
+      console.error("❌ All inserts failed. Please create the food_logs table in Supabase:", result.error)
       return null
     }
 
-    console.log("✅ Synced to Supabase (base with userId):", result.data)
+    console.warn("⚠️ Synced to Supabase (minimal, no userId). Run SQL to add userId column.")
     return result.data
   } catch (e) {
     console.error("saveFood crash:", e)
