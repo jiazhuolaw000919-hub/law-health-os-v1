@@ -3,13 +3,36 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Report v11.4 AI Dashboard Pro (Sleep + Mobile)</title>
+<title>Report v11.4 AI Dashboard Pro (Export + Sleep)</title>
 
 <link rel="stylesheet" href="style.css">
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="app.js"></script>
 <script src="supabase.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<style>
+.card{ margin:10px; padding:12px; background:#fff; border-radius:10px; box-shadow:0 1px 4px rgba(0,0,0,.05); }
+button{ margin:5px; padding:8px 14px; border-radius:8px; border:1px solid #ddd; cursor:pointer; background:#111827; color:white; }
+/* Export Modal */
+.export-modal {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center;
+  z-index: 9999;
+}
+.export-modal-content {
+  background: white; padding: 24px; border-radius: 12px; width: 90%; max-width: 380px;
+  text-align: center;
+}
+.export-btn {
+  display: block; width: 100%; margin: 8px 0; padding: 12px;
+  border-radius: 8px; font-size: 16px; cursor: pointer; border: none;
+}
+.export-btn.download { background: #3b82f6; color: white; }
+.export-btn.email { background: #22c55e; color: white; }
+.export-btn.cancel { background: #ef4444; color: white; }
+</style>
 </head>
 
 <body>
@@ -18,8 +41,7 @@
   <a href="index.html">Home</a>
   <a href="calendar.html">Calendar</a>
   <a href="food.html">Food</a>
-  <a href="workout.html">Workout</a>
-  <a href="shopping.html">Shop</a>
+  <a href="sleep.html">Sleep</a>
   <a href="report.html">Report</a>
   <a href="profile.html">Profile</a>
 </div>
@@ -35,7 +57,6 @@
 <div class="card"><h3>📈 Weight Prediction</h3><p id="weightPrediction">Loading...</p></div>
 <div class="card"><h3>📊 Weekly Summary</h3><p id="weeklySummary">Loading...</p></div>
 
-<!-- ✅ 新增睡眠趋势卡片 -->
 <div class="card">
   <h3>😴 Sleep Trend (7 Days)</h3>
   <canvas id="sleepChart" width="320" height="140" style="max-width:100%;"></canvas>
@@ -43,25 +64,36 @@
 </div>
 
 <div class="card"><h3>📊 Calorie Chart</h3><canvas id="chart" width="320" height="140" style="max-width:100%;"></canvas></div>
-<div class="card"><h3>📄 Export PDF v11.4</h3><button onclick="exportPDF()">Generate Report</button></div>
+<div class="card"><h3>📄 Export Report</h3><button onclick="openExportModal()">Generate Report</button></div>
+
+<!-- Export Modal -->
+<div id="exportModal" class="export-modal">
+  <div class="export-modal-content">
+    <h3>📄 Export Report</h3>
+    <p>Choose how to save your health report:</p>
+    <button class="export-btn download" onclick="downloadPDF()">📥 Download to Device</button>
+    <button class="export-btn email" onclick="emailPDF()">📧 Email to me</button>
+    <button class="export-btn cancel" onclick="closeExportModal()">Cancel</button>
+  </div>
+</div>
 
 <script>
-// ========== 原有函数 (不变) ==========
-function getAIInsight(cal, bmi, weekly, food) {
+// ========== 原有函数 ==========
+function getAIInsight(cal, bmi) {
   if (bmi > 25) return { advice: "Your BMI is above 25. Consider reducing calorie intake and increasing activity." };
   if (cal > 2200) return { advice: "You're eating above maintenance. Watch your portions." };
   return { advice: "Your diet looks balanced this week. Keep it up!" };
 }
 function analyzeFoodPreference(foods) {
   if (!foods || foods.length === 0) return { top: "No data yet" };
-  let names = foods.map(f => f.food_name || f.food || "unknown");
-  let counts = {};
-  names.forEach(n => counts[n] = (counts[n] || 0) + 1);
-  let sorted = Object.entries(counts).sort((a,b) => b[1] - a[1]);
+  var names = foods.map(function(f) { return f.food_name || f.food || "unknown"; });
+  var counts = {};
+  names.forEach(function(n) { counts[n] = (counts[n] || 0) + 1; });
+  var sorted = Object.entries(counts).sort(function(a,b) { return b[1] - a[1]; });
   return { top: sorted.length > 0 ? sorted[0][0] : "No data" };
 }
 function generateWeeklyAI(calories, bmi) {
-  let avg = calories.reduce((a,b) => a + b, 0) / 7;
+  var avg = calories.reduce(function(a,b) { return a + b; }, 0) / 7;
   if (avg > 2200) return { insight: "Weekly average is high. Consider reducing by 200 kcal/day." };
   return { insight: "Weekly intake is within normal range." };
 }
@@ -71,97 +103,146 @@ function getRiskLevel(cal, bmi) {
   return { level: "Low", text: "Keep maintaining this lifestyle." };
 }
 function predictWeight(weight, cal) {
-  let surplus = cal - 2200;
-  let weeklyChange = surplus * 7 / 7700;
-  let predicted = weight + weeklyChange;
+  var surplus = cal - 2200;
+  var weeklyChange = surplus * 7 / 7700;
+  var predicted = weight + weeklyChange;
   return predicted.toFixed(1);
 }
 function getActiveProfile(){
-  return JSON.parse(localStorage.getItem("activeProfile")) || { id: "guest", name: "Guest", weight: 70, height: 170 };
+  return JSON.parse(localStorage.getItem("activeProfile")) || { id: "guest", name: "Guest", weight: 70, height: 170, email: "" };
 }
 async function safeGetLogs(date){
-  try{ if (typeof getFoodLogs === "undefined") return []; let logs = await getFoodLogs(date); return Array.isArray(logs) ? logs : []; }catch(e){ return []; }
+  try{ if (typeof getFoodLogs === "undefined") return []; var logs = await getFoodLogs(date); return Array.isArray(logs) ? logs : []; }catch(e){ return []; }
 }
 async function getWeeklyData(){
-  let calories = []; let allFoods = [];
-  for(let i=0; i<7; i++){
-    let d = new Date(); d.setDate(d.getDate() - i); let date = d.toISOString().split("T")[0];
-    let logs = await safeGetLogs(date); let profile = getActiveProfile();
-    logs = logs.filter(f => !f.userId || f.userId === profile.id);
-    let sum = 0;
-    logs.forEach(f => { sum += Number(f.calories || 0); allFoods.push(f); });
+  var calories = []; var allFoods = [];
+  for(var i=0; i<7; i++){
+    var d = new Date(); d.setDate(d.getDate() - i); var date = d.toISOString().split("T")[0];
+    var logs = await safeGetLogs(date); var profile = getActiveProfile();
+    logs = logs.filter(function(f) { return !f.userId || f.userId === profile.id; });
+    var sum = 0;
+    logs.forEach(function(f) { sum += Number(f.calories || 0); allFoods.push(f); });
     calories.push(sum);
   }
-  return { calories, allFoods };
+  return { calories: calories, allFoods: allFoods };
 }
 function drawChart(calories, bmi){
-  const c = document.getElementById("chart"); const ctx = c.getContext("2d");
+  var c = document.getElementById("chart"); var ctx = c.getContext("2d");
   ctx.clearRect(0,0,320,140); ctx.fillStyle = "#f3f4f6"; ctx.fillRect(0,0,320,140);
-  calories.forEach((cals,i) => { ctx.fillStyle = "#60a5fa"; ctx.fillRect(20 + i*40, 120 - cals/30, 20, cals/30); });
+  calories.forEach(function(cals,i) { ctx.fillStyle = "#60a5fa"; ctx.fillRect(20 + i*40, 120 - cals/30, 20, cals/30); });
   ctx.fillStyle = "#34d399"; ctx.fillText("BMI: " + bmi.toFixed(1), 10, 20);
 }
-function exportPDF(){ alert("PDF export requires jsPDF library."); }
 
-// ========== 睡眠相关函数 ==========
+// ========== 睡眠 ==========
 function getSleepLogs() {
-  const profile = getActiveProfile();
-  const key = `sleep_${profile.id}`;
-  return JSON.parse(localStorage.getItem(key)) || [];
+  var profile = getActiveProfile();
+  var key = "sleep_" + profile.id;
+  return JSON.parse(localStorage.getItem(key) || "[]");
 }
-
 function drawSleepChart(logs) {
-  const canvas = document.getElementById("sleepChart"); if(!canvas) return;
-  const ctx = canvas.getContext("2d");
+  var canvas = document.getElementById("sleepChart"); if(!canvas) return;
+  var ctx = canvas.getContext("2d");
   ctx.clearRect(0,0,canvas.width,140);
-  const days = [];
-  for(let i=6;i>=0;i--){ let d=new Date(); d.setDate(d.getDate()-i); days.push(d.toISOString().split("T")[0]); }
-  const data = days.map(day => {
-    const log = logs.find(l => l.date === day);
+  var days = [];
+  for(var i=6;i>=0;i--){ var d=new Date(); d.setDate(d.getDate()-i); days.push(d.toISOString().split("T")[0]); }
+  var data = days.map(function(day) {
+    var log = logs.find(function(l) { return l.date === day; });
     if(!log) return 0;
-    const bed = new Date(log.bedTime), wake = new Date(log.wakeTime);
-    let hrs = (wake - bed)/(1000*60*60); if(hrs<0) hrs+=24;
+    var bed = new Date(log.bedTime), wake = new Date(log.wakeTime);
+    var hrs = (wake - bed)/(1000*60*60); if(hrs<0) hrs+=24;
     return hrs;
   });
   ctx.fillStyle = "#f3f4f6"; ctx.fillRect(0,0,canvas.width,140);
-  const maxHrs = 12;
-  data.forEach((hrs,i) => {
+  var maxHrs = 12;
+  data.forEach(function(hrs,i) {
     ctx.fillStyle = "#818cf8";
-    const height = (hrs/maxHrs)*120;
+    var height = (hrs/maxHrs)*120;
     ctx.fillRect(20 + i*40, 130 - height, 20, height);
     ctx.fillStyle = "#111827";
     ctx.fillText(hrs ? hrs.toFixed(1)+"h" : "0", 18+i*40, 125-height);
   });
-  // 睡眠总结
-  const avg = (data.reduce((a,b)=>a+b,0)/7).toFixed(1);
-  const target = getActiveProfile().targetSleep || 8;
-  const diff = (avg - target).toFixed(1);
-  document.getElementById("sleepSummary").innerText = `Avg: ${avg}h | Target: ${target}h | ${diff >= 0 ? '+' : ''}${diff}h vs goal`;
+  var avg = (data.reduce(function(a,b){ return a+b; },0)/7).toFixed(1);
+  var target = getActiveProfile().targetSleep || 8;
+  var diff = (avg - target).toFixed(1);
+  document.getElementById("sleepSummary").innerText = "Avg: " + avg + "h | Target: " + target + "h | " + (diff >= 0 ? '+' : '') + diff + "h vs goal";
 }
 
-// ========== 主加载函数 ==========
+// ========== 导出弹窗 ==========
+function openExportModal() {
+  document.getElementById("exportModal").style.display = "flex";
+}
+function closeExportModal() {
+  document.getElementById("exportModal").style.display = "none";
+}
+
+// ========== 下载 PDF ==========
+function downloadPDF() {
+  closeExportModal();
+  var profile = getActiveProfile();
+  var doc = new jspdf.jsPDF();
+  doc.setFontSize(16);
+  doc.text("AI Health Report", 10, 10);
+  doc.setFontSize(12);
+  doc.text("Name: " + (profile.name || "Guest"), 10, 20);
+  doc.text("Date: " + new Date().toLocaleDateString(), 10, 28);
+  doc.text(document.getElementById("dailyCalories").innerText, 10, 40);
+  doc.text(document.getElementById("risk").innerText, 10, 48);
+  doc.text(document.getElementById("aiInsight").innerText, 10, 56);
+  doc.text(document.getElementById("weeklySummary").innerText, 10, 64);
+  doc.text(document.getElementById("weightPrediction").innerText, 10, 72);
+  doc.text(document.getElementById("sleepSummary").innerText, 10, 80);
+  doc.text(document.getElementById("foodPattern").innerText, 10, 88);
+  doc.save("Health_Report_" + new Date().toISOString().split("T")[0] + ".pdf");
+}
+
+// ========== 发送邮件 ==========
+function emailPDF() {
+  closeExportModal();
+  var profile = getActiveProfile();
+  var email = profile.email || "";
+  if (!email) {
+    email = prompt("Please enter your email address:");
+    if (!email) return;
+  }
+  var subject = "AI Health Report - " + new Date().toLocaleDateString();
+  var body = "Name: " + (profile.name || "Guest") + "%0D%0A" +
+             document.getElementById("dailyCalories").innerText + "%0D%0A" +
+             document.getElementById("risk").innerText + "%0D%0A" +
+             document.getElementById("aiInsight").innerText + "%0D%0A" +
+             document.getElementById("weeklySummary").innerText + "%0D%0A" +
+             document.getElementById("weightPrediction").innerText + "%0D%0A" +
+             document.getElementById("sleepSummary").innerText + "%0D%0A" +
+             document.getElementById("foodPattern").innerText;
+  window.location.href = "mailto:" + email + "?subject=" + encodeURIComponent(subject) + "&body=" + body;
+}
+
+// ========== 主加载 ==========
 async function loadReport(){
-  const profile = getActiveProfile();
-  document.getElementById("activeProfile").innerText = `👤 ${profile.name}`;
-  let { calories, allFoods } = await getWeeklyData();
-  let todayCal = calories[0] || 0;
-  let bmi = profile.weight / ((profile.height/100)**2);
+  var profile = getActiveProfile();
+  document.getElementById("activeProfile").innerText = "👤 " + profile.name;
+  var result = await getWeeklyData();
+  var calories = result.calories;
+  var allFoods = result.allFoods;
+  var todayCal = calories[0] || 0;
+  var bmi = profile.weight / ((profile.height/100)*(profile.height/100));
 
   document.getElementById("dailyCalories").innerText = todayCal + " kcal";
-  document.getElementById("risk").innerText = getRiskLevel(todayCal, bmi).level + " " + getRiskLevel(todayCal, bmi).text;
-  document.getElementById("aiInsight").innerText = getAIInsight(todayCal, bmi, calories, "").advice;
+  var risk = getRiskLevel(todayCal, bmi);
+  document.getElementById("risk").innerText = risk.level + " " + risk.text;
+  document.getElementById("aiInsight").innerText = getAIInsight(todayCal, bmi).advice;
   document.getElementById("foodPattern").innerText = "Top: " + analyzeFoodPreference(allFoods).top;
   document.getElementById("weeklySummary").innerText = generateWeeklyAI(calories, bmi).insight;
   document.getElementById("weightPrediction").innerText = predictWeight(profile.weight, todayCal) + " kg";
 
-  let container = document.getElementById("riskFoods"); container.innerHTML = "";
-  allFoods.slice(0,5).forEach(f => {
-    let div = document.createElement("div");
-    div.innerHTML = `🍽 ${f.food_name || f.food || "unknown"} - 🔥 ${f.calories}`;
+  var container = document.getElementById("riskFoods"); container.innerHTML = "";
+  allFoods.slice(0,5).forEach(function(f) {
+    var div = document.createElement("div");
+    div.innerHTML = "🍽 " + (f.food_name || f.food || "unknown") + " - 🔥 " + f.calories;
     container.appendChild(div);
   });
 
   drawChart(calories, bmi);
-  drawSleepChart(getSleepLogs());  // ✅ 绘制睡眠图表
+  drawSleepChart(getSleepLogs());
 }
 
 loadReport();
