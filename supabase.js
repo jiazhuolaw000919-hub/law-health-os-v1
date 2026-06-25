@@ -1,5 +1,5 @@
 /* =========================
- SUPABASE CONFIG v17 (SYNC LOAD + SAVE)
+ SUPABASE CONFIG v18 (SUGAR + GRADE SUPPORT)
  ========================= */
 
 const SUPABASE_URL = "https://jqevcfyhnlttzdiylfrh.supabase.co"
@@ -74,6 +74,7 @@ async function saveFood(food) {
       return null
     }
 
+    // 完整 payload（包含 sugar 和 grade）
     const fullPayload = {
       userId: profile.id,
       food: food.food || "unknown",
@@ -81,6 +82,8 @@ async function saveFood(food) {
       protein: Number(food.protein || 0),
       carbs: Number(food.carbs || 0),
       fat: Number(food.fat || 0),
+      sugar: Number(food.sugar || 0),      // ✅ 新增糖分
+      grade: food.grade || "",             // ✅ 新增营养等级
       meal_type: food.mealType || "snack",
       components: food.components || [],
       image_url: food.image || null,
@@ -97,6 +100,7 @@ async function saveFood(food) {
       return data
     }
 
+    // 降级到基础字段（仍然保留 userId 和基础营养，不包含 sugar/grade，避免因缺少列而失败）
     console.warn("Full insert failed, trying base with userId:", error.message)
     const basePayload = {
       userId: profile.id,
