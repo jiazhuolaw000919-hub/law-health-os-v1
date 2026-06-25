@@ -56,7 +56,6 @@ canvas{ max-width:100%; min-width:280px; }
 <div class="card"><h3>🔥 Today AI Summary</h3><p id="cal">--</p><p id="p">--</p><p id="c">--</p><p id="f">--</p><p id="mealScore"></p><p id="risk"></p></div>
 <div class="card"><h3>🧠 AI Insight</h3><p id="insight"></p><p id="recommend"></p></div>
 
-<!-- SLEEP (只显示数据，无按钮) -->
 <div class="card">
   <h3>😴 Sleep (7-Day)</h3>
   <canvas id="sleepChart" width="320" height="140"></canvas>
@@ -91,7 +90,14 @@ function updateClock(){
 }
 
 function num(n){ n = Number(n); return isNaN(n) ? 0 : n; }
-function bmi(h,w){ h=num(h); w=num(w); if(h<=0) return "0.0"; return (w/(h/100)*(h/100)).toFixed(1); }
+
+// ✅ 修复：BMI = 体重(kg) / (身高(m) * 身高(m))
+function bmi(h, w){
+  h = num(h) / 100;  // 转换为米
+  w = num(w);
+  if (h <= 0) return "0.0";
+  return (w / (h * h)).toFixed(1);
+}
 
 async function getData7(){
   var out=[];
