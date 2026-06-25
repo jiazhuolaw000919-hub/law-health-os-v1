@@ -48,6 +48,12 @@ input, select{ width:100%; padding:10px; margin:6px 0; border-radius:8px; border
 
 <h2 class="center">😴 Log Sleep Pro</h2>
 
+<!-- ✅ 新增：最新睡眠记录 -->
+<div class="card">
+  <h3>🕐 Latest Sleep</h3>
+  <div id="latestSleep"></div>
+</div>
+
 <div class="card">
 <label>📅 Date:</label>
 <input type="date" id="sleepDate">
@@ -218,6 +224,25 @@ function renderStats(logs) {
                 "<p>😊 Great: " + great + " | 😐 Ok: " + ok + " | 😟 Poor: " + bad + "</p>";
 }
 
+// ✅ 新增：显示最新睡眠记录
+function renderLatest() {
+  var logs = getLogs();
+  var container = document.getElementById("latestSleep");
+  if (logs.length === 0) {
+    container.innerHTML = "<p>No records yet.</p>";
+    return;
+  }
+  var last = logs[logs.length - 1];
+  var bed = new Date(last.bedTime);
+  var wake = new Date(last.wakeTime);
+  var hrs = ((wake - bed) / 3600000).toFixed(1);
+  var emoji = last.mood === "great" ? "😊" : last.mood === "bad" ? "😟" : "😐";
+
+  container.innerHTML = "<p>🛏 " + last.date + " — " + hrs + "h " + emoji + " (" +
+    bed.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) + " → " +
+    wake.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) + ")</p>";
+}
+
 function renderLogs() {
   var logs = getLogs();
   var container = document.getElementById("sleepList");
@@ -225,6 +250,7 @@ function renderLogs() {
   if (logs.length === 0) {
     container.innerHTML = "<p>No records yet.</p>";
     renderStats([]);
+    renderLatest();
     return;
   }
 
@@ -244,6 +270,7 @@ function renderLogs() {
   }
   container.innerHTML = html;
   renderStats(logs);
+  renderLatest();
 }
 
 renderLogs();
