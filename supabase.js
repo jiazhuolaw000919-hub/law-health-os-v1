@@ -1,5 +1,5 @@
 /* =========================
- SUPABASE CONFIG (FIXED + UNIFIED TABLE)
+ SUPABASE CONFIG (FULL COLUMN + DYNAMIC FALLBACK)
  ========================= */
 
 const SUPABASE_URL = "https://jqevcfyhnlttzdiylfrh.supabase.co"
@@ -32,7 +32,6 @@ function getActiveProfile() {
   }
 }
 
-// 保持原有读取逻辑（从 food_logs 查）
 async function getFoodLogs(date) {
   try {
     const profile = getActiveProfile()
@@ -42,47 +41,62 @@ async function getFoodLogs(date) {
       .select("*")
       .eq("date", date)
       .eq("userId", profile.id)
-    if (error) {
-      console.error("getFoodLogs error:", error)
-      return []
-    }
+    if (error) return []
     return Array.isArray(data) ? data : []
   } catch (e) {
     return []
   }
 }
 
-// 修改 saveFood，也写入 food_logs 表，字段名对齐
 async function saveFood(food) {
   try {
     const profile = getActiveProfile()
-    if (!profile?.id || profile.id === "guest") return null
+    if (!profile?.id || profile.id === "guest") {
+      console.warn("⚠️ Guest user, skipping sync")
+      return null
+    }
 
-    const payload = {
+    // 基础字段（food_logs 表通常至少包含这些）
+    const basePayload = {
       userId: profile.id,
-      food: food.food || "unknown",           // 注意字段名是 food，不是 food_name
+      food: food.food || "unknown",
       calories: Number(food.calories || 0),
-      protein: Number(food.protein || 0),
-      carbs: Number(food.carbs || 0),
-      fat: Number(food.fat || 0),
       date: food.date || new Date().toISOString().split("T")[0],
-      // 下面几个字段如果表里有列就可以存，没有的话会自动忽略（Supabase 会报错提示不存在列，我们先不加）
-      // 如果你的 food_logs 表有 meal_type、components、image_url 列，可以取消注释
-      // meal_type: food.mealType || "snack",
-      // components: food.components || [],
-      // image_url: food.image || null,
       created_at: new Date().toISOString()
     }
 
-    const { data, error } = await supabaseClient
-      .from("food_logs")          // 🔁 改为写入 food_logs 表
-      .insert([payload])
+    // 尝试添加更多字段
+    const fullPayload = {
+      ...basePayload,
+      protein: Number(food.protein || 0),
+      carbs: Number(food.carbs || 0),
+      fat: Number(food.fat || 0),
+      meal_type: food.mealType || "snack",
+      components: food.components || [],
+      image_url: food.image || null
+    }
+
+    // 第一次尝试：插入完整字段
+    let { data, error } = await supabaseClient
+      .from("food_logs")
+      .insert([fullPayload])
+      .select()
 
     if (error) {
-      // 详细打印错误，方便定位
-      console.error("saveFood error:", JSON.stringify(error, null, 2))
-      return null
+      console.warn("Full insert failed, falling back to base columns:", error.message)
+      // 降级：只用基础字段插入
+      const result = await supabaseClient
+        .from("food_logs")
+        .insert([basePayload])
+        .select()
+
+      if (result.error) {
+        console.error("saveFood error:", JSON.stringify(result.error, null, 2))
+        return null
+      }
+      data = result.data
     }
+
     console.log("✅ Synced to Supabase:", data)
     return data
   } catch (e) {
