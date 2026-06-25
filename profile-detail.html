@@ -3,358 +3,215 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Profile v12.3 (Fixed Save + Cloud Sync + Mobile + Auto-Sync)</title>
+<title>Profile Detail - Edit & View (Mobile Ready)</title>
 
 <link rel="stylesheet" href="style.css">
 
-<!-- ✅ 必需的脚本 -->
+<!-- 必需的脚本 -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="app.js"></script>
 <script src="supabase.js"></script>
 
 <style>
 .card{
-margin:10px;
-padding:12px;
-background:#fff;
-border-radius:10px;
-box-shadow:0 1px 4px rgba(0,0,0,.05);
+  margin:10px;
+  padding:12px;
+  background:#fff;
+  border-radius:10px;
+  box-shadow:0 1px 4px rgba(0,0,0,.05);
+}
+input, select {
+  width:100%;
+  margin:6px 0;
+  padding:9px;
+  border-radius:6px;
+  border:1px solid #ddd;
+}
+.row{
+  display:flex;
+  gap:10px;
+}
+.small{width:48%}
+.readonly {
+  background: #f1f5f9;
+  color: #555;
+}
+button {
+  margin:8px 4px;
+  padding:8px 12px;
+  border-radius:6px;
+  cursor:pointer;
+  border:1px solid #ddd;
 }
 
-button{
-margin:4px;
-padding:6px 10px;
-border-radius:6px;
-cursor:pointer;
-}
-
-.small{font-size:13px;opacity:0.75}
-
-.row{display:flex;gap:10px;flex-wrap:wrap}
-
-.badge{
-display:inline-block;
-padding:4px 8px;
-border-radius:6px;
-font-size:12px;
-margin-top:5px;
-}
-
-.green{background:#dcfce7;color:#166534}
-.yellow{background:#fef9c3;color:#854d0e}
-.red{background:#fee2e2;color:#991b1b}
-
-/* ================= SKELETON ================= */
-.skeleton {
-background: linear-gradient(90deg,#eee 25%,#f5f5f5 50%,#eee 75%);
-background-size: 200% 100%;
-animation: shimmer 1.2s infinite;
-border-radius: 6px;
-}
-
-@keyframes shimmer {
-0% {background-position:-200% 0}
-100% {background-position:200% 0}
-}
-
-.skeleton-text{
-height:16px;
-width:180px;
-margin:5px 0;
-}
-
-/* 通用弹窗适配（如果以后有弹窗） */
-.modal-content {
-  width: 90%;
-  max-width: 340px;
+/* 移动端微调 */
+@media (max-width: 480px) {
+  .card {
+    margin: 8px;
+    padding: 10px;
+  }
+  input, select {
+    padding: 8px;
+    font-size: 0.9rem;
+  }
+  button {
+    padding: 10px 14px;
+  }
 }
 </style>
 </head>
-
 <body>
 
 <div class="nav">
-<a href="index.html">Home</a>
-<a href="calendar.html">Calendar</a>
-<a href="food.html">Food</a>
-<a href="report.html">Report</a>
-<a href="profile.html">Profile</a>
+  <a href="profile.html">← Back to Profiles</a>
 </div>
 
-<h2 class="center">👤 Profile v12.3 (Auto-Sync)</h2>
+<h2 class="center">📝 Edit Profile Details</h2>
 
-<!-- ACTIVE PROFILE -->
 <div class="card">
-<h3>🔥 Active Profile</h3>
-
-<div id="profileSkeleton" class="skeleton skeleton-text"></div>
-
-<p id="name" style="display:none">Loading...</p>
-<p id="heightWeight">--</p>
-<p id="bmi">--</p>
-<p id="bmiStatus"></p>
-
-<div class="row">
-
-<button onclick="goCreateProfile()">
-➕ Create New Profile
-</button>
-
-<button onclick="goDetail()">
-View Full Profile →
-</button>
-
-<button onclick="deleteProfileById('active')" style="background:red;color:white">
-Delete
-</button>
-
-</div>
-
-<p class="small">All changes sync to cloud automatically</p>
-</div>
-
-<!-- QUICK CREATE FORM (NEW) -->
-<div class="card">
-<h3>⚡ Quick Create Profile</h3>
-<input type="text" id="newName" placeholder="Name" style="width:90%;margin:4px 0">
-<input type="number" id="newHeight" placeholder="Height (cm)" style="width:90%;margin:4px 0" value="170">
-<input type="number" id="newWeight" placeholder="Weight (kg)" style="width:90%;margin:4px 0" value="70">
-<br>
-<button onclick="quickCreate()">💾 Save & Set Active</button>
-</div>
-
-<!-- SWITCH -->
-<div class="card">
-<h3>👥 Profiles</h3>
-<div id="list"></div>
+  <h3>🔒 Profile ID (Immutable)</h3>
+  <input id="profileId" class="readonly" readonly disabled>
+  
+  <h3>👤 Identity</h3>
+  <input id="name" placeholder="Name / Nickname *">
+  <input id="email" placeholder="Email *">
+  <input id="phone" placeholder="Phone">
+  
+  <select id="gender">
+    <option value="">Gender *</option>
+    <option value="male">Male</option>
+    <option value="female">Female</option>
+    <option value="other">Other</option>
+  </select>
+  
+  <input id="age" placeholder="Age">
+  <input id="country" placeholder="Country">
+  <input id="occupation" placeholder="Occupation">
+  
+  <h3>⚖ Body Metrics</h3>
+  <input id="height" placeholder="Height (cm) *">
+  <input id="weight" placeholder="Weight (kg) *">
+  <input id="target_weight" placeholder="Target Weight (kg) *">
+  
+  <input id="body_fat" placeholder="Body Fat %">
+  <input id="muscle_mass" placeholder="Muscle Mass (kg)">
+  
+  <select id="goal">
+    <option value="">Primary Goal *</option>
+    <option value="fat_loss">Fat Loss</option>
+    <option value="muscle_gain">Muscle Gain</option>
+    <option value="maintenance">Maintenance</option>
+    <option value="health_improvement">Health Improvement</option>
+    <option value="rehab">Rehab</option>
+  </select>
+  
+  <br><br>
+  <button onclick="saveChanges()">💾 Save Changes</button>
+  <button onclick="cancelEdit()">Cancel</button>
+  <p id="saveStatus" style="color:green; display:none;">Saved successfully!</p>
 </div>
 
 <script>
 
-//////////////////////////////
-// NAVIGATION (UNCHANGED)
-//////////////////////////////
-function goCreateProfile(){
-// Now we have built-in creation, but keep the button as fallback
-window.location.href = "./profile-create.html"
+// Get profile ID from URL
+const urlParams = new URLSearchParams(window.location.search);
+const profileId = urlParams.get('id');
+
+if (!profileId) {
+  alert('No profile ID specified.');
+  window.location.href = 'profile.html';
 }
 
-function goDetail(){
-let p = getActiveProfile()
-window.location.href = `./profile-detail.html?id=${encodeURIComponent(p.id)}`
+// Load the profile from localStorage
+function getProfileById(id) {
+  let profiles = JSON.parse(localStorage.getItem('profiles') || '[]');
+  return profiles.find(p => p.id === id);
 }
 
-//////////////////////////////
-// SAFE PROFILE (UPGRADED)
-//////////////////////////////
-function getActiveProfile(){
-try{
-const raw = localStorage.getItem("activeProfile")
-if(!raw || raw==="undefined" || raw==="null"){
-return {id:"guest",name:"Guest",height:170,weight:70}
-}
-const p = JSON.parse(raw)
-return p?.id ? p : {id:"guest",name:"Guest",height:170,weight:70}
-}catch(e){
-return {id:"guest",name:"Guest",height:170,weight:70}
-}
+let currentProfile = getProfileById(profileId);
+
+if (!currentProfile) {
+  alert('Profile not found.');
+  window.location.href = 'profile.html';
 }
 
-function getProfiles(){
-return JSON.parse(localStorage.getItem("profiles")) || []
-}
+// Populate the form
+document.getElementById('profileId').value = currentProfile.id || '';
+document.getElementById('name').value = currentProfile.name || '';
+document.getElementById('email').value = currentProfile.email || '';
+document.getElementById('phone').value = currentProfile.phone || '';
+document.getElementById('gender').value = currentProfile.gender || '';
+document.getElementById('age').value = currentProfile.age || '';
+document.getElementById('country').value = currentProfile.country || '';
+document.getElementById('occupation').value = currentProfile.occupation || '';
+document.getElementById('height').value = currentProfile.height || '';
+document.getElementById('weight').value = currentProfile.weight || '';
+document.getElementById('target_weight').value = currentProfile.target_weight || '';
+document.getElementById('body_fat').value = currentProfile.body_fat_percentage || '';
+document.getElementById('muscle_mass').value = currentProfile.muscle_mass || '';
+document.getElementById('goal').value = currentProfile.primary_goal || '';
 
-function num(v){
-return isNaN(v) ? 0 : Number(v)
-}
+async function saveChanges() {
+  // Build updated profile object, preserving the original ID
+  const updatedProfile = {
+    ...currentProfile,
+    name: document.getElementById('name').value.trim(),
+    email: document.getElementById('email').value.trim(),
+    phone: document.getElementById('phone').value.trim(),
+    gender: document.getElementById('gender').value,
+    age: Number(document.getElementById('age').value) || 0,
+    country: document.getElementById('country').value.trim(),
+    occupation: document.getElementById('occupation').value.trim(),
+    height: Number(document.getElementById('height').value) || 170,
+    weight: Number(document.getElementById('weight').value) || 70,
+    target_weight: Number(document.getElementById('target_weight').value) || 70,
+    body_fat_percentage: Number(document.getElementById('body_fat').value) || 0,
+    muscle_mass: Number(document.getElementById('muscle_mass').value) || 0,
+    primary_goal: document.getElementById('goal').value,
+    bmi: (() => {
+      const h = Number(document.getElementById('height').value) || 170;
+      const w = Number(document.getElementById('weight').value) || 70;
+      return (w / ((h/100)*(h/100))).toFixed(1);
+    })(),
+    updated_at: new Date().toISOString()
+  };
 
-function calcBMI(h,w){
-h = num(h || 170)
-w = num(w || 70)
-return (w / ((h/100)*(h/100))).toFixed(1)
-}
-
-function bmiStatus(bmi){
-bmi = Number(bmi)
-if(bmi < 18.5) return {text:"Underweight", color:"yellow"}
-if(bmi < 25) return {text:"Normal", color:"green"}
-if(bmi < 30) return {text:"Overweight", color:"yellow"}
-return {text:"Obese", color:"red"}
-}
-
-//////////////////////////////
-// QUICK CREATE (SAVE TO LOCAL + CLOUD)
-//////////////////////////////
-async function quickCreate(){
-const name = document.getElementById("newName").value.trim()
-const height = num(document.getElementById("newHeight").value)
-const weight = num(document.getElementById("newWeight").value)
-
-if(!name) return alert("Please enter a name")
-
-// Use app.js's createProfile (saves to localStorage)
-const newProfile = createProfile({ name, height, weight })
-
-// Sync to Supabase (if function exists)
-if(typeof upsertProfile === "function"){
-try{
-await upsertProfile(newProfile)
-console.log("✅ Profile synced to cloud")
-}catch(e){
-console.warn("Cloud sync failed:", e)
-}
-}
-
-// Update UI and notify other pages
-emitProfileUpdate()
-render()
-
-// Clear inputs
-document.getElementById("newName").value = ""
-document.getElementById("newHeight").value = 170
-document.getElementById("newWeight").value = 70
-alert("Profile created and set active!")
-}
-
-//////////////////////////////
-// CLOUD SYNC (SAFE)
-//////////////////////////////
-async function syncDeleteCloud(id){
-if(typeof supabaseClient === "undefined") return
-try{
-await supabaseClient.from("profiles").delete().eq("id", id)
-}catch(e){
-console.warn("Cloud delete failed:", e)
-}
-}
-
-//////////////////////////////
-// PROFILE SYNC EVENT
-//////////////////////////////
-function emitProfileUpdate(){
-window.dispatchEvent(new Event("profileSyncUpdate"))
-}
-
-// 🔥 关键修改：每次获得焦点时先拉取云端最新 profiles，再渲染
-window.addEventListener("profileSyncUpdate", render)
-window.addEventListener("focus", async () => {
-  // 若 app.js 提供了 syncProfilesFromCloud 则调用（新版本都有）
-  if (typeof syncProfilesFromCloud === "function") {
-    await syncProfilesFromCloud();
+  // Save to localStorage: replace the old profile in the profiles array
+  let profiles = JSON.parse(localStorage.getItem('profiles') || '[]');
+  const index = profiles.findIndex(p => p.id === profileId);
+  if (index !== -1) {
+    profiles[index] = updatedProfile;
+    localStorage.setItem('profiles', JSON.stringify(profiles));
   }
-  render();
-})
 
-//////////////////////////////
-// DELETE (FIXED)
-//////////////////////////////
-async function deleteProfileById(id){
-let active = getActiveProfile()
-let list = getProfiles()
+  // If this profile is the active one, update activeProfile as well
+  const active = JSON.parse(localStorage.getItem('activeProfile'));
+  if (active && active.id === profileId) {
+    localStorage.setItem('activeProfile', JSON.stringify(updatedProfile));
+  }
 
-// Determine actual id to delete
-let targetId = id === "active" ? active.id : id
+  // Sync to Supabase
+  if (typeof upsertProfile === 'function') {
+    try {
+      await upsertProfile(updatedProfile);
+      console.log('✅ Profile synced to cloud');
+    } catch (e) {
+      console.warn('Cloud sync failed, but local is fine:', e);
+    }
+  }
 
-if(targetId === "guest"){
-alert("Guest cannot be deleted")
-return
+  // Notify other pages
+  window.dispatchEvent(new Event('profileSyncUpdate'));
+
+  document.getElementById('saveStatus').style.display = 'block';
+  setTimeout(() => {
+    window.location.href = 'profile.html';
+  }, 800);
 }
 
-// Remove from localStorage
-list = list.filter(x => x.id !== targetId)
-localStorage.setItem("profiles", JSON.stringify(list))
-
-// If we just deleted the active profile, switch to another or guest
-if(active.id === targetId){
-let fallback = list[0] || {id:"guest",name:"Guest",height:170,weight:70}
-localStorage.setItem("activeProfile", JSON.stringify(fallback))
+function cancelEdit() {
+  window.location.href = 'profile.html';
 }
-
-// Delete from Supabase
-await syncDeleteCloud(targetId)
-
-emitProfileUpdate()
-render()
-}
-
-//////////////////////////////
-// SWITCH (UNCHANGED)
-//////////////////////////////
-function switchProfile(id){
-let p = getProfiles().find(x => x.id === id)
-if(!p) return
-localStorage.setItem("activeProfile", JSON.stringify(p))
-emitProfileUpdate()
-render()
-}
-
-//////////////////////////////
-// RENDER (SKELETON + UI)
-//////////////////////////////
-function render(){
-const sk = document.getElementById("profileSkeleton")
-const nameEl = document.getElementById("name")
-
-let p = getActiveProfile()
-
-// hide skeleton
-if(sk) sk.style.display = "none"
-if(nameEl) nameEl.style.display = "block"
-
-nameEl.innerText = `👤 ${p.name}`
-
-let bmi = calcBMI(p.height, p.weight)
-let status = bmiStatus(bmi)
-
-document.getElementById("heightWeight").innerText =
-`Height: ${p.height} cm | Weight: ${p.weight} kg`
-
-document.getElementById("bmi").innerText =
-`BMI: ${bmi}`
-
-document.getElementById("bmiStatus").innerHTML =
-`<span class="badge ${status.color}">
-${status.text}
-</span>`
-
-let list = document.getElementById("list")
-list.innerHTML = ""
-
-getProfiles().forEach(x=>{
-let bmiVal = calcBMI(x.height, x.weight)
-let st = bmiStatus(bmiVal)
-
-let div = document.createElement("div")
-div.className = "card"
-
-div.innerHTML = `
-<b>${x.name}</b><br>
-BMI: ${bmiVal}
-<span class="badge ${st.color}">
-${st.text}
-</span>
-<br><br>
-
-<button onclick="switchProfile('${x.id}')">Switch</button>
-<button onclick="deleteProfileById('${x.id}')" style="background:red;color:white">
-Delete
-</button>
-`
-
-list.appendChild(div)
-})
-}
-
-//////////////////////////////
-// INIT
-//////////////////////////////
-function init(){
-render()
-setTimeout(render, 500)
-}
-
-init()
-
 </script>
 
 </body>
