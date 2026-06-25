@@ -15,19 +15,10 @@
 .card{ margin:10px; padding:12px; background:#fff; border-radius:10px; box-shadow:0 1px 4px rgba(0,0,0,.05); }
 button{ margin:5px; padding:8px 14px; border-radius:8px; border:1px solid #ddd; cursor:pointer; background:#111827; color:white; }
 input, select{ width:100%; padding:10px; margin:6px 0; border-radius:8px; border:1px solid #ddd; }
-.delete-btn{ background:#ef4444; color:white; border:none; padding:8px 12px; border-radius:6px; cursor:pointer; font-size:18px; }
-.edit-btn{ background:#3b82f6; color:white; border:none; padding:8px 12px; border-radius:6px; cursor:pointer; font-size:18px; margin-right:6px; }
 .mood-row { display: flex; gap: 8px; justify-content: center; margin: 8px 0; }
 .mood-btn { font-size: 28px; padding: 8px 16px; border-radius: 12px; cursor: pointer; border: 2px solid transparent; background: #f3f4f6; transition: all 0.2s; }
 .mood-btn.selected { border-color: #3b82f6; background: #dbeafe; }
-
-.toast {
-  position: fixed; top: 12px; left: 50%; transform: translateX(-50%);
-  background: #22c55e; color: white; padding: 10px 20px; border-radius: 8px;
-  z-index: 9999; font-size: 14px; font-weight: 600;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-  animation: slideDown 0.3s ease;
-}
+.toast { position: fixed; top: 12px; left: 50%; transform: translateX(-50%); background: #22c55e; color: white; padding: 10px 20px; border-radius: 8px; z-index: 9999; font-size: 14px; font-weight: 600; box-shadow: 0 4px 12px rgba(0,0,0,0.2); animation: slideDown 0.3s ease; }
 .toast.error { background: #ef4444; }
 @keyframes slideDown { from { top: -50px; opacity: 0; } to { top: 12px; opacity: 1; } }
 </style>
@@ -48,12 +39,13 @@ input, select{ width:100%; padding:10px; margin:6px 0; border-radius:8px; border
 
 <h2 class="center">😴 Log Sleep Pro</h2>
 
-<!-- ✅ 新增：最新睡眠记录 -->
+<!-- ✅ 最新睡眠记录 -->
 <div class="card">
   <h3>🕐 Latest Sleep</h3>
   <div id="latestSleep"></div>
 </div>
 
+<!-- 记录表单 -->
 <div class="card">
 <label>📅 Date:</label>
 <input type="date" id="sleepDate">
@@ -72,14 +64,10 @@ input, select{ width:100%; padding:10px; margin:6px 0; border-radius:8px; border
 <button onclick="location.href='index.html'" style="background:#4b5563;">← Back to Dashboard</button>
 </div>
 
+<!-- 统计 -->
 <div class="card">
 <h3>📊 Sleep Stats</h3>
 <div id="sleepStats"></div>
-</div>
-
-<div class="card">
-<h3>📋 Recent Sleep Logs</h3>
-<div id="sleepList"></div>
 </div>
 
 <script>
@@ -89,7 +77,6 @@ document.getElementById("activeProfile").innerText =
 var profile = JSON.parse(localStorage.getItem("activeProfile")) || { id: "guest" };
 var STORAGE_KEY = "sleep_" + profile.id;
 var selectedMood = "";
-var editingIndex = -1;
 
 document.getElementById("sleepDate").value = new Date().toISOString().split("T")[0];
 
@@ -143,11 +130,11 @@ function saveSleep() {
     timestamp: new Date().toISOString()
   };
 
+  // 同一天已有记录则覆盖（每天只保留一条）
   var logs = getLogs();
-  if (editingIndex >= 0 && editingIndex < logs.length) {
-    logs[editingIndex] = entry;
-    editingIndex = -1;
-    document.getElementById("saveBtn").innerText = "💾 Save Sleep";
+  var idx = logs.findIndex(function(l) { return l.date === date; });
+  if (idx >= 0) {
+    logs[idx] = entry;
   } else {
     logs.push(entry);
   }
@@ -158,9 +145,10 @@ function saveSleep() {
   selectedMood = "";
   document.querySelectorAll('.mood-btn').forEach(function(b) { b.classList.remove('selected'); });
 
-  renderLogs();
+  renderAll();
   showToast("Saved!");
 
+  // 云端同步
   if (window.saveSleep) {
     window.saveSleep(entry).then(function() {
       console.log("✅ Synced to cloud");
@@ -168,30 +156,6 @@ function saveSleep() {
       console.warn("Cloud sync failed:", e);
     });
   }
-}
-
-function editSleep(index) {
-  var logs = getLogs();
-  var log = logs[index];
-  if (!log) return;
-
-  document.getElementById("sleepDate").value = log.date;
-  document.getElementById("bedTime").value = new Date(log.bedTime).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',hour12:false});
-  document.getElementById("wakeTime").value = new Date(log.wakeTime).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',hour12:false});
-  selectMood(log.mood || "ok");
-
-  editingIndex = index;
-  document.getElementById("saveBtn").innerText = "✏️ Update";
-  window.scrollTo({ top: 0, behavior: 'smooth' });
-}
-
-function deleteSleep(index) {
-  if (!confirm("Delete this record?")) return;
-  var logs = getLogs();
-  logs.splice(index, 1);
-  saveLogs(logs);
-  renderLogs();
-  showToast("Deleted");
 }
 
 function renderStats(logs) {
@@ -224,7 +188,6 @@ function renderStats(logs) {
                 "<p>😊 Great: " + great + " | 😐 Ok: " + ok + " | 😟 Poor: " + bad + "</p>";
 }
 
-// ✅ 新增：显示最新睡眠记录
 function renderLatest() {
   var logs = getLogs();
   var container = document.getElementById("latestSleep");
@@ -243,37 +206,13 @@ function renderLatest() {
     wake.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) + ")</p>";
 }
 
-function renderLogs() {
+function renderAll() {
   var logs = getLogs();
-  var container = document.getElementById("sleepList");
-
-  if (logs.length === 0) {
-    container.innerHTML = "<p>No records yet.</p>";
-    renderStats([]);
-    renderLatest();
-    return;
-  }
-
-  var html = "";
-  for (var i = 0; i < logs.length; i++) {
-    var log = logs[i];
-    var bed = new Date(log.bedTime);
-    var wake = new Date(log.wakeTime);
-    var hrs = ((wake - bed) / 3600000).toFixed(1);
-    var emoji = log.mood === "great" ? "😊" : log.mood === "bad" ? "😟" : "😐";
-
-    html += "<p>🛏 " + log.date + " — " + hrs + "h " + emoji + " (" +
-            bed.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) + " → " +
-            wake.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) +
-            ") <button class='edit-btn' onclick='editSleep(" + i + ")'>✏️</button>" +
-            "<button class='delete-btn' onclick='deleteSleep(" + i + ")'>✕</button></p>";
-  }
-  container.innerHTML = html;
   renderStats(logs);
   renderLatest();
 }
 
-renderLogs();
+renderAll();
 </script>
 </body>
 </html>
