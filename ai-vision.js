@@ -1,6 +1,3 @@
-好的 bro，直接把你给的 key 填进去了。下面是完整的 ai-vision.js，你复制替换原文件就行：
-
-```javascript
 //////////////////////////////
 // 🧠 AI VISION v11.6 (UPGRADED + FIXED FOR v13)
 // 🔑 API Key has been set (Project key)
