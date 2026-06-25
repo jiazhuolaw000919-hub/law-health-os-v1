@@ -14,7 +14,8 @@
 <style>
 .card{ margin:10px; padding:12px; background:#fff; border-radius:10px; box-shadow:0 1px 4px rgba(0,0,0,.05); }
 button{ margin:5px; padding:8px 14px; border-radius:8px; border:1px solid #ddd; cursor:pointer; background:#111827; color:white; }
-input, select{ width:100%; padding:10px; margin:6px 0; border-radius:8px; border:1px solid #ddd; }
+input{ width:100%; padding:10px; margin:6px 0; border-radius:8px; border:1px solid #ddd; }
+.delete-btn{ background:#ef4444; color:white; border:none; padding:4px 8px; border-radius:4px; cursor:pointer; font-size:12px; }
 </style>
 </head>
 <body>
@@ -52,38 +53,98 @@ function getLogs() {
   return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
 }
 
-function saveSleep() {
+function saveLogs(logs) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(logs));
+}
+
+async function saveSleep() {
   const bed = document.getElementById("bedTime").value;
   const wake = document.getElementById("wakeTime").value;
   if (!bed || !wake) return alert("Please fill both times.");
 
-  const logs = getLogs();
-  logs.push({
+  const sleepEntry = {
     date: new Date(bed).toISOString().split("T")[0],
     bedTime: bed,
     wakeTime: wake,
     timestamp: new Date().toISOString()
-  });
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(logs));
+  };
+
+  // 保存到本地
+  const logs = getLogs();
+  logs.push(sleepEntry);
+  saveLogs(logs);
+
+  // ✅ 同步到 Supabase
+  if (window.saveSleep) {
+    try {
+      await window.saveSleep(sleepEntry);
+      console.log("✅ Sleep synced to cloud");
+    } catch (e) {
+      console.warn("Cloud sync failed, but local is fine:", e);
+    }
+  }
+
+  // 清空输入框
+  document.getElementById("bedTime").value = "";
+  document.getElementById("wakeTime").value = "";
+
   alert("Sleep logged!");
   renderLogs();
 }
 
-function renderLogs() {
-  const logs = getLogs().reverse();
+function deleteSleep(index) {
+  const logs = getLogs();
+  logs.splice(index, 1);
+  saveLogs(logs);
+  renderLogs();
+}
+
+async function loadCloudLogs() {
+  if (!window.loadSleepLogs) return;
+  try {
+    const cloudLogs = await window.loadSleepLogs();
+    if (cloudLogs && cloudLogs.length > 0) {
+      const localLogs = getLogs();
+      // 合并去重
+      const merged = [...localLogs];
+      cloudLogs.forEach(c => {
+        if (!merged.find(m => m.date === c.date && m.bedTime === c.bed_time && m.wakeTime === c.wake_time)) {
+          merged.push({
+            date: c.date,
+            bedTime: c.bed_time,
+            wakeTime: c.wake_time,
+            timestamp: c.created_at
+          });
+        }
+      });
+      // 按日期排序
+      merged.sort((a, b) => new Date(b.bedTime) - new Date(a.bedTime));
+      saveLogs(merged);
+    }
+  } catch (e) {
+    console.warn("Failed to load cloud sleep logs:", e);
+  }
+}
+
+async function renderLogs() {
+  // 先从云端拉取最新数据
+  await loadCloudLogs();
+
+  const logs = getLogs();
   const container = document.getElementById("sleepList");
   if (logs.length === 0) {
     container.innerHTML = "<p>No sleep records yet.</p>";
     return;
   }
-  container.innerHTML = logs.map(log => {
+  container.innerHTML = logs.map((log, index) => {
     const bed = new Date(log.bedTime);
     const wake = new Date(log.wakeTime);
     const hrs = ((wake - bed) / (1000 * 60 * 60)).toFixed(1);
-    return `<p>🛏 ${log.date} — ${hrs}h (${bed.toLocaleTimeString()} → ${wake.toLocaleTimeString()})</p>`;
+    return `<p>🛏 ${log.date} — ${hrs}h (${bed.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})} → ${wake.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}) <button class="delete-btn" onclick="deleteSleep(${index})">✕</button></p>`;
   }).join("");
 }
 
+// 初始渲染
 renderLogs();
 </script>
 </body>
