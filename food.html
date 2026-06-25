@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Food AI v16.2 PRO SYSTEM (FALLBACK + ALERT)</title>
+<title>Food AI v16.2 PRO SYSTEM (FALLBACK + ALERT + DELETE SYNC)</title>
 
 <link rel="stylesheet" href="style.css">
 
@@ -140,7 +140,7 @@ box-sizing:border-box;
 
 <body>
 
-<h2>🍽 Food AI v16.2 (Alert on Fallback)</h2>
+<h2>🍽 Food AI v16.2 (Alert + Sync Delete)</h2>
 
 <!-- 导航栏 -->
 <div class="nav">
@@ -334,7 +334,6 @@ async function analyzeImage(base64){
     setAI("fallback")
   }
 
-  // 只在失败时弹窗提醒（一次性）
   if (failed) {
     alert("⚠️ AI scan failed (quota exceeded or network error). You can manually enter the food name and use 'Re-estimate' to get nutrition values.")
   }
@@ -591,8 +590,8 @@ function closeMealModal(){
   pendingFood = null
 }
 
-/* ================= SAVE ================= */
-function saveMeal(type){
+/* ================= SAVE (同步云端并保存cloudId) ================= */
+async function saveMeal(type){
   if(!pendingFood) return
   pendingFood.food = document.getElementById("modalFoodName").value.trim() || pendingFood.food
   pendingFood.mealType = type
@@ -602,9 +601,24 @@ function saveMeal(type){
     pendingFood.components = extractComponents(allNames)
   }
 
+  // 先保存到本地
   foodDB.push(pendingFood)
   localStorage.setItem("foodDB", JSON.stringify(foodDB))
-  if(window.saveFood) window.saveFood(pendingFood)
+
+  // 同步到 Supabase，并保存云端 ID
+  if(window.saveFood) {
+    try {
+      const cloudResult = await window.saveFood(pendingFood)
+      if(cloudResult && cloudResult[0] && cloudResult[0].id) {
+        pendingFood.cloudId = cloudResult[0].id
+        // 更新本地存储中的记录
+        localStorage.setItem("foodDB", JSON.stringify(foodDB))
+      }
+    } catch(e) {
+      console.warn("Cloud save failed, but local is fine:", e)
+    }
+  }
+
   pendingFood = null
   closeMealModal()
   renderFoodList()
@@ -612,8 +626,20 @@ function saveMeal(type){
   alert("Saved!")
 }
 
-/* ================= DELETE ================= */
-function deleteFood(id){
+/* ================= DELETE (同步删除云端) ================= */
+async function deleteFood(id){
+  const foodItem = foodDB.find(f => f.id === id)
+
+  // 如果有云端 ID，就从 Supabase 删除
+  if(foodItem && foodItem.cloudId && window.supabaseClient) {
+    try {
+      await window.supabaseClient.from("food_logs").delete().eq("id", foodItem.cloudId)
+      console.log("✅ Deleted from Supabase")
+    } catch(e) {
+      console.warn("Cloud delete failed:", e)
+    }
+  }
+
   foodDB = foodDB.filter(f => f.id !== id)
   localStorage.setItem("foodDB", JSON.stringify(foodDB))
   renderFoodList()
