@@ -1,5 +1,5 @@
 /* =========================
- SUPABASE CONFIG v19 (SUGAR + GRADE + SLEEP SYNC)
+ SUPABASE CONFIG v19 (SUGAR + GRADE + SLEEP SYNC + MOOD)
  ========================= */
 
 const SUPABASE_URL = "https://jqevcfyhnlttzdiylfrh.supabase.co"
@@ -99,7 +99,7 @@ async function upsertProfile(profile) {
   } catch (e) { return null }
 }
 
-// ✅ 新增：睡眠数据云端同步
+// ✅ 睡眠数据云端同步（包含 mood）
 async function saveSleep(sleepEntry) {
   try {
     const profile = getActiveProfile()
@@ -109,6 +109,7 @@ async function saveSleep(sleepEntry) {
       userId: profile.id,
       bed_time: sleepEntry.bedTime,
       wake_time: sleepEntry.wakeTime,
+      mood: sleepEntry.mood || 'ok',    // ← 新增 mood
       date: sleepEntry.date,
       created_at: new Date().toISOString()
     }
