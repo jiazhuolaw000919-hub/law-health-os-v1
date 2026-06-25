@@ -1,5 +1,5 @@
 /* =========================
- SUPABASE CONFIG (FORCE userId)
+ SUPABASE CONFIG (FORCE userId + NO created_at)
  ========================= */
 
 const SUPABASE_URL = "https://jqevcfyhnlttzdiylfrh.supabase.co"
@@ -56,7 +56,7 @@ async function saveFood(food) {
       return null
     }
 
-    // 1️⃣ 优先插入完整字段（包含 userId 及所有营养数据）
+    // 1️⃣ 优先插入完整字段（不含 created_at，因为你的表目前没有）
     const fullPayload = {
       userId: profile.id,
       food: food.food || "unknown",
@@ -67,8 +67,7 @@ async function saveFood(food) {
       meal_type: food.mealType || "snack",
       components: food.components || [],
       image_url: food.image || null,
-      date: food.date || new Date().toISOString().split("T")[0],
-      created_at: new Date().toISOString()
+      date: food.date || new Date().toISOString().split("T")[0]
     }
 
     let { data, error } = await supabaseClient
@@ -81,14 +80,13 @@ async function saveFood(food) {
       return data
     }
 
-    // 2️⃣ 如果完整插入失败，降级到基础字段（仍然包含 userId）
+    // 2️⃣ 降级到基础字段（仍然包含 userId，且没有 created_at）
     console.warn("Full insert failed, trying base with userId:", error.message)
     const basePayload = {
       userId: profile.id,
       food: food.food || "unknown",
       calories: Number(food.calories || 0),
-      date: food.date || new Date().toISOString().split("T")[0],
-      created_at: new Date().toISOString()
+      date: food.date || new Date().toISOString().split("T")[0]
     }
 
     const result = await supabaseClient
@@ -97,11 +95,11 @@ async function saveFood(food) {
       .select()
 
     if (result.error) {
-      console.error("❌ Save failed:", JSON.stringify(result.error, null, 2))
+      console.error("❌ Even base insert failed:", JSON.stringify(result.error, null, 2))
       return null
     }
 
-    console.log("✅ Synced to Supabase (base):", result.data)
+    console.log("✅ Synced to Supabase (base with userId):", result.data)
     return result.data
   } catch (e) {
     console.error("saveFood crash:", e)
