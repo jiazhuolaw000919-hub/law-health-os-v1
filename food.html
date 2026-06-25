@@ -290,7 +290,7 @@ document.getElementById("activeProfile").innerText =
 /* ================= AI STATUS ================= */
 function setAI(s){ document.getElementById("aiStatus").innerText = "AI: " + s; }
 
-/* ================= SMART FOOD TYPE DETECTOR ================= */
+/* ================= FOOD TYPE ================= */
 function detectFoodType(t){
   let tx = (t||"").toLowerCase();
   if(tx.includes("economy rice")||tx.includes("杂饭")||tx.includes("cai fan")) return "Economy Rice";
@@ -304,7 +304,7 @@ function detectFoodType(t){
   return "mixed meal";
 }
 
-/* ================= COMPONENT DETECTOR ================= */
+/* ================= COMPONENTS ================= */
 function extractComponents(t){
   let tx = (t||"").toLowerCase(), c=[];
   if(tx.includes("rice")) c.push("rice");
@@ -320,27 +320,29 @@ function extractComponents(t){
   return c;
 }
 
-/* ================= AI WRAPPER ================= */
-async function analyzeImage(base64){ /* 保持不变，略 */ }
-
 /* ================= MODE ================= */
 function setMode(m){ mode=m; document.getElementById("modeStatus").innerText="Mode: "+m; }
 
 /* ================= NUTRITION ESTIMATION ================= */
-function estimateNutrition(food){ /* 保持不变，略 */ }
-
-/* ================= OPEN FOOD FACTS LOOKUP ================= */
-async function lookupFoodAPI(query) { /* 保持不变，略 */ }
+function estimateNutrition(food){
+  let base=400;
+  food=(food||"").toLowerCase();
+  if(food.includes("chicken")) base+=120;
+  if(food.includes("rice")) base+=120;
+  if(food.includes("milo")) base+=150;
+  if(food.includes("burger")) base+=300;
+  if(food.includes("egg")) base+=80;
+  return {calories:base, protein:Math.round(base*0.05), carbs:Math.round(base*0.12), fat:Math.round(base*0.04), sugar:0, grade:""};
+}
 
 /* ================= DEFICIT ================= */
 function getDeficit(cal){ let m=2200; let diff=cal-m; return {status:diff>0?"surplus":"deficit", diff}; }
 
-/* ================= MANUAL FLOW ================= */
+/* ================= START MANUAL FLOW ================= */
 async function startManualFlow(){
   let input = document.getElementById("foodInput").value.trim();
   if(!input) return alert("Enter food");
   const btn = document.getElementById("addFoodBtn"); if(btn) btn.disabled=true;
-
   const localMatch = searchLocalFood(input);
   if(localMatch){
     pendingFood = {
@@ -353,34 +355,114 @@ async function startManualFlow(){
     };
     if(btn) btn.disabled=false; openMealModal(); return;
   }
-  // API 查询等保持不变，略
+  if(btn) btn.disabled=false;
+  document.getElementById("customFoodName").value = input;
+  openCustomEntry();
 }
 
 /* ================= AI UPLOAD ================= */
-async function openAIUpload(){ /* 保持不变，略 */ }
+async function openAIUpload(){
+  let input = document.createElement("input");
+  input.type="file"; input.accept="image/*";
+  input.onchange = async ()=>{
+    let file = input.files[0]; if(!file) return;
+    let reader = new FileReader();
+    reader.onload = async ()=>{
+      let base64 = reader.result;
+      let result = {food: "AI Scanned Food", calories:400, protein:20, carbs:50, fat:10, sugar:5, grade:"C", dishes:[]};
+      pendingFood = {
+        id: Date.now(), food: result.food,
+        type: detectFoodType(result.food), date: new Date().toISOString().split("T")[0],
+        components: extractComponents(result.food),
+        calories: result.calories, protein: result.protein, carbs: result.carbs, fat: result.fat,
+        sugar: result.sugar||0, grade: result.grade||"",
+        quantity: 1, dishes: result.dishes||[], image: base64
+      };
+      openMealModal();
+    };
+    reader.readAsDataURL(file);
+  };
+  setTimeout(()=>{ input.click() },0);
+}
 
 /* ================= BARCODE ================= */
-function openBarcode(){ /* 保持不变，略 */ }
+function openBarcode(){
+  let code = prompt("barcode/name");
+  pendingFood = {
+    id: Date.now(), food: code||"Unknown",
+    type: detectFoodType(code), date: new Date().toISOString().split("T")[0],
+    components: extractComponents(code||""),
+    calories: 300, protein: 10, carbs: 40, fat: 10, sugar: 5, grade: "",
+    quantity: 1, dishes: []
+  };
+  openMealModal();
+}
 
 /* ================= MULTI ================= */
-function startMultiCapture(){ /* 保持不变，略 */ }
+function startMultiCapture(){
+  multiList = [
+    {food:"Chicken rice",calories:600},
+    {food:"Mixed veg rice",calories:500},
+    {food:"Egg noodle",calories:550}
+  ];
+  document.getElementById("foodList").innerHTML = multiList.map(m=>`<div class="preview-box"><b>${m.food}</b><br>${m.calories} kcal</div>`).join("");
+}
 
 /* ================= CUSTOM ENTRY ================= */
-function openCustomEntry(){ /* 保持不变，略 */ }
-function closeCustomEntry(){ /* 保持不变，略 */ }
-function previewCustomPhoto(){ /* 保持不变，略 */ }
+function openCustomEntry(){
+  document.getElementById("customFoodName").value = "";
+  document.getElementById("customCalories").value = "";
+  document.getElementById("customProtein").value = "";
+  document.getElementById("customCarbs").value = "";
+  document.getElementById("customFat").value = "";
+  document.getElementById("customSugar").value = "";
+  document.getElementById("customGrade").value = "";
+  document.getElementById("customPhotoInput").value = "";
+  document.getElementById("customPhotoPreview").style.display = "none";
+  customPhotoData = null;
+  document.getElementById("customEntryModal").style.display = "flex";
+}
+function closeCustomEntry(){
+  document.getElementById("customEntryModal").style.display = "none";
+}
+function previewCustomPhoto(){
+  const file = document.getElementById("customPhotoInput").files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e){
+    customPhotoData = e.target.result;
+    document.getElementById("customPhotoImg").src = customPhotoData;
+    document.getElementById("customPhotoPreview").style.display = "block";
+  };
+  reader.readAsDataURL(file);
+}
 function confirmCustomEntry(){
-  // 原有逻辑，构建 pendingFood 时加入 quantity:1
+  const name = document.getElementById("customFoodName").value.trim();
+  const cal = parseFloat(document.getElementById("customCalories").value);
+  if(!name || isNaN(cal)) return alert("Please enter at least a food name and calories.");
+  pendingFood = {
+    id: Date.now(), food: name,
+    type: detectFoodType(name), date: new Date().toISOString().split("T")[0],
+    components: extractComponents(name),
+    calories: cal,
+    protein: parseFloat(document.getElementById("customProtein").value)||0,
+    carbs: parseFloat(document.getElementById("customCarbs").value)||0,
+    fat: parseFloat(document.getElementById("customFat").value)||0,
+    sugar: parseFloat(document.getElementById("customSugar").value)||0,
+    grade: document.getElementById("customGrade").value,
+    image: customPhotoData||null,
+    quantity: 1, dishes: []
+  };
+  closeCustomEntry();
+  openMealModal();
 }
 
 /* ================= MEAL MODAL ================= */
 function openMealModal(){
   if(!pendingFood) return;
   document.getElementById("mealModal").style.display="flex";
-  // image preview...
   document.getElementById("modalFoodName").value = pendingFood.food;
   document.getElementById("modalQuantity").value = pendingFood.quantity || 1;
-  // hints, dishes...
   updateModalNutritionPreview();
 }
 
@@ -406,13 +488,83 @@ function updateModalNutritionPreview(){
 
 document.getElementById("modalQuantity").addEventListener("input", updateModalNutritionPreview);
 
-// ... 其他 modal 辅助函数 (reEstimateFromName, closeMealModal 等) 保持不变，略
+function reEstimateFromName(){
+  if(!pendingFood) return;
+  let name = document.getElementById("modalFoodName").value.trim() || "Unknown meal";
+  let est = estimateNutrition(name);
+  pendingFood.food = name;
+  pendingFood.type = detectFoodType(name);
+  pendingFood.components = extractComponents(name);
+  pendingFood.calories = est.calories;
+  pendingFood.protein = est.protein;
+  pendingFood.carbs = est.carbs;
+  pendingFood.fat = est.fat;
+  pendingFood.sugar = est.sugar;
+  pendingFood.grade = est.grade;
+  pendingFood.dishes = [];
+  updateModalNutritionPreview();
+  document.getElementById("modalDishList").style.display = "none";
+}
+
+function closeMealModal(){
+  document.getElementById("mealModal").style.display="none";
+  pendingFood = null;
+}
 
 /* ================= SAVE ================= */
-async function saveMeal(type){ /* 之前带数量的版本，保持不变 */ }
+async function saveMeal(type){
+  if(!pendingFood) return;
+  pendingFood.food = document.getElementById("modalFoodName").value.trim() || pendingFood.food;
+  pendingFood.mealType = type;
+  let qty = parseInt(document.getElementById("modalQuantity").value) || 1;
+  pendingFood.quantity = qty;
+
+  let foodEntry = {
+    ...pendingFood,
+    calories: (pendingFood.calories * qty) || 0,
+    protein: (pendingFood.protein * qty) || 0,
+    carbs: (pendingFood.carbs * qty) || 0,
+    fat: (pendingFood.fat * qty) || 0,
+    sugar: (pendingFood.sugar * qty) || 0,
+    quantity: qty,
+    originalCalories: pendingFood.calories,
+    originalProtein: pendingFood.protein,
+    originalCarbs: pendingFood.carbs,
+    originalFat: pendingFood.fat,
+    originalSugar: pendingFood.sugar
+  };
+
+  foodDB.push(foodEntry);
+  localStorage.setItem("foodDB", JSON.stringify(foodDB));
+
+  if(window.saveFood){
+    try{
+      const cloudResult = await window.saveFood(foodEntry);
+      if(cloudResult && cloudResult[0] && cloudResult[0].id){
+        foodEntry.cloudId = cloudResult[0].id;
+        localStorage.setItem("foodDB", JSON.stringify(foodDB));
+      }
+    }catch(e){ console.warn("Cloud save failed", e); }
+  }
+
+  pendingFood = null;
+  closeMealModal();
+  renderFoodList();
+  updateToday();
+  alert("Saved!");
+}
 
 /* ================= DELETE ================= */
-async function deleteFood(id){ /* 保持不变 */ }
+async function deleteFood(id){
+  const foodItem = foodDB.find(f => f.id === id);
+  if(foodItem && foodItem.cloudId && window.supabaseClient){
+    try{ await window.supabaseClient.from("food_logs").delete().eq("id", foodItem.cloudId); } catch(e){}
+  }
+  foodDB = foodDB.filter(f => f.id !== id);
+  localStorage.setItem("foodDB", JSON.stringify(foodDB));
+  renderFoodList();
+  updateToday();
+}
 
 /* ================= RENDER ================= */
 function renderFoodList(){
@@ -429,12 +581,41 @@ function renderFoodList(){
 }
 
 /* ================= TODAY ================= */
-function updateToday(){ /* 保持不变 */ }
+function updateToday(){
+  let today = new Date().toISOString().split("T")[0];
+  let todayFoods = foodDB.filter(f => f.date === today);
+  let cal = todayFoods.reduce((a,b)=>a + (b.calories||0),0);
+  let def = getDeficit(cal);
+  document.getElementById("todayCalories").innerText = "Calories: " + cal;
+  document.getElementById("deficitInfo").innerText = def.status + " (" + def.diff + ")";
+}
 
-/* ================= INIT (ASYNC + CLOUD MERGE) ================= */
-async function loadDB(){ /* 保持不变 */ }
-
-// 启动
+/* ================= INIT ================= */
+async function loadDB(){
+  foodDB = JSON.parse(localStorage.getItem("foodDB")) || [];
+  if(window.loadAllMyFoodLogs){
+    try{
+      const cloudLogs = await window.loadAllMyFoodLogs();
+      if(cloudLogs && cloudLogs.length > 0){
+        const cloudItems = cloudLogs.map(r => ({
+          id: Date.now() + Math.random(), cloudId: r.id,
+          food: r.food, type: detectFoodType(r.food)||"mixed meal",
+          date: r.date, components: r.components || extractComponents(r.food||""),
+          calories: Number(r.calories)||0, protein: Number(r.protein)||0,
+          carbs: Number(r.carbs)||0, fat: Number(r.fat)||0,
+          sugar: Number(r.sugar)||0, grade: r.grade||"",
+          mealType: r.meal_type||"snack", image: r.image_url||null, dishes:[]
+        }));
+        const cloudIds = new Set(cloudItems.filter(i=>i.cloudId).map(i=>i.cloudId));
+        foodDB = foodDB.filter(item => !item.cloudId || !cloudIds.has(item.cloudId));
+        foodDB = [...cloudItems, ...foodDB];
+      }
+    }catch(e){ console.warn("Cloud load failed", e); }
+  }
+  localStorage.setItem("foodDB", JSON.stringify(foodDB));
+  renderFoodList();
+  updateToday();
+}
 loadDB().catch(e => console.error("loadDB failed:", e));
 
 /* ================= 自动补全 ================= */
