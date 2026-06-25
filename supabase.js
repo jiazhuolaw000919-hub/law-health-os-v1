@@ -1,5 +1,5 @@
 /* =========================
- SUPABASE CONFIG (MINIMAL GUARANTEE)
+ SUPABASE CONFIG (FORCE userId)
  ========================= */
 
 const SUPABASE_URL = "https://jqevcfyhnlttzdiylfrh.supabase.co"
@@ -56,25 +56,53 @@ async function saveFood(food) {
       return null
     }
 
-    // 🔥 仅使用绝对不会缺少的三个字段
-    const payload = {
+    // 1️⃣ 优先插入完整字段（包含 userId 及所有营养数据）
+    const fullPayload = {
+      userId: profile.id,
       food: food.food || "unknown",
       calories: Number(food.calories || 0),
-      date: food.date || new Date().toISOString().split("T")[0]
+      protein: Number(food.protein || 0),
+      carbs: Number(food.carbs || 0),
+      fat: Number(food.fat || 0),
+      meal_type: food.mealType || "snack",
+      components: food.components || [],
+      image_url: food.image || null,
+      date: food.date || new Date().toISOString().split("T")[0],
+      created_at: new Date().toISOString()
     }
 
-    const { data, error } = await supabaseClient
+    let { data, error } = await supabaseClient
       .from("food_logs")
-      .insert([payload])
+      .insert([fullPayload])
       .select()
 
-    if (error) {
-      console.error("❌ Save failed. Please create the table in Supabase:", error)
+    if (!error) {
+      console.log("✅ Synced to Supabase (full):", data)
+      return data
+    }
+
+    // 2️⃣ 如果完整插入失败，降级到基础字段（仍然包含 userId）
+    console.warn("Full insert failed, trying base with userId:", error.message)
+    const basePayload = {
+      userId: profile.id,
+      food: food.food || "unknown",
+      calories: Number(food.calories || 0),
+      date: food.date || new Date().toISOString().split("T")[0],
+      created_at: new Date().toISOString()
+    }
+
+    const result = await supabaseClient
+      .from("food_logs")
+      .insert([basePayload])
+      .select()
+
+    if (result.error) {
+      console.error("❌ Save failed:", JSON.stringify(result.error, null, 2))
       return null
     }
 
-    console.log("✅ Synced to Supabase (minimal):", data)
-    return data
+    console.log("✅ Synced to Supabase (base):", result.data)
+    return result.data
   } catch (e) {
     console.error("saveFood crash:", e)
     return null
