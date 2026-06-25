@@ -71,7 +71,6 @@ input:checked + .toggle-slider:before { transform: translateX(24px); }
 <label>⏰ Wake Time:</label>
 <input type="time" id="wakeTime">
 
-<!-- 睡眠质量自评 -->
 <label>😊 Sleep Quality:</label>
 <div class="mood-row">
   <button class="mood-btn" onclick="selectMood('great')" id="mood-great" title="Slept great">😊</button>
@@ -83,7 +82,6 @@ input:checked + .toggle-slider:before { transform: translateX(24px); }
 <button onclick="saveSleep()" id="saveBtn">💾 Save Sleep</button>
 <button onclick="location.href='index.html'" style="background:#4b5563;">← Back to Dashboard</button>
 
-<!-- 睡眠提醒 -->
 <div class="reminder-row" style="margin-top:12px;">
   <label style="flex:1;">🔔 Bedtime Reminder:</label>
   <input type="time" id="reminderTime" value="23:00" style="width:100px;">
@@ -94,7 +92,6 @@ input:checked + .toggle-slider:before { transform: translateX(24px); }
 </div>
 </div>
 
-<!-- 周/月趋势统计 -->
 <div class="card">
 <h3>📊 Sleep Stats</h3>
 <div id="sleepStats"></div>
@@ -110,7 +107,7 @@ const profile = JSON.parse(localStorage.getItem("activeProfile")) || { id: "gues
 const STORAGE_KEY = `sleep_${profile.id}`;
 let selectedMood = "";
 let reminderInterval = null;
-let editingIndex = -1; // -1 表示新增模式，>=0 表示编辑模式
+let editingIndex = -1;
 
 function getLogs() {
   return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
@@ -120,7 +117,6 @@ function saveLogs(logs) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(logs));
 }
 
-// Toast 提示（自动消失）
 function showToast(msg) {
   const toast = document.createElement("div");
   toast.className = "toast";
@@ -129,14 +125,12 @@ function showToast(msg) {
   setTimeout(() => toast.remove(), 2000);
 }
 
-// 表情选择
 function selectMood(mood) {
   selectedMood = mood;
   document.querySelectorAll('.mood-btn').forEach(b => b.classList.remove('selected'));
   document.getElementById(`mood-${mood}`).classList.add('selected');
 }
 
-// 设置默认日期为今天
 document.getElementById("sleepDate").value = new Date().toISOString().split("T")[0];
 
 async function saveSleep() {
@@ -144,7 +138,10 @@ async function saveSleep() {
   const bedTime = document.getElementById("bedTime").value;
   const wakeTime = document.getElementById("wakeTime").value;
 
-  if (!bedTime || !wakeTime) return showToast("Please fill both bed and wake times.");
+  if (!bedTime || !wakeTime) {
+    showToast("Please fill both bed and wake times.");
+    return;  // ← 关键：必须 return，阻止后续代码执行
+  }
 
   const date = sleepDate || new Date().toISOString().split("T")[0];
   const bedDateTime = `${date}T${bedTime}:00`;
@@ -165,19 +162,15 @@ async function saveSleep() {
 
   const logs = getLogs();
 
-  if (editingIndex >= 0) {
-    // 编辑模式：替换旧记录
+  if (editingIndex >= 0 && editingIndex < logs.length) {
     logs[editingIndex] = sleepEntry;
-    editingIndex = -1;
-    document.getElementById("saveBtn").innerText = "💾 Save Sleep";
-    document.querySelector(".card").classList.remove("editing");
   } else {
-    // 新增模式
     logs.push(sleepEntry);
   }
 
   saveLogs(logs);
 
+  // 云端同步
   if (window.saveSleep) {
     try {
       await window.saveSleep(sleepEntry);
@@ -187,13 +180,19 @@ async function saveSleep() {
     }
   }
 
-  // 清空输入框
+  // 清空表单
   document.getElementById("bedTime").value = "";
   document.getElementById("wakeTime").value = "";
   selectedMood = "";
   document.querySelectorAll('.mood-btn').forEach(b => b.classList.remove('selected'));
 
-  showToast(editingIndex >= 0 ? "Sleep updated!" : "Sleep logged!");
+  // 退出编辑模式
+  const wasEditing = editingIndex >= 0;
+  editingIndex = -1;
+  document.getElementById("saveBtn").innerText = "💾 Save Sleep";
+  document.querySelector(".card").classList.remove("editing");
+
+  showToast(wasEditing ? "Sleep updated!" : "Sleep logged!");
   renderLogs();
 }
 
@@ -202,20 +201,14 @@ function editSleep(index) {
   const log = logs[index];
   if (!log) return;
 
-  // 填充表单
   document.getElementById("sleepDate").value = log.date;
   document.getElementById("bedTime").value = new Date(log.bedTime).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',hour12:false});
   document.getElementById("wakeTime").value = new Date(log.wakeTime).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',hour12:false});
-
-  // 设置 mood
   selectMood(log.mood || "ok");
 
-  // 切换为编辑模式
   editingIndex = index;
   document.getElementById("saveBtn").innerText = "✏️ Update Sleep";
   document.querySelector(".card").classList.add("editing");
-
-  // 滚动到顶部
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
