@@ -2,7 +2,8 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>AI Dashboard v12.3 (SAFE UPGRADE + STABILITY FIX)</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Dashboard v12.3 (MOBILE + BMI TAG)</title>
 
 <link rel="stylesheet" href="style.css">
 
@@ -23,6 +24,7 @@ box-shadow:0 1px 4px rgba(0,0,0,.05);
 
 canvas{
 max-width:100%;
+min-width:280px; /* 防止移动端过窄 */
 }
 
 .tag{
@@ -63,7 +65,7 @@ border-radius:6px;
 <a href="profile.html">Profile</a>
 </div>
 
-<h2 class="center">📊 AI Dashboard v12.3 (SAFE UPGRADE + FIXED ENGINE)</h2>
+<h2 class="center">📊 AI Dashboard v12.3 (Mobile Optimized)</h2>
 
 <!-- TIME -->
 <div class="card">
@@ -75,7 +77,6 @@ border-radius:6px;
 <!-- PROFILE -->
 <div class="card">
 <h3>👤 Profile</h3>
-
 <div id="profileSkeleton" class="skeleton" style="height:18px;width:120px;"></div>
 <p id="profile" class="hide"></p>
 </div>
@@ -90,12 +91,10 @@ border-radius:6px;
 <!-- TODAY -->
 <div class="card">
 <h3>🔥 Today AI Summary</h3>
-
 <p id="cal">--</p>
 <p id="p">--</p>
 <p id="c">--</p>
 <p id="f">--</p>
-
 <p id="mealScore"></p>
 <p id="risk"></p>
 </div>
@@ -173,9 +172,7 @@ return (w/(h/100)**2).toFixed(1)
 
 /* ================= SAFE DATA ================= */
 async function getData7(){
-
 let out=[]
-
 for(let i=6;i>=0;i--){
 let d=new Date()
 d.setDate(d.getDate()-i)
@@ -189,29 +186,23 @@ logs=[]
 }
 
 let cal=0,p=0,c=0,f=0
-
 logs.forEach(x=>{
 cal+=num(x?.calories)
 p+=num(x?.protein)
 c+=num(x?.carbs)
 f+=num(x?.fat)
 })
-
 out.push({date,cal,p,c,f})
 }
-
 return out
 }
 
 /* ================= AI PATTERN ================= */
 function learnPattern(data){
-
 let proteinDays=0
-
 data.forEach(d=>{
 if(d.p>60) proteinDays++
 })
-
 return {
 prefProtein: proteinDays>=4,
 trend: data.length>1 && data[data.length-1].cal > data[0].cal
@@ -220,9 +211,7 @@ trend: data.length>1 && data[data.length-1].cal > data[0].cal
 
 /* ================= RISK ================= */
 function riskLevel(cal){
-
 cal = num(cal)
-
 if(cal>3000) return "🔴 High"
 if(cal>2400) return "🟠 Medium"
 return "🟢 Low"
@@ -230,33 +219,25 @@ return "🟢 Low"
 
 /* ================= SAFE CHART (FIXED SCALE) ================= */
 function draw(canvasId,data,key){
-
 let c=document.getElementById(canvasId)
 if(!c) return
-
 let ctx=c.getContext("2d")
 if(!ctx) return
-
 ctx.clearRect(0,0,c.width,c.height || 200)
-
 if(!data || !data.length) return
 
 let max = Math.max(...data.map(d=>num(d[key])))
 if(max <= 0) max = 1
 
 ctx.beginPath()
-
 let startX = 20
 let startY = 120
-
 ctx.moveTo(startX, startY - (num(data[0][key]) / max) * 100)
-
 for(let i=1;i<data.length;i++){
 let x = startX + i*40
 let y = startY - (num(data[i][key]) / max) * 100
 ctx.lineTo(x,y)
 }
-
 ctx.stroke()
 }
 
@@ -264,7 +245,6 @@ ctx.stroke()
 function showSkeleton(){
 const sk = document.getElementById("profileSkeleton")
 const el = document.getElementById("profile")
-
 if(sk) sk.style.display="block"
 if(el) el.classList.add("hide")
 }
@@ -272,20 +252,27 @@ if(el) el.classList.add("hide")
 function hideSkeleton(){
 const sk = document.getElementById("profileSkeleton")
 const el = document.getElementById("profile")
-
 if(sk) sk.style.display="none"
 if(el) el.classList.remove("hide")
 }
 
 /* ================= MAIN ================= */
 async function load(){
-
 showSkeleton()
 
 let p=getProfile()
 
-document.getElementById("bmi").innerText =
-bmi(p.height,p.weight)
+// 计算并显示 BMI
+let bmiVal = bmi(p.height, p.weight)
+document.getElementById("bmi").innerText = bmiVal
+let bmiTag = document.getElementById("bmiTag")
+if(bmiTag) {
+  bmiTag.innerHTML = `<span class="tag ${
+    bmiVal < 18.5 ? "yellow" : bmiVal < 25 ? "green" : bmiVal < 30 ? "yellow" : "red"
+  }">${
+    bmiVal < 18.5 ? "Underweight" : bmiVal < 25 ? "Normal" : bmiVal < 30 ? "Overweight" : "Obese"
+  }</span>`
+}
 
 let data = await getData7()
 
@@ -297,7 +284,7 @@ document.getElementById("c").innerText=`Carbs ${num(today.c)}`
 document.getElementById("f").innerText=`Fat ${num(today.f)}`
 
 let score=(num(today.p)+num(today.c)+num(today.f))/3
-document.getElementById("mealScore").innerText="Score "+score
+document.getElementById("mealScore").innerText="Score " + score
 document.getElementById("risk").innerText=riskLevel(today.cal)
 
 /* AI INSIGHT SAFE */
@@ -315,11 +302,7 @@ learn.prefProtein
 
 /* charts */
 draw("chart",data,"cal")
-
-let riskData=data.map(d=>({
-cal: d.cal
-}))
-
+let riskData=data.map(d=>({ cal: d.cal }))
 draw("riskChart",riskData,"cal")
 
 hideSkeleton()
