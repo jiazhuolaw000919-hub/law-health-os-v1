@@ -1,7 +1,7 @@
 //////////////////////////////
-// 🧠 AI VISION v11.6 (CORS-FIXED PROXY VERSION)
-// 🔑 API key now stored in Vercel environment variable OPENAI_API_KEY
-//    Calls our own /api/analyze-food to avoid browser CORS restriction
+// 🧠 AI VISION v11.6 (SILENT FALLBACK)
+// Calls our own /api/analyze-food proxy (no CORS, no exposed key)
+// On failure, returns fallback data without alerting
 //////////////////////////////
 
 function previewFoodImage(file, callback) {
@@ -29,14 +29,12 @@ window.analyzeFoodImage = async function(base64) {
     const result = await callOpenAIVision(base64);
     return normalizeVision(result);
   } catch (e) {
-    console.error("analyzeFoodImage error:", e);
-    alert("AI scan failed: " + e.message);
+    console.warn("AI vision failed, using fallback data:", e.message);
     return fallbackVision();
   }
 };
 
 async function callOpenAIVision(base64Image) {
-  // 🔥 Now calling our own Vercel proxy (no CORS, no exposed key)
   const response = await fetch("/api/analyze-food", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
