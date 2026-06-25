@@ -2,13 +2,14 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Profile Lite v12.3 (Cloud Sync + Skeleton Upgrade)</title>
+<title>Profile v12.3 (Fixed Save + Cloud Sync)</title>
 
 <link rel="stylesheet" href="style.css">
 
+<!-- ✅ 必需的脚本 -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="app.js"></script>
 <script src="supabase.js"></script>
-<script src="js/db.js"></script>
 
 <style>
 .card{
@@ -42,7 +43,7 @@ margin-top:5px;
 .yellow{background:#fef9c3;color:#854d0e}
 .red{background:#fee2e2;color:#991b1b}
 
-/* ================= SKELETON (NEW) ================= */
+/* ================= SKELETON ================= */
 .skeleton {
 background: linear-gradient(90deg,#eee 25%,#f5f5f5 50%,#eee 75%);
 background-size: 200% 100%;
@@ -73,13 +74,12 @@ margin:5px 0;
 <a href="profile.html">Profile</a>
 </div>
 
-<h2 class="center">👤 Profile Lite v12.3 (Cloud Sync + Skeleton Upgrade)</h2>
+<h2 class="center">👤 Profile v12.3 (Save Fixed)</h2>
 
 <!-- ACTIVE PROFILE -->
 <div class="card">
 <h3>🔥 Active Profile</h3>
 
-<!-- SKELETON -->
 <div id="profileSkeleton" class="skeleton skeleton-text"></div>
 
 <p id="name" style="display:none">Loading...</p>
@@ -103,7 +103,17 @@ Delete
 
 </div>
 
-<p class="small">Lite mode: stable cloud sync enabled</p>
+<p class="small">All changes sync to cloud automatically</p>
+</div>
+
+<!-- QUICK CREATE FORM (NEW) -->
+<div class="card">
+<h3>⚡ Quick Create Profile</h3>
+<input type="text" id="newName" placeholder="Name" style="width:90%;margin:4px 0">
+<input type="number" id="newHeight" placeholder="Height (cm)" style="width:90%;margin:4px 0" value="170">
+<input type="number" id="newWeight" placeholder="Weight (kg)" style="width:90%;margin:4px 0" value="70">
+<br>
+<button onclick="quickCreate()">💾 Save & Set Active</button>
 </div>
 
 <!-- SWITCH -->
@@ -118,6 +128,7 @@ Delete
 // NAVIGATION (UNCHANGED)
 //////////////////////////////
 function goCreateProfile(){
+// Now we have built-in creation, but keep the button as fallback
 window.location.href = "./profile-create.html"
 }
 
@@ -127,19 +138,16 @@ window.location.href = `./profile-detail.html?id=${encodeURIComponent(p.id)}`
 }
 
 //////////////////////////////
-// SAFE PROFILE (UPGRADED ONLY)
+// SAFE PROFILE (UPGRADED)
 //////////////////////////////
 function getActiveProfile(){
 try{
 const raw = localStorage.getItem("activeProfile")
-
 if(!raw || raw==="undefined" || raw==="null"){
 return {id:"guest",name:"Guest",height:170,weight:70}
 }
-
 const p = JSON.parse(raw)
 return p?.id ? p : {id:"guest",name:"Guest",height:170,weight:70}
-
 }catch(e){
 return {id:"guest",name:"Guest",height:170,weight:70}
 }
@@ -160,9 +168,7 @@ return (w / ((h/100)*(h/100))).toFixed(1)
 }
 
 function bmiStatus(bmi){
-
 bmi = Number(bmi)
-
 if(bmi < 18.5) return {text:"Underweight", color:"yellow"}
 if(bmi < 25) return {text:"Normal", color:"green"}
 if(bmi < 30) return {text:"Overweight", color:"yellow"}
@@ -170,28 +176,53 @@ return {text:"Obese", color:"red"}
 }
 
 //////////////////////////////
-// CLOUD SYNC (SAFE UPGRADE)
+// QUICK CREATE (SAVE TO LOCAL + CLOUD)
 //////////////////////////////
-async function safeCloud(fn, arg){
+async function quickCreate(){
+const name = document.getElementById("newName").value.trim()
+const height = num(document.getElementById("newHeight").value)
+const weight = num(document.getElementById("newWeight").value)
+
+if(!name) return alert("Please enter a name")
+
+// Use app.js's createProfile (saves to localStorage)
+const newProfile = createProfile({ name, height, weight })
+
+// Sync to Supabase (if function exists)
+if(typeof upsertProfile === "function"){
 try{
-if(typeof fn === "function"){
-return await fn(arg)
-}
+await upsertProfile(newProfile)
+console.log("✅ Profile synced to cloud")
 }catch(e){
-console.log("cloud error:", e)
+console.warn("Cloud sync failed:", e)
 }
 }
 
-async function syncToCloud(profile){
-await safeCloud(upsertProfile, profile)
-}
+// Update UI and notify other pages
+emitProfileUpdate()
+render()
 
-async function syncDeleteCloud(id){
-await safeCloud(deleteProfileCloud, id)
+// Clear inputs
+document.getElementById("newName").value = ""
+document.getElementById("newHeight").value = 170
+document.getElementById("newWeight").value = 70
+alert("Profile created and set active!")
 }
 
 //////////////////////////////
-// PROFILE SYNC EVENT SYSTEM (NEW)
+// CLOUD SYNC (SAFE)
+//////////////////////////////
+async function syncDeleteCloud(id){
+if(typeof supabaseClient === "undefined") return
+try{
+await supabaseClient.from("profiles").delete().eq("id", id)
+}catch(e){
+console.warn("Cloud delete failed:", e)
+}
+}
+
+//////////////////////////////
+// PROFILE SYNC EVENT
 //////////////////////////////
 function emitProfileUpdate(){
 window.dispatchEvent(new Event("profileSyncUpdate"))
@@ -201,57 +232,52 @@ window.addEventListener("profileSyncUpdate", render)
 window.addEventListener("focus", render)
 
 //////////////////////////////
-// DELETE (UNCHANGED LOGIC + SYNC EVENT)
+// DELETE (FIXED)
 //////////////////////////////
 async function deleteProfileById(id){
+let active = getActiveProfile()
+let list = getProfiles()
 
-if(id === "guest"){
+// Determine actual id to delete
+let targetId = id === "active" ? active.id : id
+
+if(targetId === "guest"){
 alert("Guest cannot be deleted")
 return
 }
 
-await syncDeleteCloud(id)
-
-let list = getProfiles().filter(x => x.id !== id)
+// Remove from localStorage
+list = list.filter(x => x.id !== targetId)
 localStorage.setItem("profiles", JSON.stringify(list))
 
-let active = getActiveProfile()
-
-if(active.id === id){
-
-let fallback = list[0] || {
-id:"guest",
-name:"Guest",
-height:170,
-weight:70
-}
-
+// If we just deleted the active profile, switch to another or guest
+if(active.id === targetId){
+let fallback = list[0] || {id:"guest",name:"Guest",height:170,weight:70}
 localStorage.setItem("activeProfile", JSON.stringify(fallback))
 }
 
+// Delete from Supabase
+await syncDeleteCloud(targetId)
+
 emitProfileUpdate()
 render()
 }
 
 //////////////////////////////
-// SWITCH (SYNC FIX)
+// SWITCH (UNCHANGED)
 //////////////////////////////
 function switchProfile(id){
-
 let p = getProfiles().find(x => x.id === id)
 if(!p) return
-
 localStorage.setItem("activeProfile", JSON.stringify(p))
-
 emitProfileUpdate()
 render()
 }
 
 //////////////////////////////
-// RENDER (SAFE + SKELETON CONTROL)
+// RENDER (SKELETON + UI)
 //////////////////////////////
 function render(){
-
 const sk = document.getElementById("profileSkeleton")
 const nameEl = document.getElementById("name")
 
@@ -281,7 +307,6 @@ let list = document.getElementById("list")
 list.innerHTML = ""
 
 getProfiles().forEach(x=>{
-
 let bmiVal = calcBMI(x.height, x.weight)
 let st = bmiStatus(bmiVal)
 
