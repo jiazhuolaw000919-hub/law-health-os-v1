@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Food AI v16.2 PRO (Malaysia Food DB + Auto Lookup)</title>
+<title>Food AI v16.2 PRO (Malaysia DB + Sugar & Grade)</title>
 
 <link rel="stylesheet" href="style.css">
 
@@ -12,12 +12,10 @@
 <script src="app.js"></script>
 <script src="supabase.js"></script>
 <script src="ai-vision.js"></script>
-
-<!-- 🇲🇾 独立的本地食物数据库 -->
 <script src="food-db.js"></script>
 
 <style>
-/* 仅保留 food.html 特有的样式 */
+/* 原有样式保留 */
 .modal{
 position:fixed;
 top:0;left:0;right:0;bottom:0;
@@ -103,12 +101,27 @@ box-sizing:border-box;
   font-size:13px;
   margin:6px 0;
 }
+
+/* ✅ 新增营养等级徽标 */
+.grade-badge {
+  display:inline-block;
+  padding:2px 6px;
+  border-radius:4px;
+  font-weight:bold;
+  font-size:13px;
+  margin-left:4px;
+}
+.grade-A { background:#00c853; color:#fff; }
+.grade-B { background:#76ff03; color:#333; }
+.grade-C { background:#ffeb3b; color:#333; }
+.grade-D { background:#ff9100; color:#fff; }
+.grade-E { background:#ff1744; color:#fff; }
 </style>
 </head>
 
 <body>
 
-<h2>🍽 Food AI v16.2 (Malaysia DB)</h2>
+<h2>🍽 Food AI v16.2 (Malaysia DB + Sugar & Grade)</h2>
 
 <!-- 导航栏 -->
 <div class="nav">
@@ -191,6 +204,18 @@ box-sizing:border-box;
 <input type="number" id="customCarbs" class="editable-field" placeholder="50" min="0">
 <label>Fat (g):</label>
 <input type="number" id="customFat" class="editable-field" placeholder="15" min="0">
+<!-- ✅ 新增糖分和等级 -->
+<label>Sugar (g):</label>
+<input type="number" id="customSugar" class="editable-field" placeholder="0" min="0" step="0.1">
+<label>Nutrition Grade:</label>
+<select id="customGrade" class="editable-field">
+  <option value="">-- Select --</option>
+  <option value="A">A</option>
+  <option value="B">B</option>
+  <option value="C">C</option>
+  <option value="D">D</option>
+  <option value="E">E</option>
+</select>
 <br>
 <label>Photo (optional):</label>
 <input type="file" id="customPhotoInput" accept="image/*" onchange="previewCustomPhoto()">
@@ -335,11 +360,13 @@ function estimateNutrition(food){
     calories: base,
     protein: Math.round(base*0.05),
     carbs: Math.round(base*0.12),
-    fat: Math.round(base*0.04)
+    fat: Math.round(base*0.04),
+    sugar: 0,        // 默认值
+    grade: ""        // 默认值
   }
 }
 
-/* ================= OPEN FOOD FACTS LOOKUP ================= */
+/* ================= OPEN FOOD FACTS LOOKUP (EXTENDED) ================= */
 async function lookupFoodAPI(query) {
   const url = `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(query)}&search_simple=1&json=1&page_size=3`;
   try {
@@ -353,6 +380,8 @@ async function lookupFoodAPI(query) {
         const protein = Number(prod.nutriments.proteins_100g) || Number(prod.nutriments.proteins) || 0;
         const carbs = Number(prod.nutriments.carbohydrates_100g) || Number(prod.nutriments.carbohydrates) || 0;
         const fat = Number(prod.nutriments.fat_100g) || Number(prod.nutriments.fat) || 0;
+        const sugar = Number(prod.nutriments.sugars_100g) || 0;
+        const grade = prod.nutrition_grades ? prod.nutrition_grades.toUpperCase() : "";
         if (cals > 0) {
           return {
             food: prod.product_name || query,
@@ -360,6 +389,8 @@ async function lookupFoodAPI(query) {
             protein: Math.round(protein * 10) / 10,
             carbs: Math.round(carbs * 10) / 10,
             fat: Math.round(fat * 10) / 10,
+            sugar: Math.round(sugar * 10) / 10,
+            grade: grade,
             source: 'Open Food Facts'
           };
         }
@@ -399,6 +430,8 @@ async function startManualFlow(){
       protein: localMatch.protein,
       carbs: localMatch.carbs,
       fat: localMatch.fat,
+      sugar: localMatch.sugar || 0,    // 从数据库取
+      grade: localMatch.grade || "",   // 从数据库取
       dishes: []
     };
     if (btn) btn.disabled = false;
@@ -419,6 +452,8 @@ async function startManualFlow(){
       protein: apiResult.protein,
       carbs: apiResult.carbs,
       fat: apiResult.fat,
+      sugar: apiResult.sugar || 0,
+      grade: apiResult.grade || "",
       dishes: []
     };
     if (btn) btn.disabled = false;
@@ -433,6 +468,8 @@ async function startManualFlow(){
   document.getElementById("customProtein").value = "";
   document.getElementById("customCarbs").value = "";
   document.getElementById("customFat").value = "";
+  document.getElementById("customSugar").value = "";
+  document.getElementById("customGrade").value = "";
   openCustomEntry();
 }
 
@@ -458,6 +495,8 @@ async function openAIUpload(){
         protein: result.protein,
         carbs: result.carbs,
         fat: result.fat,
+        sugar: 0,      // AI 扫描不返回糖和等级，默认为0
+        grade: "",
         dishes: result.dishes || [],
         image: base64
       }
@@ -481,6 +520,8 @@ function openBarcode(){
     protein: 10,
     carbs: 40,
     fat: 10,
+    sugar: 0,
+    grade: "",
     dishes: []
   }
   openMealModal()
@@ -505,6 +546,8 @@ function openCustomEntry(){
   document.getElementById("customProtein").value = "";
   document.getElementById("customCarbs").value = "";
   document.getElementById("customFat").value = "";
+  document.getElementById("customSugar").value = "";
+  document.getElementById("customGrade").value = "";
   document.getElementById("customPhotoInput").value = "";
   document.getElementById("customPhotoPreview").style.display = "none";
   customPhotoData = null;
@@ -538,6 +581,8 @@ function confirmCustomEntry(){
     protein: parseFloat(document.getElementById("customProtein").value) || 0,
     carbs: parseFloat(document.getElementById("customCarbs").value) || 0,
     fat: parseFloat(document.getElementById("customFat").value) || 0,
+    sugar: parseFloat(document.getElementById("customSugar").value) || 0,
+    grade: document.getElementById("customGrade").value,
     image: customPhotoData || null,
     dishes: []
   }
@@ -592,8 +637,12 @@ function updateModalNutritionPreview(){
   if(mode==="bulk") adj.calories = Math.round(adj.calories * 1.15)
 
   let totalInfo = `<b>${adj.food}</b><br><span class="small-tag">${adj.type}</span><br><br>`
-  totalInfo += `Total: ${Math.round(adj.calories)} kcal<br>`
+  totalInfo += `🔥 Calories: ${Math.round(adj.calories)} kcal<br>`
   totalInfo += `P:${Math.round(adj.protein)} C:${Math.round(adj.carbs)} F:${Math.round(adj.fat)}<br>`
+  totalInfo += `🍬 Sugar: ${adj.sugar||0}g<br>`
+  if(adj.grade){
+    totalInfo += `Nutrition Grade: <span class="grade-badge grade-${adj.grade}">${adj.grade}</span><br>`
+  }
   totalInfo += `<br><b>Components:</b><br>${(adj.components||[]).map(c=>`<span class="small-tag">${c}</span>`).join("")}`
 
   document.getElementById("modalNutritionPreview").innerHTML = totalInfo
@@ -620,6 +669,8 @@ function reEstimateFromName(){
   pendingFood.protein = est.protein
   pendingFood.carbs = est.carbs
   pendingFood.fat = est.fat
+  pendingFood.sugar = est.sugar
+  pendingFood.grade = est.grade
   pendingFood.dishes = []
   document.getElementById("manualHint").style.display = "none"
   updateModalNutritionPreview()
@@ -694,7 +745,8 @@ function renderFoodList(){
     <div class="preview-box">
       <b>${f.food}</b><br>
       <span class="small-tag">${f.type || "unknown"}</span><br>
-      ${f.calories} kcal
+      ${f.calories} kcal | 🍬 ${f.sugar||0}g
+      ${f.grade ? `<span class="grade-badge grade-${f.grade}">${f.grade}</span>` : ""}
       <br><button class="delete-btn" onclick="deleteFood(${f.id})">Delete</button>
     </div>
   `).join("")
@@ -732,6 +784,8 @@ async function loadDB(){
           protein: Number(r.protein) || 0,
           carbs: Number(r.carbs) || 0,
           fat: Number(r.fat) || 0,
+          sugar: Number(r.sugar) || 0,    // 新增
+          grade: r.grade || "",           // 新增
           mealType: r.meal_type || "snack",
           image: r.image_url || null,
           dishes: []  // 简单菜肴拆分可以从 components 还原，这里先留空
