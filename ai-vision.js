@@ -1,61 +1,67 @@
 //////////////////////////////
 // 🧠 AI VISION v11.6 (UPGRADED + FIXED FOR v13)
-// 🔑 IMPORTANT: Replace the key below with a fresh one from https://platform.openai.com/api-keys
-//    This key is already exposed, revoke it immediately!
+// 🔑 IMPORTANT: Replace the placeholder with your NEW OpenAI API key
+//    Get it at: https://platform.openai.com/api-keys
 //////////////////////////////
 
 /* =========================
 IMAGE PREVIEW HELPER
 ========================= */
-function previewFoodImage(file, callback){
-  if(!file) return
-  const reader = new FileReader()
-  reader.onload = function(e){
-    const img = document.createElement("img")
-    img.src = e.target.result
-    img.style.maxWidth = "100%"
-    img.style.borderRadius = "10px"
-    img.style.marginTop = "10px"
-    const container = document.getElementById("aiResult")
-    if(container){
-      container.innerHTML = ""
-      container.appendChild(img)
+function previewFoodImage(file, callback) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const img = document.createElement("img");
+    img.src = e.target.result;
+    img.style.maxWidth = "100%";
+    img.style.borderRadius = "10px";
+    img.style.marginTop = "10px";
+    const container = document.getElementById("aiResult");
+    if (container) {
+      container.innerHTML = "";
+      container.appendChild(img);
     }
-    if(callback) callback(e.target.result)
-  }
-  reader.readAsDataURL(file)
+    if (callback) callback(e.target.result);
+  };
+  reader.readAsDataURL(file);
 }
 
 //////////////////////////////
 // 🧠 GLOBAL WRAPPER
 //////////////////////////////
-window.analyzeFoodImage = async function(base64){
-  try{
-    const result = await callOpenAIVision(base64)
-    return normalizeVision(result)
-  }catch(e){
-    console.error("❌ analyzeFoodImage global wrapper error:", e)
-    return fallbackVision()
+window.analyzeFoodImage = async function(base64) {
+  try {
+    // Basic validation
+    if (!base64 || typeof base64 !== "string" || !base64.startsWith("data:image/")) {
+      throw new Error("Invalid image data");
+    }
+    const result = await callOpenAIVision(base64);
+    return normalizeVision(result);
+  } catch (e) {
+    console.error("❌ analyzeFoodImage error:", e.message);
+    // Show user-friendly alert
+    alert("AI scan failed: " + (e.message.includes("API key") ? "Invalid API key. Please check ai-vision.js" : e.message));
+    return fallbackVision();
   }
-}
+};
 
 //////////////////////////////
 // 🧠 MAIN VISION ENGINE (call OpenAI API)
 //////////////////////////////
-async function callOpenAIVision(base64Image){
-  // ===== REPLACE WITH YOUR NEW KEY HERE =====
-  const OPENAI_API_KEY = "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";
-  // ==========================================
+async function callOpenAIVision(base64Image) {
+  // ===== PUT YOUR NEW KEY HERE (keep it secret!) =====
+  const OPENAI_API_KEY = "sk-YOUR_NEW_KEY_HERE";
+  // ===================================================
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 25000); // 25 seconds timeout
+  const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 seconds
 
   try {
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${OPENAI_API_KEY}`
+        "Authorization": `Bearer ${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}`
       },
       signal: controller.signal,
       body: JSON.stringify({
@@ -142,7 +148,11 @@ Examples:
 
     if (!response.ok) {
       const errorText = await response.text();
-      throw new Error(`OpenAI API error ${response.status}: ${errorText}`);
+      console.error("OpenAI API error:", response.status, errorText);
+      if (response.status === 401) throw new Error("Invalid API key or unauthorized.");
+      if (response.status === 429) throw new Error("Rate limit exceeded. Try again later.");
+      if (response.status === 500) throw new Error("OpenAI server error. Try again.");
+      throw new Error(`API error ${response.status}: ${errorText}`);
     }
 
     const data = await response.json();
@@ -153,12 +163,16 @@ Examples:
       return fallbackVision();
     }
 
-    // Try to parse JSON, removing possible markdown fences
+    console.log("📦 Raw AI response:", raw);
+
+    // Parse JSON, handling possible markdown fences
     let parsed = null;
     try {
       parsed = JSON.parse(raw);
     } catch (e) {
-      const cleaned = raw.replace(/```json|```/g, "").trim();
+      const cleaned = raw
+        .replace(/```json|```/g, "")
+        .trim();
       parsed = JSON.parse(cleaned);
     }
 
@@ -166,15 +180,19 @@ Examples:
 
   } catch (e) {
     clearTimeout(timeoutId);
+    if (e.name === "AbortError") {
+      console.error("⏰ Vision API call timed out");
+      throw new Error("Request timed out. Please try again.");
+    }
     console.error("❌ Vision API call failed:", e);
-    throw e; // re-throw to be caught by global wrapper
+    throw e;
   }
 }
 
 //////////////////////////////
-// 🧠 NORMALIZER (ensure data structure)
+// 🧠 NORMALIZER
 //////////////////////////////
-function normalizeVision(data){
+function normalizeVision(data) {
   if (!data) {
     console.warn("⚠️ normalizeVision: data is null/undefined");
     return fallbackVision();
@@ -202,23 +220,23 @@ function normalizeVision(data){
       cuisine: f.cuisine || "unknown",
       confidence: Number(f.confidence) || 0.5
     })),
-    totalCalories: Number(data.totalCalories) || foods.reduce((a,b) => a + Number(b.calories||0), 0),
-    totalProtein: Number(data.totalProtein) || foods.reduce((a,b) => a + Number(b.protein||0), 0),
-    totalCarbs: Number(data.totalCarbs) || foods.reduce((a,b) => a + Number(b.carbs||0), 0),
-    totalFat: Number(data.totalFat) || foods.reduce((a,b) => a + Number(b.fat||0), 0),
+    totalCalories: Number(data.totalCalories) || foods.reduce((a, b) => a + Number(b.calories || 0), 0),
+    totalProtein: Number(data.totalProtein) || foods.reduce((a, b) => a + Number(b.protein || 0), 0),
+    totalCarbs: Number(data.totalCarbs) || foods.reduce((a, b) => a + Number(b.carbs || 0), 0),
+    totalFat: Number(data.totalFat) || foods.reduce((a, b) => a + Number(b.fat || 0), 0),
     mealScore: Number(data.mealScore) || 70,
     healthRisk: data.healthRisk || "medium"
   };
 
-  console.log("✅ Normalized vision data:", normalized);
+  console.log("✅ Normalized:", normalized);
   return normalized;
 }
 
 //////////////////////////////
 // 🧠 FALLBACK
 //////////////////////////////
-function fallbackVision(){
-  console.warn("⚠️ Using fallback vision data");
+function fallbackVision() {
+  console.warn("⚠️ Using fallback data");
   return {
     foods: [
       {
@@ -244,14 +262,14 @@ function fallbackVision(){
 //////////////////////////////
 // 🧠 SIMPLE WRAPPER (for manual use)
 //////////////////////////////
-async function scanFoodAI(file){
+async function scanFoodAI(file) {
   return new Promise((resolve) => {
     if (!file) {
       resolve(fallbackVision());
       return;
     }
     const reader = new FileReader();
-    reader.onload = async function(){
+    reader.onload = async function() {
       try {
         const base64 = reader.result;
         const result = await callOpenAIVision(base64);
