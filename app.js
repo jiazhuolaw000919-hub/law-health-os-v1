@@ -7,10 +7,6 @@ const STORAGE_KEYS = {
   activeProfile: "activeProfile"
 }
 
-/* =========================
-SAFE GET
-========================= */
-
 function getProfiles(){
   try{
     return JSON.parse(localStorage.getItem(STORAGE_KEYS.profiles)) || []
@@ -27,10 +23,6 @@ function getActiveProfile(){
   }
 }
 
-/* =========================
-SAFE SET
-========================= */
-
 function setProfiles(profiles){
   localStorage.setItem(
     STORAGE_KEYS.profiles,
@@ -43,20 +35,13 @@ function setActiveProfile(profile){
     STORAGE_KEYS.activeProfile,
     JSON.stringify(profile)
   )
-
-  /* 🔥 FIX: notify all pages */
   window.dispatchEvent(
     new Event("profileSyncUpdate")
   )
 }
 
-/* =========================
-INIT SYSTEM
-========================= */
-
 function ensureProfileSystem(){
   let profiles = getProfiles()
-
   if(!profiles || profiles.length === 0){
     const defaultProfile = {
       id: "guest",
@@ -68,41 +53,28 @@ function ensureProfileSystem(){
     setProfiles(profiles)
     setActiveProfile(defaultProfile)
   }
-
   if(!getActiveProfile()){
     setActiveProfile(profiles[0])
   }
 }
 
-/* =========================
-CREATE PROFILE
-========================= */
-
 function createProfile(profile){
   let profiles = getProfiles()
-
   const newProfile = {
     id: Date.now().toString(),
     height: 170,
     weight: 70,
     ...profile
   }
-
   profiles.push(newProfile)
   setProfiles(profiles)
   setActiveProfile(newProfile)
-
   return newProfile
 }
-
-/* =========================
-DELETE PROFILE
-========================= */
 
 function deleteProfile(id){
   let profiles = getProfiles().filter(p => p.id !== id)
   setProfiles(profiles)
-
   let active = getActiveProfile()
   if(active && active.id === id){
     setActiveProfile(
@@ -116,10 +88,6 @@ function deleteProfile(id){
   }
 }
 
-/* =========================
-SWITCH PROFILE
-========================= */
-
 function switchProfile(id){
   let profile = getProfiles().find(p => p.id === id)
   if(profile){
@@ -127,11 +95,6 @@ function switchProfile(id){
   }
 }
 
-/* =========================
-UI COMPAT LAYER (CRITICAL FIX)
-========================= */
-
-/* 🔥 FIX 1: app.js now supports setActive() used in food.html */
 function setActive(page){
   try{
     localStorage.setItem("activePage", page)
@@ -143,25 +106,21 @@ function setActive(page){
   }
 }
 
-/* 🔥 FIX 2: ProfileEngine compatibility (dashboard + food pages) */
 const ProfileEngine = {
   render(targetId){
     const el = document.getElementById(targetId)
     if(!el) return
-
     const p = getActiveProfile()
     if(!p){
       el.innerText = "Guest"
       return
     }
-
     if(targetId === "activeProfile"){
       el.innerText = "👤 Active: " + (p.name || "Guest")
     }else{
       el.innerText = p.name || "Guest"
     }
   },
-
   getActiveProfile,
   getProfiles,
   switchProfile,
@@ -169,24 +128,14 @@ const ProfileEngine = {
   createProfile
 }
 
-/* =========================
-GLOBAL EXPORTS (IMPORTANT)
-========================= */
-
 window.getProfiles = getProfiles
 window.getActiveProfile = getActiveProfile
 window.setProfiles = setProfiles
 window.setActiveProfile = setActiveProfile
-
 window.createProfile = createProfile
 window.deleteProfile = deleteProfile
 window.switchProfile = switchProfile
-
 window.ProfileEngine = ProfileEngine
 window.setActive = setActive
-
-/* =========================
-AUTO INIT
-========================= */
 
 ensureProfileSystem()
