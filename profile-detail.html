@@ -3,11 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Profile Detail - Edit & View (Mobile Ready)</title>
+<title>Profile Detail - Edit & View (Sleep Target)</title>
 
 <link rel="stylesheet" href="style.css">
 
-<!-- 必需的脚本 -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="app.js"></script>
 <script src="supabase.js"></script>
@@ -27,15 +26,9 @@ input, select {
   border-radius:6px;
   border:1px solid #ddd;
 }
-.row{
-  display:flex;
-  gap:10px;
-}
+.row{ display:flex; gap:10px; }
 .small{width:48%}
-.readonly {
-  background: #f1f5f9;
-  color: #555;
-}
+.readonly { background: #f1f5f9; color: #555; }
 button {
   margin:8px 4px;
   padding:8px 12px;
@@ -43,20 +36,10 @@ button {
   cursor:pointer;
   border:1px solid #ddd;
 }
-
-/* 移动端微调 */
 @media (max-width: 480px) {
-  .card {
-    margin: 8px;
-    padding: 10px;
-  }
-  input, select {
-    padding: 8px;
-    font-size: 0.9rem;
-  }
-  button {
-    padding: 10px 14px;
-  }
+  .card { margin: 8px; padding: 10px; }
+  input, select { padding: 8px; font-size: 0.9rem; }
+  button { padding: 10px 14px; }
 }
 </style>
 </head>
@@ -96,6 +79,9 @@ button {
   <input id="body_fat" placeholder="Body Fat %">
   <input id="muscle_mass" placeholder="Muscle Mass (kg)">
   
+  <label>Target Sleep (hours):</label>
+  <input type="number" id="targetSleep" placeholder="8" min="4" max="12" step="0.5">
+  
   <select id="goal">
     <option value="">Primary Goal *</option>
     <option value="fat_loss">Fat Loss</option>
@@ -113,7 +99,6 @@ button {
 
 <script>
 
-// Get profile ID from URL
 const urlParams = new URLSearchParams(window.location.search);
 const profileId = urlParams.get('id');
 
@@ -122,7 +107,6 @@ if (!profileId) {
   window.location.href = 'profile.html';
 }
 
-// Load the profile from localStorage
 function getProfileById(id) {
   let profiles = JSON.parse(localStorage.getItem('profiles') || '[]');
   return profiles.find(p => p.id === id);
@@ -135,7 +119,7 @@ if (!currentProfile) {
   window.location.href = 'profile.html';
 }
 
-// Populate the form
+// Populate form
 document.getElementById('profileId').value = currentProfile.id || '';
 document.getElementById('name').value = currentProfile.name || '';
 document.getElementById('email').value = currentProfile.email || '';
@@ -150,9 +134,9 @@ document.getElementById('target_weight').value = currentProfile.target_weight ||
 document.getElementById('body_fat').value = currentProfile.body_fat_percentage || '';
 document.getElementById('muscle_mass').value = currentProfile.muscle_mass || '';
 document.getElementById('goal').value = currentProfile.primary_goal || '';
+document.getElementById('targetSleep').value = currentProfile.targetSleep || 8;
 
 async function saveChanges() {
-  // Build updated profile object, preserving the original ID
   const updatedProfile = {
     ...currentProfile,
     name: document.getElementById('name').value.trim(),
@@ -168,6 +152,7 @@ async function saveChanges() {
     body_fat_percentage: Number(document.getElementById('body_fat').value) || 0,
     muscle_mass: Number(document.getElementById('muscle_mass').value) || 0,
     primary_goal: document.getElementById('goal').value,
+    targetSleep: Number(document.getElementById('targetSleep').value) || 8,
     bmi: (() => {
       const h = Number(document.getElementById('height').value) || 170;
       const w = Number(document.getElementById('weight').value) || 70;
@@ -176,7 +161,6 @@ async function saveChanges() {
     updated_at: new Date().toISOString()
   };
 
-  // Save to localStorage: replace the old profile in the profiles array
   let profiles = JSON.parse(localStorage.getItem('profiles') || '[]');
   const index = profiles.findIndex(p => p.id === profileId);
   if (index !== -1) {
@@ -184,13 +168,11 @@ async function saveChanges() {
     localStorage.setItem('profiles', JSON.stringify(profiles));
   }
 
-  // If this profile is the active one, update activeProfile as well
   const active = JSON.parse(localStorage.getItem('activeProfile'));
   if (active && active.id === profileId) {
     localStorage.setItem('activeProfile', JSON.stringify(updatedProfile));
   }
 
-  // Sync to Supabase
   if (typeof upsertProfile === 'function') {
     try {
       await upsertProfile(updatedProfile);
@@ -200,7 +182,6 @@ async function saveChanges() {
     }
   }
 
-  // Notify other pages
   window.dispatchEvent(new Event('profileSyncUpdate'));
 
   document.getElementById('saveStatus').style.display = 'block';
