@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Diet Plan</title>
+
+<link rel="stylesheet" href="style.css">
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="app.js"></script>
+<script src="supabase.js"></script>
+
+<style>
+.card{ margin:10px; padding:12px; background:#fff; border-radius:10px; box-shadow:0 1px 4px rgba(0,0,0,.05); }
+button{ margin:5px; padding:8px 14px; border-radius:8px; border:1px solid #ddd; cursor:pointer; background:#111827; color:white; }
+.tab-row { display:flex; gap:4px; margin:10px; }
+.tab-btn { flex:1; padding:10px; border-radius:8px 8px 0 0; background:#e5e7eb; cursor:pointer; font-weight:600; }
+.tab-btn.active { background:#3b82f6; color:white; }
+
+/* 月视图日历 */
+.month-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:4px; text-align:center; }
+.month-day { padding:8px 4px; border-radius:6px; cursor:pointer; background:#f9fafb; min-height:50px; }
+.month-day.today { border:2px solid #3b82f6; }
+.month-day.selected { background:#dbeafe; }
+.month-day.other-month { color:#ccc; }
+
+/* 周视图 */
+.week-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:6px; text-align:center; }
+.week-day { padding:10px 4px; border-radius:8px; cursor:pointer; background:#f3f4f6; }
+.week-day.active { background:#3b82f6; color:white; }
+.week-day.today { border:2px solid #3b82f6; }
+
+/* 进度条 */
+.progress-bar { width:100%; height:8px; background:#e5e7eb; border-radius:4px; margin:4px 0; }
+.progress-fill { height:8px; border-radius:4px; transition: width 0.5s; }
+.meal-card { background:#f9fafb; padding:10px; border-radius:8px; margin:8px 0; }
+.meal-card h4 { margin:0 0 4px 0; }
+</style>
+</head>
+<body>
+
+<!-- 返回 Dashboard 按钮 -->
+<div style="padding:10px;">
+  <button onclick="location.href='index.html'" style="background:#4b5563;">← Back to Dashboard</button>
+</div>
+
+<h2 class="center">🍽 AI Diet Plan</h2>
+
+<div class="card">
+  <p id="activeProfile">Loading...</p>
+</div>
+
+<!-- Tab 切换 -->
+<div class="tab-row">
+  <div class="tab-btn active" onclick="switchTab('month')">📅 Month</div>
+  <div class="tab-btn" onclick="switchTab('week')">📆 Week</div>
+  <div class="tab-btn" onclick="switchTab('day')">📝 Day Plan</div>
+</div>
+
+<!-- Month View -->
+<div id="monthView" class="card">
+  <h3 id="monthTitle"></h3>
+  <div class="month-grid" id="monthGrid"></div>
+  <p style="text-align:center; margin-top:8px;">
+    <button onclick="changeMonth(-1)">‹ Prev</button>
+    <button onclick="changeMonth(1)">Next ›</button>
+  </p>
+</div>
+
+<!-- Week View -->
+<div id="weekView" class="card" style="display:none;">
+  <h3 id="weekTitle"></h3>
+  <div class="week-grid" id="weekGrid"></div>
+  <p style="text-align:center; margin-top:8px;">
+    <button onclick="changeWeek(-1)">‹ Prev Week</button>
+    <button onclick="changeWeek(1)">Next Week ›</button>
+  </p>
+</div>
+
+<!-- Day Plan View -->
+<div id="dayView" class="card" style="display:none;">
+  <h3>📆 <span id="dayTitle"></span></h3>
+
+  <h4>🎯 Today's Goal</h4>
+  <p>Calories: <span id="goalCal">--</span> kcal</p>
+  <p>Protein: <span id="goalP">--</span>g | Carbs: <span id="goalC">--</span>g | Fat: <span id="goalF">--</span>g</p>
+
+  <h4>🍳 AI Recommended Meals</h4>
+  <div id="mealsContainer"></div>
+
+  <h4>📊 Today's Progress</h4>
+  <p>Protein: <span id="progressP">0</span>/<span id="targetP">0</span>g</p>
+  <div class="progress-bar"><div id="barP" class="progress-fill" style="width:0%;background:#3b82f6;"></div></div>
+  <p>Carbs: <span id="progressC">0</span>/<span id="targetC">0</span>g</p>
+  <div class="progress-bar"><div id="barC" class="progress-fill" style="width:0%;background:#facc15;"></div></div>
+  <p>Fat: <span id="progressF">0</span>/<span id="targetF">0</span>g</p>
+  <div class="progress-bar"><div id="barF" class="progress-fill" style="width:0%;background:#ef4444;"></div></div>
+
+  <h4>🧠 AI Coach</h4>
+  <p id="aiCoach"></p>
+
+  <br>
+  <button onclick="generatePlan()">🔄 Generate New Plan</button>
+  <button onclick="location.href='food.html'" style="background:#4b5563;">📝 Log Food</button>
+  <button onclick="switchTab('month')" style="background:#111827;">🏠 Back to Month</button>
+</div>
+
+<script>
+// ========== 初始化 ==========
+var profile = JSON.parse(localStorage.getItem("activeProfile")) || { id:"guest", name:"Guest", height:170, weight:70, primary_goal:"maintenance", targetSleep:8 };
+document.getElementById("activeProfile").innerText = "👤 Active: " + (profile.name || "Guest");
+
+var today = new Date();
+var currentMonth = today.getMonth();      // 0-11
+var currentYear = today.getFullYear();
+var currentWeekStart = getMonday(today);
+var selectedDate = today.toISOString().split("T")[0];
+
+// 获取周一的日期
+function getMonday(d) {
+  var date = new Date(d);
+  var day = date.getDay();
+  var diff = day === 0 ? -6 : 1 - day;
+  date.setDate(date.getDate() + diff);
+  date.setHours(0,0,0,0);
+  return date;
+}
+
+// ========== 目标计算 ==========
+function getDailyTargets() {
+  var weight = Number(profile.weight) || 70;
+  var height = Number(profile.height) || 170;
+  var age = Number(profile.age) || 25;
+  var goal = profile.primary_goal || "maintenance";
+
+  // Mifflin-St Jeor BMR
+  var bmr = (10 * weight) + (6.25 * height) - (5 * age) + 5; // 男性公式，可加性别判断
+  var tdee = bmr * 1.55; // 中等活动量
+
+  var calories = tdee;
+  if (goal === "fat_loss") calories = tdee - 500;
+  else if (goal === "muscle_gain") calories = tdee + 300;
+
+  var protein = Math.round((calories * 0.30) / 4);
+  var fat = Math.round((calories * 0.25) / 9);
+  var carbs = Math.round((calories * 0.45) / 4);
+
+  return { calories: Math.round(calories), protein, carbs, fat };
+}
+
+// ========== Tab 切换 ==========
+function switchTab(tab) {
+  document.getElementById("monthView").style.display = (tab === 'month') ? 'block' : 'none';
+  document.getElementById("weekView").style.display = (tab === 'week') ? 'block' : 'none';
+  document.getElementById("dayView").style.display = (tab === 'day') ? 'block' : 'none';
+
+  document.querySelectorAll('.tab-btn').forEach(function(btn) { btn.classList.remove('active'); });
+  if (tab === 'month') document.querySelectorAll('.tab-btn')[0].classList.add('active');
+  if (tab === 'week') document.querySelectorAll('.tab-btn')[1].classList.add('active');
+  if (tab === 'day') document.querySelectorAll('.tab-btn')[2].classList.add('active');
+
+  if (tab === 'month') renderMonth();
+  if (tab === 'week') renderWeek();
+  if (tab === 'day') loadDayPlan(selectedDate);
+}
+
+// ========== Month View ==========
+function renderMonth() {
+  var year = currentYear;
+  var month = currentMonth;
+  document.getElementById("monthTitle").innerText = new Date(year, month, 1).toLocaleDateString('en-US', { year:'numeric', month:'long' });
+
+  var firstDay = new Date(year, month, 1).getDay(); // 0=Sun
+  var daysInMonth = new Date(year, month+1, 0).getDate();
+  var mondayOffset = firstDay === 0 ? 6 : firstDay - 1; // 星期一开始
+
+  var html = "";
+  for (var i = 0; i < mondayOffset; i++) {
+    html += '<div class="month-day other-month"></div>';
+  }
+  for (var d = 1; d <= daysInMonth; d++) {
+    var dateStr = year + "-" + String(month+1).padStart(2,'0') + "-" + String(d).padStart(2,'0');
+    var isToday = dateStr === today.toISOString().split("T")[0];
+    var isSelected = dateStr === selectedDate;
+    html += '<div class="month-day' + (isToday ? " today" : "") + (isSelected ? " selected" : "") + '" onclick="selectDay(\'' + dateStr + '\')">' + d + '</div>';
+  }
+  document.getElementById("monthGrid").innerHTML = html;
+}
+
+function changeMonth(delta) {
+  currentMonth += delta;
+  if (currentMonth < 0) { currentMonth = 11; currentYear--; }
+  if (currentMonth > 11) { currentMonth = 0; currentYear++; }
+  renderMonth();
+}
+
+// ========== Week View ==========
+function renderWeek() {
+  var start = currentWeekStart;
+  document.getElementById("weekTitle").innerText = "Week of " + start.toLocaleDateString('en-US', { month:'short', day:'numeric' });
+
+  var html = "";
+  var days = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+  for (var i = 0; i < 7; i++) {
+    var d = new Date(start);
+    d.setDate(d.getDate() + i);
+    var dateStr = d.toISOString().split("T")[0];
+    var isToday = dateStr === today.toISOString().split("T")[0];
+    var isSelected = dateStr === selectedDate;
+    html += '<div class="week-day' + (isToday ? " today" : "") + (isSelected ? " active" : "") + '" onclick="selectDay(\'' + dateStr + '\')">' + days[i] + '<br>' + d.getDate() + '</div>';
+  }
+  document.getElementById("weekGrid").innerHTML = html;
+}
+
+function changeWeek(delta) {
+  currentWeekStart.setDate(currentWeekStart.getDate() + delta * 7);
+  renderWeek();
+}
+
+// ========== Day Plan ==========
+function selectDay(dateStr) {
+  selectedDate = dateStr;
+  switchTab('day');
+}
+
+function generatePlan() {
+  var targets = getDailyTargets();
+
+  var breakfastCals = Math.round(targets.calories * 0.25);
+  var lunchCals = Math.round(targets.calories * 0.35);
+  var dinnerCals = Math.round(targets.calories * 0.30);
+  var snackCals = targets.calories - breakfastCals - lunchCals - dinnerCals;
+
+  var mealOptions = {
+    Breakfast: [
+      { name: "Oatmeal + egg whites", cal: breakfastCals },
+      { name: "Whole wheat toast + peanut butter", cal: breakfastCals },
+      { name: "Greek yogurt + granola", cal: breakfastCals }
+    ],
+    Lunch: [
+      { name: "Chicken breast + brown rice", cal: lunchCals },
+      { name: "Salmon + quinoa salad", cal: lunchCals },
+      { name: "Tuna sandwich + veggies", cal: lunchCals }
+    ],
+    Dinner: [
+      { name: "Grilled fish + sweet potato", cal: dinnerCals },
+      { name: "Lean beef stir-fry + rice", cal: dinnerCals },
+      { name: "Tofu + mixed vegetables", cal: dinnerCals }
+    ],
+    Snack: [
+      { name: "Protein shake", cal: snackCals },
+      { name: "Mixed nuts + fruit", cal: snackCals },
+      { name: "Cottage cheese + berries", cal: snackCals }
+    ]
+  };
+
+  // 随机选择一份
+  var meals = {};
+  for (var type in mealOptions) {
+    var randomIndex = Math.floor(Math.random() * mealOptions[type].length);
+    meals[type] = mealOptions[type][randomIndex];
+  }
+
+  localStorage.setItem("dietPlan_" + selectedDate, JSON.stringify(meals));
+  loadDayPlan(selectedDate);
+}
+
+async function loadDayPlan(dateStr) {
+  document.getElementById("dayTitle").innerText = dateStr;
+
+  var targets = getDailyTargets();
+  document.getElementById("goalCal").innerText = targets.calories;
+  document.getElementById("goalP").innerText = targets.protein;
+  document.getElementById("goalC").innerText = targets.carbs;
+  document.getElementById("goalF").innerText = targets.fat;
+
+  document.getElementById("targetP").innerText = targets.protein;
+  document.getElementById("targetC").innerText = targets.carbs;
+  document.getElementById("targetF").innerText = targets.fat;
+
+  // AI 推荐餐食
+  var saved = JSON.parse(localStorage.getItem("dietPlan_" + dateStr));
+  if (!saved) {
+    generatePlan();
+    return;
+  }
+
+  var mealsHTML = "";
+  var mealTypes = ["Breakfast", "Lunch", "Dinner", "Snack"];
+  mealTypes.forEach(function(type) {
+    var meal = saved[type];
+    if (!meal) return;
+    mealsHTML += '<div class="meal-card"><h4>' + type + ' (' + meal.cal + ' kcal)</h4><p>🥗 ' + meal.name + '</p></div>';
+  });
+  document.getElementById("mealsContainer").innerHTML = mealsHTML;
+
+  // 实际摄入（从 Food Logs 读取）
+  var actualP = 0, actualC = 0, actualF = 0;
+  if (typeof getFoodLogs === "function") {
+    try {
+      var logs = await getFoodLogs(dateStr) || [];
+      logs.forEach(function(f) {
+        if (!f.userId || f.userId === profile.id) {
+          actualP += Number(f.protein || 0);
+          actualC += Number(f.carbs || 0);
+          actualF += Number(f.fat || 0);
+        }
+      });
+    } catch(e) {}
+  }
+
+  document.getElementById("progressP").innerText = Math.round(actualP);
+  document.getElementById("progressC").innerText = Math.round(actualC);
+  document.getElementById("progressF").innerText = Math.round(actualF);
+
+  var pctP = Math.min(100, (actualP / targets.protein) * 100);
+  var pctC = Math.min(100, (actualC / targets.carbs) * 100);
+  var pctF = Math.min(100, (actualF / targets.fat) * 100);
+
+  document.getElementById("barP").style.width = pctP + "%";
+  document.getElementById("barC").style.width = pctC + "%";
+  document.getElementById("barF").style.width = pctF + "%";
+
+  // AI Coach
+  var advice = "";
+  if (pctP < 50) advice += "🔴 Protein intake low. Add chicken, eggs, or fish. ";
+  else if (pctP > 90) advice += "🟢 Protein on track! ";
+  if (pctC > 90) advice += "⚠️ Carbs almost reached. Watch your rice/bread intake. ";
+  if (pctF < 30) advice += "🟡 Healthy fats needed. Add avocado or nuts. ";
+  if (!advice) advice = "✅ Great balance today! Keep it up!";
+  document.getElementById("aiCoach").innerText = advice;
+}
+
+// ========== 初始化 ==========
+switchTab('month');
+</script>
+</body>
+</html>
