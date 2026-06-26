@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Daily Diet Plan v13.3</title>
+
+<link rel="stylesheet" href="style.css">
+
+<style>
+
+body{
+margin:0;
+font-family:Arial,Helvetica,sans-serif;
+background:#f5f7fb;
+}
+
+.header{
+text-align:center;
+padding:20px;
+}
+
+.buttonArea{
+display:flex;
+justify-content:center;
+gap:10px;
+flex-wrap:wrap;
+margin-bottom:18px;
+}
+
+.btn{
+background:#2563eb;
+color:white;
+border:none;
+padding:10px 16px;
+border-radius:10px;
+cursor:pointer;
+}
+
+.btn:hover{
+background:#1d4ed8;
+}
+
+.card{
+margin:12px;
+padding:16px;
+background:white;
+border-radius:14px;
+box-shadow:0 3px 10px rgba(0,0,0,.08);
+}
+
+.card h3{
+margin-top:0;
+}
+
+.food{
+padding:8px 0;
+border-bottom:1px solid #eee;
+}
+
+.food:last-child{
+border-bottom:none;
+}
+
+.tag{
+display:inline-block;
+padding:6px 10px;
+border-radius:8px;
+margin-top:8px;
+font-size:13px;
+font-weight:bold;
+}
+
+.green{
+background:#dcfce7;
+}
+
+.yellow{
+background:#fef9c3;
+}
+
+.red{
+background:#fecaca;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="header">
+
+<h2 id="title">Loading...</h2>
+
+<p id="dateLabel"></p>
+
+</div>
+
+<div class="buttonArea">
+
+<button class="btn" onclick="goBack()">
+⬅ Back to Week
+</button>
+
+<button class="btn"
+onclick="location.href='dietplan.html'">
+📅 Week List
+</button>
+
+<button class="btn"
+onclick="location.href='index.html'">
+🏠 Dashboard
+</button>
+
+</div>
+
+<div class="card">
+
+<h3>🍳 Breakfast</h3>
+
+<div class="food">
+Oats + Milk
+</div>
+
+<div class="food">
+1 Egg
+</div>
+
+</div>
+
+<div class="card">
+
+<h3>🍱 Lunch</h3>
+
+<div class="food">
+Chicken Breast
+</div>
+
+<div class="food">
+Brown Rice
+</div>
+
+<div class="food">
+Vegetables
+</div>
+
+</div>
+
+<div class="card">
+
+<h3>🍽 Dinner</h3>
+
+<div class="food">
+Fish
+</div>
+
+<div class="food">
+Sweet Potato
+</div>
+
+<div class="food">
+Salad
+</div>
+
+</div>
+
+<div class="card">
+
+<h3>🥜 Snack</h3>
+
+<div class="food">
+Greek Yogurt
+</div>
+
+<div class="food">
+Banana
+</div>
+
+</div>
+
+<div class="card">
+
+<h3>📊 Nutrition Target</h3>
+
+<p>
+Calories:
+<b>1900 kcal</b>
+</p>
+
+<p>
+Protein:
+<b>140 g</b>
+</p>
+
+<p>
+Carbs:
+<b>180 g</b>
+</p>
+
+<p>
+Fat:
+<b>55 g</b>
+</p>
+
+</div>
+
+<div class="card">
+
+<h3>🧠 AI Recommendation</h3>
+
+<p id="advice">
+
+Good protein intake.
+
+Reduce sugary drinks today.
+
+Drink at least 2.5L water.
+
+30 mins walking after dinner.
+
+</p>
+
+<div
+id="riskTag"
+class="tag green">
+
+🟢 Healthy Day
+
+</div>
+
+</div>
+
+<script>
+
+const params =
+new URLSearchParams(location.search)
+
+const week =
+params.get("week") || 1
+
+const date =
+new Date(params.get("date"))
+
+const names=[
+"Sunday",
+"Monday",
+"Tuesday",
+"Wednesday",
+"Thursday",
+"Friday",
+"Saturday"
+]
+
+document.getElementById("title").innerHTML=
+names[date.getDay()]
+
+document.getElementById("dateLabel").innerHTML=
+`${date.getDate()}/${date.getMonth()+1}/${date.getFullYear()}`
+
+function goBack(){
+
+window.history.back()
+
+}
+
+</script>
+
+</body>
+</html>
