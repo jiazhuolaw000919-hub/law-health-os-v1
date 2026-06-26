@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Diet Plan System v13.1</title>
+
+<link rel="stylesheet" href="style.css">
+
+<style>
+.card{
+margin:10px;
+padding:14px;
+background:#fff;
+border-radius:12px;
+box-shadow:0 1px 4px rgba(0,0,0,.05);
+cursor:pointer;
+transition:0.2s;
+}
+
+.card:hover{
+transform:scale(1.02);
+}
+
+.week-title{
+font-size:16px;
+font-weight:bold;
+}
+
+.date-range{
+font-size:13px;
+color:#666;
+margin-top:4px;
+}
+
+.header{
+padding:10px;
+text-align:center;
+}
+</style>
+
+</head>
+
+<body>
+
+<!-- HEADER -->
+<div class="header">
+<h2>🍽 Diet Plan System v13.1</h2>
+<p id="monthLabel">Loading...</p>
+</div>
+
+<!-- WEEK LIST -->
+<div id="weekContainer"></div>
+
+<script>
+
+/* =========================
+GET CURRENT DATE
+========================= */
+const today = new Date()
+let year = today.getFullYear()
+let month = today.getMonth()
+
+/* =========================
+GET FIRST MONDAY OF MONTH
+========================= */
+function getFirstMonday(y, m){
+
+let d = new Date(y, m, 1)
+
+while(d.getDay() !== 1){ // 1 = Monday
+d.setDate(d.getDate() + 1)
+}
+
+return d
+}
+
+/* =========================
+GENERATE WEEK RANGE
+========================= */
+function generateWeeks(){
+
+const container = document.getElementById("weekContainer")
+container.innerHTML = ""
+
+const monthName = new Date(year, month).toLocaleString('default',{month:'long'})
+
+document.getElementById("monthLabel").innerText =
+`${monthName} ${year}`
+
+let start = getFirstMonday(year, month)
+
+for(let i = 0; i < 4; i++){
+
+let weekStart = new Date(start)
+weekStart.setDate(start.getDate() + (i * 7))
+
+let weekEnd = new Date(weekStart)
+weekEnd.setDate(weekStart.getDate() + 6)
+
+/* format */
+let startStr = `${weekStart.getDate()}/${weekStart.getMonth()+1}`
+let endStr = `${weekEnd.getDate()}/${weekEnd.getMonth()+1}`
+
+/* create card */
+let div = document.createElement("div")
+div.className = "card"
+
+div.innerHTML = `
+<div class="week-title">Week ${i+1}</div>
+<div class="date-range">${startStr} - ${endStr}</div>
+`
+
+/* click → week.html */
+div.onclick = ()=>{
+
+window.location.href =
+`week.html?week=${i+1}&start=${weekStart.toISOString()}`
+}
+
+container.appendChild(div)
+}
+}
+
+/* =========================
+INIT
+========================= */
+generateWeeks()
+
+</script>
+
+</body>
+</html>
