@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Week Diet Plan v13.2</title>
+
+<link rel="stylesheet" href="style.css">
+
+<style>
+body{
+background:#f5f7fb;
+font-family:Arial,Helvetica,sans-serif;
+margin:0;
+}
+
+.header{
+text-align:center;
+padding:20px;
+}
+
+.header h2{
+margin-bottom:6px;
+}
+
+.header p{
+color:#666;
+margin:0;
+}
+
+.buttonArea{
+display:flex;
+justify-content:center;
+gap:10px;
+margin-bottom:20px;
+flex-wrap:wrap;
+}
+
+.btn{
+background:#2563eb;
+color:white;
+border:none;
+padding:10px 16px;
+border-radius:10px;
+cursor:pointer;
+font-size:14px;
+}
+
+.btn:hover{
+background:#1d4ed8;
+}
+
+.dayCard{
+background:white;
+margin:12px;
+padding:16px;
+border-radius:12px;
+box-shadow:0 3px 10px rgba(0,0,0,.08);
+cursor:pointer;
+transition:.2s;
+}
+
+.dayCard:hover{
+transform:translateY(-2px);
+}
+
+.dayName{
+font-size:17px;
+font-weight:bold;
+}
+
+.dayDate{
+color:#666;
+margin-top:5px;
+font-size:14px;
+}
+
+.tip{
+margin-top:8px;
+color:#22c55e;
+font-size:13px;
+}
+</style>
+
+</head>
+
+<body>
+
+<div class="header">
+
+<h2 id="weekTitle">Loading...</h2>
+
+<p id="range"></p>
+
+</div>
+
+<div class="buttonArea">
+
+<button class="btn"
+onclick="location.href='dietplan.html'">
+
+⬅ Back to Diet Plan
+
+</button>
+
+<button class="btn"
+onclick="location.href='index.html'">
+
+🏠 Dashboard
+
+</button>
+
+</div>
+
+<div id="days"></div>
+
+<script>
+
+const params=new URLSearchParams(location.search)
+
+const week=params.get("week") || 1
+
+const startString=params.get("start")
+
+const monday=new Date(startString)
+
+const dayNames=[
+"Monday",
+"Tuesday",
+"Wednesday",
+"Thursday",
+"Friday",
+"Saturday",
+"Sunday"
+]
+
+function format(d){
+
+return `${d.getDate()}/${d.getMonth()+1}`
+
+}
+
+document.getElementById("weekTitle").innerHTML=
+`📅 Week ${week}`
+
+const sunday=new Date(monday)
+sunday.setDate(monday.getDate()+6)
+
+document.getElementById("range").innerHTML=
+`${format(monday)} - ${format(sunday)}`
+
+const container=document.getElementById("days")
+
+for(let i=0;i<7;i++){
+
+let d=new Date(monday)
+d.setDate(monday.getDate()+i)
+
+let card=document.createElement("div")
+
+card.className="dayCard"
+
+card.innerHTML=`
+
+<div class="dayName">
+
+${dayNames[i]}
+
+</div>
+
+<div class="dayDate">
+
+${format(d)}
+
+</div>
+
+<div class="tip">
+
+Tap to open AI Diet Plan →
+
+</div>
+
+`
+
+card.onclick=()=>{
+
+location.href=
+`daydiet.html?date=${d.toISOString()}&week=${week}`
+
+}
+
+container.appendChild(card)
+
+}
+
+</script>
+
+</body>
+</html>
