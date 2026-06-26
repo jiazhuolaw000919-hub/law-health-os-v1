@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Diet Plan</title>
+
+<link rel="stylesheet" href="style.css">
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="app.js"></script>
+<script src="supabase.js"></script>
+
+<style>
+.card{ margin:10px; padding:12px; background:#fff; border-radius:10px; box-shadow:0 1px 4px rgba(0,0,0,.05); }
+button{ margin:5px; padding:8px 14px; border-radius:8px; border:1px solid #ddd; cursor:pointer; background:#111827; color:white; }
+.progress-bar { width:100%; height:8px; background:#e5e7eb; border-radius:4px; margin:4px 0; }
+.progress-fill { height:8px; border-radius:4px; }
+.meal-card { background:#f9fafb; padding:10px; border-radius:8px; margin:8px 0; }
+.meal-card h4 { margin:0 0 4px 0; }
+.week-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:6px; text-align:center; }
+.week-day { padding:10px 4px; border-radius:8px; cursor:pointer; background:#f3f4f6; }
+.week-day.active { background:#3b82f6; color:white; }
+.week-day.today { border:2px solid #3b82f6; }
+</style>
+</head>
+<body>
+
+<div class="nav">
+  <a href="index.html">Home</a>
+  <a href="calendar.html">Calendar</a>
+  <a href="food.html">Food</a>
+  <a href="sleep.html">Sleep</a>
+  <a href="diet-plan.html" class="active">Diet Plan</a>
+  <a href="report.html">Report</a>
+  <a href="profile.html">Profile</a>
+</div>
+
+<h2 class="center">🍽 AI Diet Plan</h2>
+
+<div class="card">
+  <p id="activeProfile">Loading...</p>
+</div>
+
+<!-- Week Selector -->
+<div class="card">
+  <h3>📅 Week</h3>
+  <div class="week-grid" id="weekGrid"></div>
+  <p id="weekRange" style="text-align:center; margin-top:8px;"></p>
+</div>
+
+<!-- Day Plan -->
+<div class="card" id="dayPlanCard">
+  <h3>📆 <span id="dayTitle"></span></h3>
+
+  <h4>🎯 Today's Goal</h4>
+  <p>Calories: <span id="goalCal">--</span> kcal</p>
+  <p>Protein: <span id="goalP">--</span>g | Carbs: <span id="goalC">--</span>g | Fat: <span id="goalF">--</span>g</p>
+
+  <h4>🍳 Meals</h4>
+  <div id="mealsContainer"></div>
+
+  <h4>📊 Nutrition Progress</h4>
+  <p>Protein: <span id="progressP">0</span>/<span id="targetP">0</span>g</p>
+  <div class="progress-bar"><div id="barP" class="progress-fill" style="width:0%;background:#3b82f6;"></div></div>
+  <p>Carbs: <span id="progressC">0</span>/<span id="targetC">0</span>g</p>
+  <div class="progress-bar"><div id="barC" class="progress-fill" style="width:0%;background:#facc15;"></div></div>
+  <p>Fat: <span id="progressF">0</span>/<span id="targetF">0</span>g</p>
+  <div class="progress-bar"><div id="barF" class="progress-fill" style="width:0%;background:#ef4444;"></div></div>
+
+  <br>
+  <button onclick="generatePlan()">🔄 Generate Again</button>
+  <button onclick="location.href='food.html'" style="background:#4b5563;">📝 Log Food</button>
+  <button onclick="location.href='index.html'" style="background:#111827;">🏠 Dashboard</button>
+</div>
+
+<script>
+var profile = JSON.parse(localStorage.getItem("activeProfile")) || { id:"guest", name:"Guest", height:170, weight:70, primary_goal:"maintenance" };
+document.getElementById("activeProfile").innerText = "👤 Active: " + (profile.name || "Guest");
+
+var today = new Date();
+var currentWeekStart = getMonday(today);
+var selectedDate = today.toISOString().split("T")[0];
+
+// 获取周一的日期
+function getMonday(d) {
+  var date = new Date(d);
+  var day = date.getDay();
+  var diff = day === 0 ? -6 : 1 - day;
+  date.setDate(date.getDate() + diff);
+  date.setHours(0,0,0,0);
+  return date;
+}
+
+// 格式化日期
+function formatDate(d) {
+  return d.toISOString().split("T")[0];
+}
+
+// 根据目标计算每日营养需求
+function getDailyTargets() {
+  var weight = Number(profile.weight) || 70;
+  var goal = profile.primary_goal || "maintenance";
+
+  var bmr = 10 * weight + 6.25 * (Number(profile.height) || 170) - 5 * (Number(profile.age) || 25) + 5;
+  var tdee = bmr * 1.55;
+
+  var calories = tdee;
+  if (goal === "fat_loss") calories = tdee - 500;
+  else if (goal === "muscle_gain") calories = tdee + 300;
+
+  var protein = Math.round((calories * 0.30) / 4);
+  var fat = Math.round((calories * 0.25) / 9);
+  var carbs = Math.round((calories * 0.45) / 4);
+
+  return { calories: Math.round(calories), protein: protein, carbs: carbs, fat: fat };
+}
+
+// 渲染周视图
+function renderWeek() {
+  var grid = document.getElementById("weekGrid");
+  var range = document.getElementById("weekRange");
+  var html = "";
+  var days = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+
+  var endDate = new Date(currentWeekStart);
+  endDate.setDate(endDate.getDate() + 6);
+
+  range.innerText = formatDate(currentWeekStart) + " — " + formatDate(endDate);
+
+  for (var i = 0; i < 7; i++) {
+    var d = new Date(currentWeekStart);
+    d.setDate(d.getDate() + i);
+    var dateStr = formatDate(d);
+    var isToday = dateStr === today.toISOString().split("T")[0];
+    var isSelected = dateStr === selectedDate;
+    html += '<div class="week-day' + (isToday ? " today" : "") + (isSelected ? " active" : "") + '" onclick="selectDay(\'' + dateStr + '\')">' + days[i] + '<br>' + d.getDate() + '</div>';
+  }
+  grid.innerHTML = html;
+}
+
+// 选择某一天
+function selectDay(dateStr) {
+  selectedDate = dateStr;
+  renderWeek();
+  loadDayPlan(dateStr);
+}
+
+// 生成 AI 饮食计划
+function generatePlan() {
+  var targets = getDailyTargets();
+
+  var breakfastCals = Math.round(targets.calories * 0.25);
+  var lunchCals = Math.round(targets.calories * 0.35);
+  var dinnerCals = Math.round(targets.calories * 0.30);
+  var snackCals = targets.calories - breakfastCals - lunchCals - dinnerCals;
+
+  var meals = {
+    Breakfast: { calories: breakfastCals, items: ["Oatmeal + egg whites", "Whole wheat toast + peanut butter", "Greek yogurt + granola"] },
+    Lunch: { calories: lunchCals, items: ["Chicken breast + brown rice", "Salmon + quinoa salad", "Tuna sandwich + veggies"] },
+    Dinner: { calories: dinnerCals, items: ["Grilled fish + sweet potato", "Lean beef stir-fry + rice", "Tofu + mixed vegetables"] },
+    Snack: { calories: snackCals, items: ["Protein shake", "Mixed nuts + fruit", "Cottage cheese + berries"] }
+  };
+
+  // 存储到 localStorage
+  localStorage.setItem("dietPlan_" + selectedDate, JSON.stringify(meals));
+  loadDayPlan(selectedDate);
+}
+
+// 加载某天的计划 + 实际进度
+async function loadDayPlan(dateStr) {
+  document.getElementById("dayTitle").innerText = dateStr;
+
+  var targets = getDailyTargets();
+  document.getElementById("goalCal").innerText = targets.calories;
+  document.getElementById("goalP").innerText = targets.protein;
+  document.getElementById("goalC").innerText = targets.carbs;
+  document.getElementById("goalF").innerText = targets.fat;
+
+  document.getElementById("targetP").innerText = targets.protein;
+  document.getElementById("targetC").innerText = targets.carbs;
+  document.getElementById("targetF").innerText = targets.fat;
+
+  // 读取存储的计划
+  var saved = JSON.parse(localStorage.getItem("dietPlan_" + dateStr));
+  if (!saved) {
+    generatePlan();
+    return;
+  }
+
+  var mealsHTML = "";
+  var mealTypes = ["Breakfast", "Lunch", "Dinner", "Snack"];
+  mealTypes.forEach(function(type) {
+    var meal = saved[type];
+    if (!meal) return;
+    mealsHTML += '<div class="meal-card"><h4>' + type + ' (' + meal.calories + ' kcal)</h4>';
+    meal.items.forEach(function(item) {
+      mealsHTML += '<p>🥗 ' + item + '</p>';
+    });
+    mealsHTML += '</div>';
+  });
+  document.getElementById("mealsContainer").innerHTML = mealsHTML;
+
+  // 获取当天实际食物记录
+  var actualCal = 0, actualP = 0, actualC = 0, actualF = 0;
+  if (typeof getFoodLogs === "function") {
+    try {
+      var logs = await getFoodLogs(dateStr) || [];
+      logs.forEach(function(f) {
+        if (!f.userId || f.userId === profile.id) {
+          actualCal += Number(f.calories || 0);
+          actualP += Number(f.protein || 0);
+          actualC += Number(f.carbs || 0);
+          actualF += Number(f.fat || 0);
+        }
+      });
+    } catch(e) {}
+  }
+
+  document.getElementById("progressP").innerText = Math.round(actualP);
+  document.getElementById("progressC").innerText = Math.round(actualC);
+  document.getElementById("progressF").innerText = Math.round(actualF);
+
+  var pctP = Math.min(100, (actualP / targets.protein) * 100);
+  var pctC = Math.min(100, (actualC / targets.carbs) * 100);
+  var pctF = Math.min(100, (actualF / targets.fat) * 100);
+
+  document.getElementById("barP").style.width = pctP + "%";
+  document.getElementById("barC").style.width = pctC + "%";
+  document.getElementById("barF").style.width = pctF + "%";
+}
+
+// 初始化
+renderWeek();
+loadDayPlan(selectedDate);
+</script>
+</body>
+</html>
